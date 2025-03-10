@@ -1,0 +1,84 @@
+<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+  <div class="px-4 py-6 sm:px-0">
+    <h1 class="text-3xl font-bold mb-8">Band Song Database</h1>
+
+    <!-- Add New Song Form -->
+    <div class="bg-white shadow rounded-lg p-6 mb-8">
+      <h2 class="text-xl font-semibold mb-4">Add New Song</h2>
+      <.form for={%{}} phx-submit="add_song">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Title</label>
+            <input type="text" name="song[title]" required
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Status</label>
+            <select name="song[status]" required
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+              <%= for {label, value} <- status_options() do %>
+                <option value={value}><%= label %></option>
+              <% end %>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Notes</label>
+            <input type="text" name="song[notes]"
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <button type="submit"
+            class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            Add Song
+          </button>
+        </div>
+      </.form>
+    </div>
+
+    <!-- Songs List -->
+    <div class="bg-white shadow rounded-lg p-6">
+      <h2 class="text-xl font-semibold mb-4">Song List</h2>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <%= for song <- @songs do %>
+              <tr>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <%= song.title %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                  <span class={"px-2 inline-flex text-xs leading-5 font-semibold rounded-full #{status_color(song.status)}"}>
+                    <%= String.replace(to_string(song.status), "_", " ") |> String.capitalize() %>
+                  </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <%= song.notes %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                  <select phx-change="update_status" phx-value-title={song.title}
+                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    <%= for {label, value} <- status_options() do %>
+                      <option value={value} selected={value == song.status}><%= label %></option>
+                    <% end %>
+                  </select>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div> 
