@@ -5,20 +5,20 @@ defmodule BandDbWeb.SongLive do
   @impl true
   def mount(_params, _session, socket) do
     songs = SongServer.list_songs()
-    {:ok, assign(socket, songs: songs, new_song: %{title: "", status: :needs_learning, notes: ""})}
+    {:ok, assign(socket, songs: songs, new_song: %{title: "", status: :needs_learning, band_name: "", notes: ""})}
   end
 
   @impl true
   def handle_event("add_song", %{"song" => song_params}, socket) do
     status = String.to_existing_atom(song_params["status"])
-    case SongServer.add_song(song_params["title"], status, song_params["notes"]) do
+    case SongServer.add_song(song_params["title"], status, song_params["band_name"], song_params["notes"]) do
       {:ok, _song} ->
         songs = SongServer.list_songs()
         {:noreply,
           socket
           |> assign(:songs, songs)
           |> put_flash(:info, "Song added successfully!")
-          |> assign(:new_song, %{title: "", status: :needs_learning, notes: ""})}
+          |> assign(:new_song, %{title: "", status: :needs_learning, band_name: "", notes: ""})}
 
       {:error, :song_already_exists} ->
         {:noreply, put_flash(socket, :error, "Song already exists!")}
@@ -41,8 +41,12 @@ defmodule BandDbWeb.SongLive do
     end
   end
 
+  @spec status_options() :: [
+          {String.t(), :suggested | :needs_learning | :needs_rehearsal | :ready | :performed}
+        ]
   def status_options do
     [
+      {"Suggested", :suggested},
       {"Needs Learning", :needs_learning},
       {"Needs Rehearsal", :needs_rehearsal},
       {"Ready", :ready},
@@ -52,6 +56,7 @@ defmodule BandDbWeb.SongLive do
 
   def status_color(status) do
     case status do
+      :suggested -> "bg-purple-100 text-purple-800"
       :needs_learning -> "bg-red-100 text-red-800"
       :needs_rehearsal -> "bg-yellow-100 text-yellow-800"
       :ready -> "bg-blue-100 text-blue-800"
