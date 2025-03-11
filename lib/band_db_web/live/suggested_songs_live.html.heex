@@ -1,0 +1,72 @@
+<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+  <div class="px-4 py-6 sm:px-0">
+    <div class="flex justify-between items-center mb-8">
+      <h1 class="text-3xl font-bold">Suggested Songs</h1>
+      <.link navigate={~p"/"} class="text-indigo-600 hover:text-indigo-900">
+        Back to Song List
+      </.link>
+    </div>
+
+    <!-- Search -->
+    <div class="bg-white shadow rounded-lg p-6 mb-8">
+      <.form for={%{}} phx-change="search" class="flex gap-4 items-end">
+        <div class="flex-1">
+          <label class="block text-sm font-medium text-gray-700">Search Songs</label>
+          <input type="text" name="search[term]" value={@search_term} placeholder="Search by title, band, or notes"
+            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+        </div>
+      </.form>
+    </div>
+
+    <!-- Songs List -->
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+      <div class="px-4 py-5 sm:p-6">
+        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+          <span class={"px-3 py-1 text-sm font-semibold rounded-full bg-purple-100 text-purple-800"}>
+            Suggested Songs (<%= length(@songs) %>)
+          </span>
+          <%= if length(@songs) > 0 do %>
+            <span class="text-sm text-gray-500">
+              - Total time: <%= @songs |> Enum.map(& &1.duration) |> Enum.reject(&is_nil/1) |> Enum.sum() |> format_duration() %>
+            </span>
+          <% end %>
+        </h3>
+
+        <ul class="divide-y divide-gray-200">
+          <%= for song <- @songs do %>
+            <li class="py-4">
+              <div class="flex items-center justify-between">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center space-x-3">
+                    <h3 class="text-sm font-medium text-gray-900 truncate"><%= song.title %></h3>
+                    <span class="text-sm text-gray-500">by <%= song.band_name %></span>
+                    <%= if song.duration do %>
+                      <span class="text-sm text-gray-500">(<%= format_duration(song.duration) %>)</span>
+                    <% end %>
+                  </div>
+                  <%= if song.notes do %>
+                    <p class="mt-1 text-sm text-gray-500 truncate"><%= song.notes %></p>
+                  <% end %>
+                </div>
+                <div class="flex-shrink-0 ml-4">
+                  <select phx-change="update_status" phx-value-title={song.title}
+                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                    <%= for {label, value} <- status_options() do %>
+                      <option value={value} selected={value == song.status}><%= label %></option>
+                    <% end %>
+                  </select>
+                </div>
+              </div>
+            </li>
+          <% end %>
+        </ul>
+
+        <%= if length(@songs) == 0 do %>
+          <div class="text-center py-4 text-gray-500">
+            No suggested songs found.
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div> 
