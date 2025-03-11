@@ -2,13 +2,14 @@ defmodule BandDb.Song do
   @type status :: :performed | :needs_learning | :needs_rehearsal | :ready | :suggested
 
   @enforce_keys [:title, :status, :band_name]
-  defstruct [:title, :status, :notes, :band_name]
+  defstruct [:title, :status, :notes, :band_name, :duration]
 
   @type t :: %__MODULE__{
     title: String.t(),
     status: status(),
     notes: String.t() | nil,
-    band_name: String.t()
+    band_name: String.t(),
+    duration: non_neg_integer() | nil  # Duration in seconds
   }
 end
 
@@ -23,8 +24,8 @@ defmodule BandDb.SongServer do
     GenServer.start_link(__MODULE__, [], name: name)
   end
 
-  def add_song(title, status, band_name, notes \\ nil) do
-    GenServer.call(__MODULE__, {:add_song, title, status, band_name, notes})
+  def add_song(title, status, band_name, duration \\ nil, notes \\ nil) do
+    GenServer.call(__MODULE__, {:add_song, title, status, band_name, duration, notes})
   end
 
   def list_songs do
@@ -47,10 +48,10 @@ defmodule BandDb.SongServer do
   end
 
   @impl true
-  def handle_call({:add_song, title, status, band_name, notes}, _from, songs) do
+  def handle_call({:add_song, title, status, band_name, duration, notes}, _from, songs) do
     case Enum.find(songs, fn song -> song.title == title end) do
       nil ->
-        new_song = %Song{title: title, status: status, band_name: band_name, notes: notes}
+        new_song = %Song{title: title, status: status, band_name: band_name, duration: duration, notes: notes}
         {:reply, {:ok, new_song}, [new_song | songs]}
       _existing ->
         {:reply, {:error, :song_already_exists}, songs}
