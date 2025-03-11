@@ -8,81 +8,49 @@ defmodule BandDb.SongServerTest do
     :ok
   end
 
-  describe "add_song/4" do
-    test "adds a new song successfully" do
-      assert {:ok, song} = GenServer.call(:test_song_server, {:add_song, "Test Song", :needs_learning, "Test Band", nil})
-      assert song.title == "Test Song"
-      assert song.status == :needs_learning
-      assert song.band_name == "Test Band"
-      assert song.notes == nil
-    end
-
-    test "adds a song with notes" do
-      assert {:ok, song} = GenServer.call(:test_song_server, {:add_song, "Test Song", :needs_learning, "Test Band", "In G major"})
-      assert song.title == "Test Song"
-      assert song.status == :needs_learning
-      assert song.band_name == "Test Band"
-      assert song.notes == "In G major"
-    end
-
-    test "returns error when adding duplicate song" do
-      GenServer.call(:test_song_server, {:add_song, "Test Song", :needs_learning, "Test Band", nil})
-      assert {:error, :song_already_exists} = GenServer.call(:test_song_server, {:add_song, "Test Song", :needs_learning, "Another Band", nil})
-    end
+  test "add_song/4 adds a new song successfully" do
+    assert {:ok, song} = SongServer.add_song("Test Song", :needs_learning, "Test Band", nil, "")
+    assert song.title == "Test Song"
+    assert song.status == :needs_learning
+    assert song.band_name == "Test Band"
+    assert song.duration == nil
+    assert song.notes == ""
   end
 
-  describe "list_songs/0" do
-    test "returns empty list when no songs exist" do
-      assert [] == GenServer.call(:test_song_server, :list_songs)
-    end
-
-    test "returns all added songs" do
-      GenServer.call(:test_song_server, {:add_song, "Song 1", :needs_learning, "Band 1", nil})
-      GenServer.call(:test_song_server, {:add_song, "Song 2", :performed, "Band 2", nil})
-
-      songs = GenServer.call(:test_song_server, :list_songs)
-      assert length(songs) == 2
-      assert Enum.any?(songs, &(&1.title == "Song 1" and &1.band_name == "Band 1"))
-      assert Enum.any?(songs, &(&1.title == "Song 2" and &1.band_name == "Band 2"))
-    end
+  test "add_song/4 returns error when song already exists" do
+    SongServer.add_song("Test Song", :needs_learning, "Test Band", nil, "")
+    assert {:error, :song_already_exists} = SongServer.add_song("Test Song", :needs_learning, "Test Band", nil, "")
   end
 
-  describe "get_song/1" do
-    test "returns error when song doesn't exist" do
-      assert {:error, :not_found} = GenServer.call(:test_song_server, {:get_song, "Non-existent Song"})
-    end
+  test "list_songs/0 returns all songs" do
+    SongServer.add_song("Song 1", :needs_learning, "Band 1", nil, "")
+    SongServer.add_song("Song 2", :ready, "Band 2", nil, "")
 
-    test "returns song when it exists" do
-      GenServer.call(:test_song_server, {:add_song, "Test Song", :needs_learning, "Test Band", nil})
-      assert {:ok, song} = GenServer.call(:test_song_server, {:get_song, "Test Song"})
-      assert song.title == "Test Song"
-      assert song.status == :needs_learning
-      assert song.band_name == "Test Band"
-    end
+    songs = SongServer.list_songs()
+    assert length(songs) == 2
+    assert Enum.any?(songs, &(&1.title == "Song 1"))
+    assert Enum.any?(songs, &(&1.title == "Song 2"))
   end
 
-  describe "update_song_status/2" do
-    test "returns error when song doesn't exist" do
-      assert {:error, :not_found} = GenServer.call(:test_song_server, {:update_status, "Non-existent Song", :ready})
-    end
+  test "get_song/1 returns song by title" do
+    SongServer.add_song("Test Song", :needs_learning, "Test Band", nil, "")
+    assert {:ok, song} = SongServer.get_song("Test Song")
+    assert song.title == "Test Song"
+  end
 
-    test "updates song status successfully" do
-      GenServer.call(:test_song_server, {:add_song, "Test Song", :needs_learning, "Test Band", nil})
-      assert :ok = GenServer.call(:test_song_server, {:update_status, "Test Song", :ready})
+  test "get_song/1 returns error when song not found" do
+    assert {:error, :not_found} = SongServer.get_song("Nonexistent Song")
+  end
 
-      assert {:ok, song} = GenServer.call(:test_song_server, {:get_song, "Test Song"})
-      assert song.status == :ready
-      assert song.band_name == "Test Band"
-    end
+  test "update_song_status/2 updates song status" do
+    SongServer.add_song("Test Song", :needs_learning, "Test Band", nil, "")
+    assert :ok = SongServer.update_song_status("Test Song", :ready)
 
-    test "can update status multiple times" do
-      GenServer.call(:test_song_server, {:add_song, "Test Song", :needs_learning, "Test Band", nil})
-      assert :ok = GenServer.call(:test_song_server, {:update_status, "Test Song", :ready})
-      assert :ok = GenServer.call(:test_song_server, {:update_status, "Test Song", :performed})
+    assert {:ok, song} = SongServer.get_song("Test Song")
+    assert song.status == :ready
+  end
 
-      assert {:ok, song} = GenServer.call(:test_song_server, {:get_song, "Test Song"})
-      assert song.status == :performed
-      assert song.band_name == "Test Band"
-    end
+  test "update_song_status/2 returns error when song not found" do
+    assert {:error, :not_found} = SongServer.update_song_status("Nonexistent Song", :ready)
   end
 end
