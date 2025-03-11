@@ -18,6 +18,7 @@ defmodule BandDbWeb.Router do
     pipe_through :browser
 
     live "/", SongLive
+    live "/suggested", SuggestedSongsLive
   end
 
   # Other scopes may use custom stacks.
