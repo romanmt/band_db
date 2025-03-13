@@ -15,6 +15,7 @@ defmodule BandDb.Application do
       {Finch, name: BandDb.Finch},
       # Start our song server
       BandDb.SongServer,
+      BandDb.RehearsalPlanServer,
       # Start to serve requests, typically the last entry
       BandDbWeb.Endpoint
     ]

@@ -1,6 +1,6 @@
 defmodule BandDbWeb.RehearsalPlanLive do
   use BandDbWeb, :live_view
-  alias BandDb.SongServer
+  alias BandDb.{SongServer, RehearsalPlanServer}
 
   @impl true
   def mount(_params, _session, socket) do
@@ -19,8 +19,36 @@ defmodule BandDbWeb.RehearsalPlanLive do
       needs_rehearsal: needs_rehearsal,
       ready_songs: ready_songs,
       rehearsal_plan: rehearsal_plan,
-      total_duration: calculate_total_duration(rehearsal_plan)
+      total_duration: calculate_total_duration(rehearsal_plan),
+      show_date_modal: false,
+      date: Date.utc_today()
     )}
+  end
+
+  @impl true
+  def handle_event("show_date_modal", _, socket) do
+    {:noreply, assign(socket, show_date_modal: true)}
+  end
+
+  @impl true
+  def handle_event("hide_date_modal", _, socket) do
+    {:noreply, assign(socket, show_date_modal: false)}
+  end
+
+  @impl true
+  def handle_event("accept_plan", %{"date" => date}, socket) do
+    date = Date.from_iso8601!(date)
+    RehearsalPlanServer.save_plan(
+      date,
+      socket.assigns.rehearsal_plan.rehearsal,
+      socket.assigns.rehearsal_plan.set,
+      socket.assigns.total_duration
+    )
+
+    {:noreply,
+      socket
+      |> put_flash(:info, "Rehearsal plan saved for #{Date.to_string(date)}")
+      |> push_navigate(to: ~p"/rehearsal/history")}
   end
 
   @impl true

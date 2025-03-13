@@ -1,0 +1,95 @@
+<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+  <div class="px-4 py-6 sm:px-0">
+    <div class="flex justify-between items-center mb-8">
+      <h1 class="text-3xl font-bold">Rehearsal History</h1>
+      <div class="flex items-center space-x-4">
+        <.link navigate={~p"/rehearsal"} class="text-indigo-600 hover:text-indigo-900">
+          Back to Rehearsal Plan
+        </.link>
+      </div>
+    </div>
+
+    <div class="space-y-8">
+      <%= for plan <- @plans do %>
+        <div class="bg-white shadow rounded-lg overflow-hidden">
+          <div class="px-4 py-5 sm:p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-xl font-semibold text-gray-900">
+                Rehearsal on <%= Date.to_string(plan.date) %>
+              </h2>
+              <span class="text-sm text-gray-500">
+                Total time: <%= format_duration(plan.total_duration) %>
+              </span>
+            </div>
+
+            <!-- Rehearsal Songs -->
+            <div class="mb-6">
+              <h3 class="text-lg font-medium text-gray-900 mb-3">Songs Rehearsed</h3>
+              <ul class="divide-y divide-gray-200">
+                <%= for song <- plan.rehearsal_songs do %>
+                  <li class="py-3">
+                    <div class="grid grid-cols-12 gap-4 items-center">
+                      <div class="col-span-3">
+                        <span class="text-sm font-medium text-gray-900"><%= song.title %></span>
+                      </div>
+                      <div class="col-span-3">
+                        <span class="text-sm text-gray-500">by <%= song.band_name %></span>
+                      </div>
+                      <div class="col-span-2">
+                        <%= if song.duration do %>
+                          <span class="text-sm text-gray-500">(<%= format_duration(song.duration) %>)</span>
+                        <% end %>
+                      </div>
+                      <div class="col-span-4">
+                        <%= if song.notes do %>
+                          <span class="text-sm text-gray-500 truncate"><%= song.notes %></span>
+                        <% end %>
+                      </div>
+                    </div>
+                  </li>
+                <% end %>
+              </ul>
+            </div>
+
+            <!-- Set List -->
+            <div>
+              <h3 class="text-lg font-medium text-gray-900 mb-3">Set List</h3>
+              <ul class="divide-y divide-gray-200">
+                <%= for {song, index} <- Enum.with_index(plan.set_songs) do %>
+                  <li class="py-3">
+                    <div class="grid grid-cols-12 gap-4 items-center">
+                      <div class="col-span-1">
+                        <span class="text-sm font-medium text-gray-500"><%= index + 1 %>.</span>
+                      </div>
+                      <div class="col-span-2">
+                        <span class="text-sm font-medium text-gray-900"><%= song.title %></span>
+                      </div>
+                      <div class="col-span-2">
+                        <span class="text-sm text-gray-500">by <%= song.band_name %></span>
+                      </div>
+                      <div class="col-span-2">
+                        <%= if song.duration do %>
+                          <span class="text-sm text-gray-500">(<%= format_duration(song.duration) %>)</span>
+                        <% end %>
+                      </div>
+                      <div class="col-span-2">
+                        <span class={"px-2 py-1 text-xs font-medium rounded-full #{status_color(song.status)}"}>
+                          <%= String.replace(to_string(song.status), "_", " ") |> String.capitalize() %>
+                        </span>
+                      </div>
+                      <div class="col-span-3">
+                        <%= if song.notes do %>
+                          <span class="text-sm text-gray-500 truncate"><%= song.notes %></span>
+                        <% end %>
+                      </div>
+                    </div>
+                  </li>
+                <% end %>
+              </ul>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div> 
