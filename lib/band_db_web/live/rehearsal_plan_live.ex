@@ -60,17 +60,44 @@ defmodule BandDbWeb.RehearsalPlanLive do
     )}
   end
 
-  # Generate a rehearsal plan with 3-5 songs that need rehearsal and a full set of ready/performed songs
+  # Generate a rehearsal plan with songs that need rehearsal and a full set of ready/performed songs
   defp generate_plan(needs_rehearsal, ready_songs) do
-    # Randomly select 3-5 songs that need rehearsal
-    rehearsal_count = Enum.random(3..5)
-    rehearsal_songs = Enum.take_random(needs_rehearsal, min(rehearsal_count, length(needs_rehearsal)))
+    # Get rehearsal history
+    plans = RehearsalPlanServer.list_plans()
+
+    # Create a map of song titles to their last rehearsal date
+    last_rehearsal_dates = Enum.reduce(plans, %{}, fn plan, acc ->
+      # Add rehearsal songs
+      rehearsal_dates = Enum.reduce(plan.rehearsal_songs, acc, fn song, acc ->
+        Map.put(acc, song.title, plan.date)
+      end)
+
+      # Add set list songs
+      Enum.reduce(plan.set_songs, rehearsal_dates, fn song, acc ->
+        Map.put(acc, song.title, plan.date)
+      end)
+    end)
+
+    # Sort songs needing rehearsal by last rehearsal date (most recent first)
+    rehearsal_songs = needs_rehearsal
+      |> Enum.sort_by(fn song ->
+        Map.get(last_rehearsal_dates, song.title, ~D[2000-01-01])
+      end, {:desc, Date})
+      |> Enum.take(5)  # Take up to 5 songs
+
+    # Sort ready songs by status and last rehearsal date
+    sorted_ready_songs = ready_songs
+      |> Enum.sort_by(fn song ->
+        # Sort by status (ready first, then performed) and last rehearsal date (least recent first)
+        status_priority = if song.status == :ready, do: 0, else: 1
+        last_date = Map.get(last_rehearsal_dates, song.title, ~D[2000-01-01])
+        {status_priority, last_date}
+      end)
 
     # Select enough ready songs to make a full set (aiming for about 45-60 minutes total)
     target_duration = Enum.random(2700..3600) # 45-60 minutes in seconds
-    ready_songs = Enum.shuffle(ready_songs)
 
-    {set_songs, _total_duration} = Enum.reduce_while(ready_songs, {[], 0}, fn song, {songs, duration} ->
+    {set_songs, _total_duration} = Enum.reduce_while(sorted_ready_songs, {[], 0}, fn song, {songs, duration} ->
       new_duration = duration + (song.duration || 0)
       if new_duration <= target_duration do
         {:cont, {[song | songs], new_duration}}
