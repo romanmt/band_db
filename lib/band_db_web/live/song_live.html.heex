@@ -4,7 +4,10 @@
       <h1 class="text-3xl font-bold">Band Song Database</h1>
       <div class="flex items-center space-x-4">
         <.link navigate={~p"/suggested"} class="text-indigo-600 hover:text-indigo-900">
-          View Suggested Songs
+          Suggested Songs
+        </.link>
+        <.link navigate={~p"/rehearsal"} class="text-indigo-600 hover:text-indigo-900">
+          Rehearsal Plan
         </.link>
         <button phx-click="show_modal"
           class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">

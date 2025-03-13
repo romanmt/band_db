@@ -19,6 +19,7 @@ defmodule BandDbWeb.Router do
 
     live "/", SongLive
     live "/suggested", SuggestedSongsLive
+    live "/rehearsal", RehearsalPlanLive
   end
 
   # Other scopes may use custom stacks.

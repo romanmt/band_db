@@ -1,0 +1,113 @@
+<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+  <div class="px-4 py-6 sm:px-0">
+    <div class="flex justify-between items-center mb-8">
+      <h1 class="text-3xl font-bold">Rehearsal Plan</h1>
+      <div class="flex items-center space-x-4">
+        <.link navigate={~p"/"} class="text-indigo-600 hover:text-indigo-900">
+          Back to Song List
+        </.link>
+        <button phx-click="regenerate"
+          class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+          </svg>
+          Generate New Plan
+        </button>
+      </div>
+    </div>
+
+    <!-- Total Duration -->
+    <div class="bg-white shadow rounded-lg p-6 mb-8">
+      <div class="text-center">
+        <h2 class="text-lg font-medium text-gray-900">Total Rehearsal Time</h2>
+        <p class="mt-1 text-3xl font-semibold text-indigo-600"><%= format_duration(@total_duration) %></p>
+      </div>
+    </div>
+
+    <!-- Rehearsal Section -->
+    <div class="bg-white shadow rounded-lg overflow-hidden mb-8">
+      <div class="px-4 py-5 sm:p-6">
+        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+          <span class={"px-3 py-1 text-sm font-semibold rounded-full #{status_color(:needs_learning)}"}>
+            Songs to Rehearse (<%= length(@rehearsal_plan.rehearsal) %>)
+          </span>
+          <span class="text-sm text-gray-500">
+            - Total time: <%= @rehearsal_plan.rehearsal |> Enum.map(& &1.duration) |> Enum.reject(&is_nil/1) |> Enum.sum() |> format_duration() %>
+          </span>
+        </h3>
+
+        <ul class="divide-y divide-gray-200">
+          <%= for song <- @rehearsal_plan.rehearsal do %>
+            <li class="py-4">
+              <div class="grid grid-cols-12 gap-4 items-center">
+                <div class="col-span-3">
+                  <h3 class="text-sm font-medium text-gray-900 truncate"><%= song.title %></h3>
+                </div>
+                <div class="col-span-3">
+                  <span class="text-sm text-gray-500">by <%= song.band_name %></span>
+                </div>
+                <div class="col-span-2">
+                  <%= if song.duration do %>
+                    <span class="text-sm text-gray-500">(<%= format_duration(song.duration) %>)</span>
+                  <% end %>
+                </div>
+                <div class="col-span-4">
+                  <%= if song.notes do %>
+                    <span class="text-sm text-gray-500 truncate">- <%= song.notes %></span>
+                  <% end %>
+                </div>
+              </div>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Set List Section -->
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+      <div class="px-4 py-5 sm:p-6">
+        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+          <span class="px-3 py-1 text-sm font-semibold rounded-full bg-indigo-100 text-indigo-800">
+            Set List (<%= length(@rehearsal_plan.set) %>)
+          </span>
+          <span class="text-sm text-gray-500">
+            - Total time: <%= @rehearsal_plan.set |> Enum.map(& &1.duration) |> Enum.reject(&is_nil/1) |> Enum.sum() |> format_duration() %>
+          </span>
+        </h3>
+
+        <ul class="divide-y divide-gray-200">
+          <%= for {song, index} <- Enum.with_index(@rehearsal_plan.set) do %>
+            <li class="py-4">
+              <div class="grid grid-cols-12 gap-4 items-center">
+                <div class="col-span-1">
+                  <span class="text-sm font-medium text-gray-500"><%= index + 1 %>.</span>
+                </div>
+                <div class="col-span-2">
+                  <h3 class="text-sm font-medium text-gray-900 truncate"><%= song.title %></h3>
+                </div>
+                <div class="col-span-2">
+                  <span class="text-sm text-gray-500">by <%= song.band_name %></span>
+                </div>
+                <div class="col-span-2">
+                  <%= if song.duration do %>
+                    <span class="text-sm text-gray-500">(<%= format_duration(song.duration) %>)</span>
+                  <% end %>
+                </div>
+                <div class="col-span-2">
+                  <span class={"px-2 py-1 text-xs font-medium rounded-full #{status_color(song.status)}"}>
+                    <%= String.replace(to_string(song.status), "_", " ") |> String.capitalize() %>
+                  </span>
+                </div>
+                <div class="col-span-3">
+                  <%= if song.notes do %>
+                    <span class="text-sm text-gray-500 truncate">- <%= song.notes %></span>
+                  <% end %>
+                </div>
+              </div>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div> 
