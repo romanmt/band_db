@@ -1,6 +1,6 @@
 defmodule BandDbWeb.SetListEditorLive do
   use BandDbWeb, :live_view
-  alias BandDb.SongServer
+  alias BandDb.{SongServer, SetListServer}
 
   @impl true
   def mount(_params, _session, socket) do
@@ -172,11 +172,12 @@ defmodule BandDbWeb.SetListEditorLive do
 
   @impl true
   def handle_event("save_set_list", %{"name" => name}, socket) do
-    # TODO: Implement saving set list to persistent storage
+    SetListServer.save_set_list(name, socket.assigns.set_list, socket.assigns.total_duration)
     {:noreply,
       socket
       |> assign(show_save_modal: false)
-      |> put_flash(:info, "Set list '#{name}' saved successfully")}
+      |> put_flash(:info, "Set list '#{name}' saved successfully")
+      |> push_navigate(to: ~p"/set-list/history")}
   end
 
   defp calculate_total_duration(songs) do

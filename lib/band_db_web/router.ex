@@ -22,6 +22,7 @@ defmodule BandDbWeb.Router do
     live "/rehearsal", RehearsalPlanLive
     live "/rehearsal/history", RehearsalHistoryLive
     live "/set-list", SetListEditorLive
+    live "/set-list/history", SetListHistoryLive
   end
 
   # Other scopes may use custom stacks.
