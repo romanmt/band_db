@@ -49,8 +49,6 @@ defmodule BandDb.SongServer do
 
   @impl true
   def init(_args) do
-    # Start with empty state
-    initial_state = %{songs: []}
 
     # Recover state from disk
     recovered_state = recover_state()
@@ -104,6 +102,7 @@ defmodule BandDb.SongServer do
 
   @impl true
   def handle_info(:backup, state) do
+    Logger.info("Backing up song state")
     persist_state(state)
     schedule_backup()
     {:noreply, state}
