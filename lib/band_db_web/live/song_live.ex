@@ -11,7 +11,8 @@ defmodule BandDbWeb.SongLive do
       show_modal: false,
       new_song: %{title: "", status: :needs_learning, band_name: "", duration: "", notes: ""},
       search_term: "",
-      expanded_sections: MapSet.new([:suggested])
+      expanded_sections: MapSet.new([:suggested]),
+      updating_song: nil
     )}
   end
 
@@ -67,12 +68,32 @@ defmodule BandDbWeb.SongLive do
   end
 
   @impl true
+  def handle_event("prevent_default", _params, socket) do
+    {:noreply, socket}
+  end
+
+  @impl true
   def handle_event("update_status", %{"title" => title, "value" => new_status}, socket) do
-    SongServer.update_song_status(title, String.to_existing_atom(new_status))
+    # Set the updating song to prevent race conditions
+    socket = assign(socket, updating_song: title)
+
+    new_status = String.to_existing_atom(new_status)
+    :ok = SongServer.update_song_status(title, new_status)
+
+    # Get fresh list of songs and filter out suggested ones
     songs = SongServer.list_songs()
     non_suggested_songs = Enum.reject(songs, & &1.status == :suggested)
     filtered_songs = filter_songs(non_suggested_songs, socket.assigns.search_term)
-    {:noreply, assign(socket, songs: filtered_songs)}
+
+    # Ensure the section for the new status is expanded
+    expanded_sections = MapSet.put(socket.assigns.expanded_sections, new_status)
+
+    # Clear the updating song state
+    {:noreply, assign(socket,
+      songs: filtered_songs,
+      expanded_sections: expanded_sections,
+      updating_song: nil
+    )}
   end
 
   defp filter_songs(songs, ""), do: songs

@@ -19,7 +19,7 @@ defmodule BandDb.MixProject do
   def application do
     [
       mod: {BandDb.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      extra_applications: [:logger, :observer, :wx, :runtime_tools]
     ]
   end
 

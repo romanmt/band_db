@@ -72,12 +72,16 @@
                         <% end %>
                       </div>
                       <div class="flex-shrink-0 ml-4">
-                        <select phx-change="update_status" phx-value-title={song.title}
-                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
-                          <%= for {label, value} <- status_options() do %>
-                            <option value={value} selected={value == song.status}><%= label %></option>
-                          <% end %>
-                        </select>
+                        <form phx-change="update_status" id={"song-form-#{song.title}"}>
+                          <input type="hidden" name="title" value={song.title} />
+                          <select name="value"
+                            disabled={@updating_song != nil}
+                            class={"block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm #{if @updating_song == song.title, do: "opacity-50 cursor-not-allowed"}"}>
+                            <%= for {label, value} <- status_options() do %>
+                              <option value={value} selected={value == song.status}><%= label %></option>
+                            <% end %>
+                          </select>
+                        </form>
                       </div>
                     </div>
                   </li>
