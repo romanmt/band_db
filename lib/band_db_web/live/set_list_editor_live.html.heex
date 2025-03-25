@@ -1,14 +1,11 @@
 <!-- Header with navigation -->
-<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-  <div class="px-4 py-6 sm:px-0">
-    <div class="flex justify-between items-center mb-8">
+<div class="max-w-7xl mx-auto">
+  <div class="mb-8">
+    <div class="flex justify-between items-center">
       <h1 class="text-3xl font-bold">Set List Editor</h1>
-      <div class="flex items-center space-x-4">
-        <.link navigate={~p"/set-list/history"} class="text-indigo-600 hover:text-indigo-900">
+      <div class="flex items-center space-x-3">
+        <.link navigate={~p"/set-list/history"} class="text-indigo-600 hover:text-indigo-700 px-2 py-1">
           View Saved Set Lists
-        </.link>
-        <.link navigate={~p"/"} class="text-indigo-600 hover:text-indigo-900">
-          Back to Song List
         </.link>
       </div>
     </div>
@@ -16,7 +13,7 @@
 </div>
 
 <!-- Two column layout -->
-<div class="container mx-auto px-4 py-8">
+<div class="max-w-7xl mx-auto">
   <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
     <!-- Available Songs Column -->
     <div class="bg-white rounded-lg shadow p-6">
