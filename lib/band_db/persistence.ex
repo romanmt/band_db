@@ -10,6 +10,7 @@ defmodule BandDb.Persistence do
       @backup_interval unquote(@backup_interval)
 
       def init_persistence do
+        Logger.info("Initializing persistence for #{@table_name}")
         # Recover state from disk
         recovered_state = BandDb.Persistence.recover_state(@table_name, @storage_file)
         # Schedule periodic backup

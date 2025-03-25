@@ -6,7 +6,7 @@ defmodule BandDbWeb.SuggestedSongsLive do
   def mount(_params, _session, socket) do
     songs = SongServer.list_songs()
     suggested_songs = Enum.filter(songs, & &1.status == :suggested)
-    {:ok, assign(socket, songs: suggested_songs, search_term: "")}
+    {:ok, assign(socket, songs: suggested_songs, search_term: "", updating_song: nil)}
   end
 
   @impl true
@@ -19,11 +19,28 @@ defmodule BandDbWeb.SuggestedSongsLive do
 
   @impl true
   def handle_event("update_status", %{"title" => title, "value" => new_status}, socket) do
-    SongServer.update_song_status(title, String.to_existing_atom(new_status))
+    # Mark this song as updating to avoid race conditions
+    socket = assign(socket, updating_song: title)
+
+    # Update the song's status
+    result = SongServer.update_song_status(title, String.to_existing_atom(new_status))
+
+    # Get updated song list
     songs = SongServer.list_songs()
     suggested_songs = Enum.filter(songs, & &1.status == :suggested)
     filtered_songs = filter_songs(suggested_songs, socket.assigns.search_term)
-    {:noreply, assign(socket, songs: filtered_songs)}
+
+    # If the song status was updated to something other than :suggested,
+    # it will be removed from the list automatically
+
+    # Clear the updating flag
+    socket = assign(socket, songs: filtered_songs, updating_song: nil)
+
+    case result do
+      :ok -> {:noreply, socket}
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, "Failed to update song status: #{reason}")}
+    end
   end
 
   defp filter_songs(songs, ""), do: songs

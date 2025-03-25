@@ -5,8 +5,6 @@ defmodule BandDb.RehearsalPlanServer do
     table_name: :rehearsal_plans_table,
     storage_file: "priv/rehearsal_plans.dets"
 
-  @backup_interval :timer.minutes(5)
-
   # Client API
   def start_link(_) do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
@@ -24,6 +22,8 @@ defmodule BandDb.RehearsalPlanServer do
   @impl true
   def init(_) do
     state = init_persistence()
+    # Ensure we have a plans list
+    state = if Map.has_key?(state, :plans), do: state, else: %{plans: []}
     {:ok, state}
   end
 
@@ -37,14 +37,13 @@ defmodule BandDb.RehearsalPlanServer do
       created_at: DateTime.utc_now()
     }
 
-    new_state = Map.update(state, :plans, [plan], &[plan | &1])
+    new_state = %{state | plans: [plan | state.plans]}
     {:reply, :ok, new_state}
   end
 
   @impl true
   def handle_call(:list_plans, _from, state) do
-    sorted_plans = state
-      |> Map.get(:plans, [])
+    sorted_plans = state.plans
       |> Enum.sort_by(& &1.date, {:desc, Date})
     {:reply, sorted_plans, state}
   end
@@ -52,8 +51,4 @@ defmodule BandDb.RehearsalPlanServer do
   @impl true
   def handle_info(:backup, state), do: handle_backup(state)
 
-  # Private Functions
-  defp schedule_backup do
-    Process.send_after(self(), :backup, @backup_interval)
-  end
 end

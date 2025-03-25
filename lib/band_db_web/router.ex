@@ -19,6 +19,7 @@ defmodule BandDbWeb.Router do
 
     live "/", SongLive
     live "/songs", SongLive
+    live "/suggested-songs", SuggestedSongsLive
     live "/rehearsal", RehearsalPlanLive
     live "/rehearsal/history", RehearsalHistoryLive
     live "/set-list", SetListEditorLive
