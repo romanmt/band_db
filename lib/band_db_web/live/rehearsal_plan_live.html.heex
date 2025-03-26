@@ -38,27 +38,44 @@
         </span>
       </h3>
 
+      <div class="border-b border-gray-200 mb-4 pb-2">
+        <p class="text-sm text-gray-600 italic">Songs are grouped by tuning to minimize instrument changes.</p>
+      </div>
+
       <ul class="divide-y divide-gray-200">
-        <%= for song <- @rehearsal_plan.rehearsal do %>
-          <li class="py-4">
-            <div class="grid grid-cols-12 gap-4 items-center">
-              <div class="col-span-3">
-                <h3 class="text-sm font-medium text-gray-900 truncate"><%= song.title %></h3>
-              </div>
-              <div class="col-span-3">
-                <span class="text-sm text-gray-500">by <%= song.band_name %></span>
-              </div>
-              <div class="col-span-2">
-                <%= if song.duration do %>
-                  <span class="text-sm text-gray-500">(<%= format_duration(song.duration) %>)</span>
-                <% end %>
-              </div>
-              <div class="col-span-4">
-                <%= if song.notes do %>
-                  <span class="text-sm text-gray-500 truncate">- <%= song.notes %></span>
-                <% end %>
-              </div>
+        <% rehearsal_songs_by_tuning = Enum.group_by(@rehearsal_plan.rehearsal, & &1.tuning) %>
+        <% tunings = Map.keys(rehearsal_songs_by_tuning) %>
+        
+        <%= for tuning <- tunings do %>
+          <li class="py-2">
+            <div class={"flex items-center px-3 py-1 rounded-md mb-2 #{tuning_color(tuning)}"}>
+              <span class="text-sm font-medium">Tuning: <%= display_tuning(tuning) %></span>
             </div>
+            
+            <ul class="pl-4">
+              <%= for song <- Map.get(rehearsal_songs_by_tuning, tuning, []) do %>
+                <li class="py-2">
+                  <div class="grid grid-cols-12 gap-4 items-center">
+                    <div class="col-span-3">
+                      <h3 class="text-sm font-medium text-gray-900 truncate"><%= song.title %></h3>
+                    </div>
+                    <div class="col-span-3">
+                      <span class="text-sm text-gray-500">by <%= song.band_name %></span>
+                    </div>
+                    <div class="col-span-2">
+                      <%= if song.duration do %>
+                        <span class="text-sm text-gray-500">(<%= format_duration(song.duration) %>)</span>
+                      <% end %>
+                    </div>
+                    <div class="col-span-4">
+                      <%= if song.notes do %>
+                        <span class="text-sm text-gray-500 truncate">- <%= song.notes %></span>
+                      <% end %>
+                    </div>
+                  </div>
+                </li>
+              <% end %>
+            </ul>
           </li>
         <% end %>
       </ul>
@@ -77,35 +94,52 @@
         </span>
       </h3>
 
+      <div class="border-b border-gray-200 mb-4 pb-2">
+        <p class="text-sm text-gray-600 italic">Songs are grouped by tuning to minimize instrument changes during the set.</p>
+      </div>
+
       <ul class="divide-y divide-gray-200">
-        <%= for {song, index} <- Enum.with_index(@rehearsal_plan.set) do %>
-          <li class="py-4">
-            <div class="grid grid-cols-12 gap-4 items-center">
-              <div class="col-span-1">
-                <span class="text-sm font-medium text-gray-500"><%= index + 1 %>.</span>
-              </div>
-              <div class="col-span-2">
-                <h3 class="text-sm font-medium text-gray-900 truncate"><%= song.title %></h3>
-              </div>
-              <div class="col-span-2">
-                <span class="text-sm text-gray-500">by <%= song.band_name %></span>
-              </div>
-              <div class="col-span-2">
-                <%= if song.duration do %>
-                  <span class="text-sm text-gray-500">(<%= format_duration(song.duration) %>)</span>
-                <% end %>
-              </div>
-              <div class="col-span-2">
-                <span class={"px-2 py-1 text-xs font-medium rounded-full #{status_color(song.status)}"}>
-                  <%= String.replace(to_string(song.status), "_", " ") |> String.capitalize() %>
-                </span>
-              </div>
-              <div class="col-span-3">
-                <%= if song.notes do %>
-                  <span class="text-sm text-gray-500 truncate">- <%= song.notes %></span>
-                <% end %>
-              </div>
+        <% set_songs_by_tuning = Enum.chunk_by(@rehearsal_plan.set, & &1.tuning) %>
+        
+        <%= for chunk <- set_songs_by_tuning do %>
+          <% tuning = List.first(chunk).tuning %>
+          <li class="py-2">
+            <div class={"flex items-center px-3 py-1 rounded-md mb-2 #{tuning_color(tuning)}"}>
+              <span class="text-sm font-medium">Tuning: <%= display_tuning(tuning) %></span>
             </div>
+            
+            <ul class="pl-4">
+              <%= for {song, index} <- Enum.with_index(chunk) do %>
+                <li class="py-2">
+                  <div class="grid grid-cols-12 gap-4 items-center">
+                    <div class="col-span-1">
+                      <span class="text-sm font-medium text-gray-500"><%= index + 1 %>.</span>
+                    </div>
+                    <div class="col-span-2">
+                      <h3 class="text-sm font-medium text-gray-900 truncate"><%= song.title %></h3>
+                    </div>
+                    <div class="col-span-2">
+                      <span class="text-sm text-gray-500">by <%= song.band_name %></span>
+                    </div>
+                    <div class="col-span-2">
+                      <%= if song.duration do %>
+                        <span class="text-sm text-gray-500">(<%= format_duration(song.duration) %>)</span>
+                      <% end %>
+                    </div>
+                    <div class="col-span-2">
+                      <span class={"px-2 py-1 text-xs font-medium rounded-full #{status_color(song.status)}"}>
+                        <%= String.replace(to_string(song.status), "_", " ") |> String.capitalize() %>
+                      </span>
+                    </div>
+                    <div class="col-span-3">
+                      <%= if song.notes do %>
+                        <span class="text-sm text-gray-500 truncate">- <%= song.notes %></span>
+                      <% end %>
+                    </div>
+                  </div>
+                </li>
+              <% end %>
+            </ul>
           </li>
         <% end %>
       </ul>

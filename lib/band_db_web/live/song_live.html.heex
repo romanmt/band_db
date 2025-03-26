@@ -56,6 +56,9 @@
                       <div class="flex items-center space-x-3">
                         <h3 class="text-sm font-medium text-gray-900 truncate"><%= song.title %></h3>
                         <span class="text-sm text-gray-500">by <%= song.band_name %></span>
+                        <span class="px-2 py-0.5 text-xs rounded bg-gray-100 text-gray-700">
+                          Tuning: <%= display_tuning(song.tuning) %>
+                        </span>
                         <%= if song.duration do %>
                           <span class="text-sm text-gray-500">(<%= format_duration(song.duration) %>)</span>
                         <% end %>
@@ -64,14 +67,24 @@
                         <p class="mt-1 text-sm text-gray-500 truncate"><%= song.notes %></p>
                       <% end %>
                     </div>
-                    <div class="flex-shrink-0 ml-4">
-                      <form phx-change="update_status" id={"song-form-#{song.title}"}>
+                    <div class="flex-shrink-0 ml-4 flex gap-2">
+                      <form phx-change="update_status" id={"status-form-#{song.title}"}>
                         <input type="hidden" name="title" value={song.title} />
                         <select name="value"
                           disabled={@updating_song != nil}
                           class={"block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm #{if @updating_song == song.title, do: "opacity-50 cursor-not-allowed"}"}>
                           <%= for {label, value} <- status_options() do %>
                             <option value={value} selected={value == song.status}><%= label %></option>
+                          <% end %>
+                        </select>
+                      </form>
+                      <form phx-change="update_tuning" id={"tuning-form-#{song.title}"}>
+                        <input type="hidden" name="title" value={song.title} />
+                        <select name="value"
+                          disabled={@updating_song != nil}
+                          class={"block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm #{if @updating_song == song.title, do: "opacity-50 cursor-not-allowed"}"}>
+                          <%= for {label, value} <- tuning_options() do %>
+                            <option value={value} selected={value == song.tuning}><%= label %></option>
                           <% end %>
                         </select>
                       </form>
@@ -106,8 +119,8 @@
             <div class="w-full">
               <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Add New Song</h3>
               <.form for={%{}} phx-submit="add_song">
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div class="sm:col-span-2">
                     <label class="block text-sm font-medium text-gray-700">Title</label>
                     <input type="text" name="song[title]" required
                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
@@ -137,7 +150,17 @@
                     </select>
                   </div>
 
-                  <div class="sm:col-span-2">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700">Tuning</label>
+                    <select name="song[tuning]" required
+                      class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                      <%= for {label, value} <- tuning_options() do %>
+                        <option value={value}><%= label %></option>
+                      <% end %>
+                    </select>
+                  </div>
+
+                  <div class="sm:col-span-3">
                     <label class="block text-sm font-medium text-gray-700">Notes</label>
                     <input type="text" name="song[notes]"
                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />

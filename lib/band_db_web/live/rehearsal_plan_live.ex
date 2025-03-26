@@ -79,37 +79,176 @@ defmodule BandDbWeb.RehearsalPlanLive do
     end)
 
     # Sort songs needing rehearsal by last rehearsal date (most recent first)
-    rehearsal_songs = needs_rehearsal
+    candidate_rehearsal_songs = needs_rehearsal
       |> Enum.sort_by(fn song ->
         Map.get(last_rehearsal_dates, song.title, ~D[2000-01-01])
       end, {:desc, Date})
-      |> Enum.take(5)  # Take up to 5 songs
+      |> Enum.take(12)  # Take more candidates to allow for tuning-based selection
 
-    # Sort ready songs by status and last rehearsal date
-    sorted_ready_songs = ready_songs
-      |> Enum.sort_by(fn song ->
-        # Sort by status (ready first, then performed) and last rehearsal date (least recent first)
-        status_priority = if song.status == :ready, do: 0, else: 1
-        last_date = Map.get(last_rehearsal_dates, song.title, ~D[2000-01-01])
-        {status_priority, last_date}
-      end)
+    # Group rehearsal songs by tuning and then select some from each tuning group
+    rehearsal_songs = select_songs_by_tuning(candidate_rehearsal_songs, 5)
 
-    # Select enough ready songs to make a full set (aiming for about 45-60 minutes total)
-    target_duration = Enum.random(2700..3600) # 45-60 minutes in seconds
+    # Group ready songs by tuning
+    ready_songs_by_tuning = Enum.group_by(ready_songs, & &1.tuning)
 
-    {set_songs, _total_duration} = Enum.reduce_while(sorted_ready_songs, {[], 0}, fn song, {songs, duration} ->
-      new_duration = duration + (song.duration || 0)
-      if new_duration <= target_duration do
-        {:cont, {[song | songs], new_duration}}
-      else
-        {:halt, {songs, duration}}
-      end
+    # Sort songs within each tuning group by status and last rehearsal date
+    sorted_ready_songs_by_tuning = Map.new(ready_songs_by_tuning, fn {tuning, songs} ->
+      sorted_songs = songs
+        |> Enum.sort_by(fn song ->
+          # Sort by status (ready first, then performed) and last rehearsal date (least recent first)
+          status_priority = if song.status == :ready, do: 0, else: 1
+          last_date = Map.get(last_rehearsal_dates, song.title, ~D[2000-01-01])
+          {status_priority, last_date}
+        end)
+      {tuning, sorted_songs}
     end)
+
+    # Select set list songs based on tuning groups and target duration
+    target_duration = Enum.random(2700..3600) # 45-60 minutes in seconds
+    set_songs = create_set_list_by_tuning(sorted_ready_songs_by_tuning, target_duration)
 
     %{
       rehearsal: rehearsal_songs,
-      set: Enum.reverse(set_songs)
+      set: set_songs
     }
+  end
+
+  # Select songs for rehearsal, trying to group by tuning
+  defp select_songs_by_tuning(songs, max_count) do
+    # Group songs by tuning
+    songs_by_tuning = Enum.group_by(songs, & &1.tuning)
+
+    # Get a count of how many songs to include from each tuning group
+    tuning_counts = calculate_tuning_distribution(songs_by_tuning, max_count)
+
+    # Select the specified number of songs from each tuning group
+    Enum.flat_map(tuning_counts, fn {tuning, count} ->
+      songs_by_tuning
+      |> Map.get(tuning, [])
+      |> Enum.take(count)
+    end)
+  end
+
+  # Determine how many songs to include from each tuning group
+  defp calculate_tuning_distribution(songs_by_tuning, max_total) do
+    # Get total number of songs across all tunings
+    total_songs = songs_by_tuning
+      |> Map.values()
+      |> Enum.map(&length/1)
+      |> Enum.sum()
+
+    # Default to at least one song per tuning if possible
+    tuning_counts = Map.new(songs_by_tuning, fn {tuning, songs} ->
+      {tuning, min(1, length(songs))}
+    end)
+
+    initial_count = tuning_counts
+      |> Map.values()
+      |> Enum.sum()
+
+    # If we have room for more songs, allocate them proportionally
+    remaining = max_total - initial_count
+
+    if remaining <= 0 do
+      tuning_counts
+    else
+      # Calculate proportional allocation for remaining slots
+      Enum.reduce(songs_by_tuning, tuning_counts, fn {tuning, tuning_songs}, acc ->
+        # Skip empty tuning groups
+        if length(tuning_songs) <= 0 do
+          acc
+        else
+          # Calculate proportion of this tuning in the total
+          proportion = length(tuning_songs) / total_songs
+          # Allocate additional songs based on proportion
+          additional = floor(remaining * proportion)
+          # Update count, ensuring we don't exceed the available songs
+          current = Map.get(acc, tuning, 0)
+          max_possible = min(current + additional, length(tuning_songs))
+          Map.put(acc, tuning, max_possible)
+        end
+      end)
+    end
+  end
+
+  # Create a set list that groups songs by tuning
+  defp create_set_list_by_tuning(songs_by_tuning, target_duration) do
+    # Determine which tunings to include based on available songs
+    available_tunings = Map.keys(songs_by_tuning)
+
+    # If no tunings available, return empty list
+    if Enum.empty?(available_tunings) do
+      []
+    else
+      # Pick an initial tuning to start with
+      current_tuning = List.first(available_tunings)
+
+      # Create the set list by picking tunings and then songs from each tuning
+      {set_list, _, _} = Enum.reduce_while(1..100, {[], current_tuning, 0}, fn _, {list, tuning, duration} ->
+        # Get songs for current tuning
+        tuning_songs = Map.get(songs_by_tuning, tuning, [])
+
+        # Find a song we haven't used yet
+        available_songs = Enum.reject(tuning_songs, fn song ->
+          Enum.any?(list, fn s -> s.title == song.title end)
+        end)
+
+        cond do
+          # If we've hit our target duration, stop
+          duration >= target_duration ->
+            {:halt, {list, tuning, duration}}
+
+          # If no more songs available for this tuning, switch to another tuning
+          Enum.empty?(available_songs) ->
+            # Find the next available tuning with songs
+            next_tunings = Enum.filter(available_tunings, fn t ->
+              t != tuning &&
+              Enum.any?(Map.get(songs_by_tuning, t, []), fn song ->
+                !Enum.any?(list, fn s -> s.title == song.title end)
+              end)
+            end)
+
+            if Enum.empty?(next_tunings) do
+              # No more tunings with available songs
+              {:halt, {list, tuning, duration}}
+            else
+              # Pick the next tuning and continue
+              next_tuning = List.first(next_tunings)
+              {:cont, {list, next_tuning, duration}}
+            end
+
+          # Otherwise, add the next song from this tuning
+          true ->
+            next_song = List.first(available_songs)
+            new_duration = duration + (next_song.duration || 0)
+
+            # If adding this song would exceed our target by too much, try another tuning
+            if new_duration > target_duration * 1.1 do
+              next_tunings = Enum.filter(available_tunings, fn t ->
+                t != tuning &&
+                Enum.any?(Map.get(songs_by_tuning, t, []), fn song ->
+                  !Enum.any?(list, fn s -> s.title == song.title end)
+                end)
+              end)
+
+              if Enum.empty?(next_tunings) do
+                # No more tunings with available songs
+                {:halt, {list, tuning, duration}}
+              else
+                # Pick the next tuning and continue
+                next_tuning = List.first(next_tunings)
+                {:cont, {list, next_tuning, duration}}
+              end
+            else
+              # Add the song and continue with the same tuning
+              {:cont, {[next_song | list], tuning, new_duration}}
+            end
+        end
+      end)
+
+      # Return the set list in reverse order (since we've been prepending)
+      Enum.reverse(set_list)
+    end
   end
 
   defp calculate_total_duration(%{rehearsal: rehearsal, set: set}) do
@@ -130,4 +269,20 @@ defmodule BandDbWeb.RehearsalPlanLive do
   defp status_color(:ready), do: "bg-green-100 text-green-800"
   defp status_color(:performed), do: "bg-blue-100 text-blue-800"
   defp status_color(:suggested), do: "bg-purple-100 text-purple-800"
+
+  defp tuning_color(:standard), do: "bg-indigo-100 text-indigo-800"
+  defp tuning_color(:drop_d), do: "bg-blue-100 text-blue-800"
+  defp tuning_color(:e_flat), do: "bg-green-100 text-green-800"
+  defp tuning_color(:drop_c_sharp), do: "bg-purple-100 text-purple-800"
+  defp tuning_color(_), do: "bg-gray-100 text-gray-800"
+
+  defp display_tuning(tuning) do
+    case tuning do
+      :standard -> "Standard"
+      :drop_d -> "Drop D"
+      :e_flat -> "E♭"
+      :drop_c_sharp -> "Drop C#"
+      _ -> "Standard"
+    end
+  end
 end

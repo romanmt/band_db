@@ -19,28 +19,22 @@ defmodule BandDbWeb.SuggestedSongsLive do
 
   @impl true
   def handle_event("update_status", %{"title" => title, "value" => new_status}, socket) do
-    # Mark this song as updating to avoid race conditions
     socket = assign(socket, updating_song: title)
-
-    # Update the song's status
-    result = SongServer.update_song_status(title, String.to_existing_atom(new_status))
-
-    # Get updated song list
+    SongServer.update_song_status(title, String.to_existing_atom(new_status))
     songs = SongServer.list_songs()
     suggested_songs = Enum.filter(songs, & &1.status == :suggested)
     filtered_songs = filter_songs(suggested_songs, socket.assigns.search_term)
+    {:noreply, assign(socket, songs: filtered_songs, updating_song: nil)}
+  end
 
-    # If the song status was updated to something other than :suggested,
-    # it will be removed from the list automatically
-
-    # Clear the updating flag
-    socket = assign(socket, songs: filtered_songs, updating_song: nil)
-
-    case result do
-      :ok -> {:noreply, socket}
-      {:error, reason} ->
-        {:noreply, put_flash(socket, :error, "Failed to update song status: #{reason}")}
-    end
+  @impl true
+  def handle_event("update_tuning", %{"title" => title, "value" => new_tuning}, socket) do
+    socket = assign(socket, updating_song: title)
+    SongServer.update_song_tuning(title, String.to_existing_atom(new_tuning))
+    songs = SongServer.list_songs()
+    suggested_songs = Enum.filter(songs, & &1.status == :suggested)
+    filtered_songs = filter_songs(suggested_songs, socket.assigns.search_term)
+    {:noreply, assign(socket, songs: filtered_songs, updating_song: nil)}
   end
 
   defp filter_songs(songs, ""), do: songs
@@ -67,6 +61,25 @@ defmodule BandDbWeb.SuggestedSongsLive do
       {"Performed", :performed},
       {"Suggested", :suggested}
     ]
+  end
+
+  defp tuning_options do
+    [
+      {"Standard", :standard},
+      {"Drop D", :drop_d},
+      {"E flat", :e_flat},
+      {"Drop C#", :drop_c_sharp}
+    ]
+  end
+
+  defp display_tuning(tuning) do
+    case tuning do
+      :standard -> "Standard"
+      :drop_d -> "Drop D"
+      :e_flat -> "E♭"
+      :drop_c_sharp -> "Drop C#"
+      _ -> "Standard"
+    end
   end
 
   defp status_color(:needs_learning), do: "bg-yellow-100 text-yellow-800"
