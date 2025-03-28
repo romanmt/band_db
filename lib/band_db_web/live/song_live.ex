@@ -201,6 +201,7 @@ defmodule BandDbWeb.SongLive do
 
   def group_songs_by_status(songs) do
     songs
+    |> Enum.reject(&(&1.status == :suggested))  # Filter out suggested songs
     |> Enum.group_by(& &1.status)
     |> Enum.sort_by(fn {status, _} ->
       case status do
@@ -208,8 +209,7 @@ defmodule BandDbWeb.SongLive do
         :needs_rehearsal -> 1
         :ready -> 2
         :performed -> 3
-        :suggested -> 4
-        _ -> 5
+        _ -> 4
       end
     end)
   end

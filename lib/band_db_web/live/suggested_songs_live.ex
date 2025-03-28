@@ -6,7 +6,54 @@ defmodule BandDbWeb.SuggestedSongsLive do
   def mount(_params, _session, socket) do
     songs = SongServer.list_songs()
     suggested_songs = Enum.filter(songs, & &1.status == :suggested)
-    {:ok, assign(socket, songs: suggested_songs, search_term: "", updating_song: nil)}
+    {:ok, assign(socket, songs: suggested_songs, search_term: "", updating_song: nil, show_modal: false)}
+  end
+
+  @impl true
+  def handle_event("show_modal", _params, socket) do
+    {:noreply, assign(socket, show_modal: true)}
+  end
+
+  @impl true
+  def handle_event("hide_modal", _params, socket) do
+    {:noreply, assign(socket, show_modal: false)}
+  end
+
+  @impl true
+  def handle_event("add_song", %{"song" => song_params}, socket) do
+    duration_seconds = case song_params["duration"] do
+      "" -> nil
+      nil -> nil
+      duration_str ->
+        [minutes_str, seconds_str] = String.split(duration_str, ":")
+        String.to_integer(minutes_str) * 60 + String.to_integer(seconds_str)
+    end
+
+    status = String.to_existing_atom(song_params["status"])
+    tuning = String.to_existing_atom(song_params["tuning"] || "standard")
+
+    case SongServer.add_song(
+      song_params["title"],
+      status,
+      song_params["band_name"],
+      duration_seconds,
+      song_params["notes"],
+      tuning
+    ) do
+      {:ok, _song} ->
+        songs = SongServer.list_songs()
+        suggested_songs = Enum.filter(songs, & &1.status == :suggested)
+        filtered_songs = filter_songs(suggested_songs, socket.assigns.search_term)
+        {:noreply,
+          socket
+          |> assign(songs: filtered_songs, show_modal: false)
+          |> put_flash(:info, "Song added successfully")}
+
+      {:error, :song_already_exists} ->
+        {:noreply,
+          socket
+          |> put_flash(:error, "A song with that title already exists")}
+    end
   end
 
   @impl true
