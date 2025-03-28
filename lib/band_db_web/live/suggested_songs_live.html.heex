@@ -60,16 +60,6 @@
                     <% end %>
                   </select>
                 </form>
-                <form phx-change="update_tuning" id={"tuning-form-#{song.title}"}>
-                  <input type="hidden" name="title" value={song.title} />
-                  <select name="value"
-                    disabled={@updating_song != nil}
-                    class={"block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm #{if @updating_song == song.title, do: "opacity-50 cursor-not-allowed"}"}>
-                    <%= for {label, value} <- tuning_options() do %>
-                      <option value={value} selected={value == song.tuning}><%= label %></option>
-                    <% end %>
-                  </select>
-                </form>
               </div>
             </div>
           </li>

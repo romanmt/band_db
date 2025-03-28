@@ -27,16 +27,6 @@ defmodule BandDbWeb.SuggestedSongsLive do
     {:noreply, assign(socket, songs: filtered_songs, updating_song: nil)}
   end
 
-  @impl true
-  def handle_event("update_tuning", %{"title" => title, "value" => new_tuning}, socket) do
-    socket = assign(socket, updating_song: title)
-    SongServer.update_song_tuning(title, String.to_existing_atom(new_tuning))
-    songs = SongServer.list_songs()
-    suggested_songs = Enum.filter(songs, & &1.status == :suggested)
-    filtered_songs = filter_songs(suggested_songs, socket.assigns.search_term)
-    {:noreply, assign(socket, songs: filtered_songs, updating_song: nil)}
-  end
-
   defp filter_songs(songs, ""), do: songs
   defp filter_songs(songs, term) do
     term = String.downcase(term)

@@ -1,6 +1,7 @@
 defmodule BandDbWeb.SongLive do
   use BandDbWeb, :live_view
   alias BandDb.{SongServer, Song}
+  import Phoenix.HTML.Form
 
   @impl true
   def mount(_params, _session, socket) do
@@ -12,7 +13,10 @@ defmodule BandDbWeb.SongLive do
         search_term: "",
         show_modal: false,
         expanded_sections: %{},
-        updating_song: nil
+        updating_song: nil,
+        show_edit_modal: false,
+        editing_song: nil,
+        edit_changeset: nil
       )}
   end
 
@@ -137,6 +141,58 @@ defmodule BandDbWeb.SongLive do
   @impl true
   def handle_event("clear_search", _params, socket) do
     {:noreply, assign(socket, songs: SongServer.list_songs(), search_term: "", expanded_sections: %{})}
+  end
+
+  @impl true
+  def handle_event("show_edit_modal", %{"title" => title}, socket) do
+    case Enum.find(socket.assigns.songs, &(&1.title == title)) do
+      nil ->
+        {:noreply, socket}
+      song ->
+        {:noreply, assign(socket, show_edit_modal: true, editing_song: song)}
+    end
+  end
+
+  @impl true
+  def handle_event("hide_edit_modal", _params, socket) do
+    {:noreply, assign(socket, show_edit_modal: false, editing_song: nil)}
+  end
+
+  @impl true
+  def handle_event("update_song", %{"song" => song_params}, socket) do
+    # Convert duration from MM:SS to seconds
+    duration_seconds = case song_params["duration"] do
+      "" -> nil
+      nil -> nil
+      duration_str ->
+        [minutes_str, seconds_str] = String.split(duration_str, ":")
+        String.to_integer(minutes_str) * 60 + String.to_integer(seconds_str)
+    end
+
+    status = String.to_existing_atom(song_params["status"])
+    tuning = String.to_existing_atom(song_params["tuning"])
+    original_title = song_params["original_title"]
+
+    case SongServer.update_song(original_title, %{
+      title: song_params["title"],
+      band_name: song_params["band_name"],
+      duration: duration_seconds,
+      notes: song_params["notes"],
+      status: status,
+      tuning: tuning
+    }) do
+      {:ok, _updated_song} ->
+        songs = SongServer.list_songs()
+        {:noreply,
+          socket
+          |> assign(songs: songs, show_edit_modal: false, editing_song: nil)
+          |> put_flash(:info, "Song updated successfully")}
+
+      {:error, :not_found} ->
+        {:noreply,
+          socket
+          |> put_flash(:error, "Song not found")}
+    end
   end
 
   def section_expanded?(expanded_sections, status) do

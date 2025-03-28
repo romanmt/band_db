@@ -13,6 +13,20 @@ defmodule BandDb.Song do
     duration: non_neg_integer() | nil,  # Duration in seconds
     tuning: tuning()
   }
+
+  def changeset(%__MODULE__{} = song, params) do
+    # Create a map with atom keys for the form data
+    form_data = %{
+      title: params["title"] || song.title,
+      band_name: params["band_name"] || song.band_name,
+      status: (params["status"] && String.to_existing_atom(params["status"])) || song.status,
+      notes: params["notes"],
+      tuning: (params["tuning"] && String.to_existing_atom(params["tuning"])) || song.tuning
+    }
+
+    # Merge the form data with the existing song
+    Map.merge(song, form_data)
+  end
 end
 
 defmodule BandDb.SongServer do
@@ -52,6 +66,10 @@ defmodule BandDb.SongServer do
 
   def migrate_songs do
     GenServer.call(__MODULE__, :migrate_songs)
+  end
+
+  def update_song(title, attrs) do
+    GenServer.call(__MODULE__, {:update_song, title, attrs})
   end
 
   # Server Callbacks
@@ -145,6 +163,22 @@ defmodule BandDb.SongServer do
     handle_backup(new_state)
 
     {:reply, {:ok, length(updated_songs)}, new_state}
+  end
+
+  @impl true
+  def handle_call({:update_song, title, attrs}, _from, state) do
+    case Enum.find_index(state.songs, fn song -> song.title == title end) do
+      nil ->
+        {:reply, {:error, :not_found}, state}
+      index ->
+        old_song = Enum.at(state.songs, index)
+        updated_song = struct(Song, Map.merge(Map.from_struct(old_song), attrs))
+
+        updated_songs = List.update_at(state.songs, index, fn _ -> updated_song end)
+        new_state = %{state | songs: updated_songs}
+
+        {:reply, {:ok, updated_song}, new_state}
+    end
   end
 
   @impl true
