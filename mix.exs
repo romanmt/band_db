@@ -19,9 +19,12 @@ defmodule BandDb.MixProject do
   def application do
     [
       mod: {BandDb.Application, []},
-      extra_applications: [:logger, :observer, :wx, :runtime_tools]
+      extra_applications: extra_applications(Mix.env())
     ]
   end
+
+  defp extra_applications(:dev), do: [:logger, :observer, :wx, :runtime_tools]
+  defp extra_applications(_), do: [:logger, :runtime_tools]
 
   # Specifies which paths to compile per environment.
   defp elixirc_paths(:test), do: ["lib", "test/support"]
