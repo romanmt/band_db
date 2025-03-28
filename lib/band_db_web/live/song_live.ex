@@ -88,7 +88,20 @@ defmodule BandDbWeb.SongLive do
       end)
     end
 
-    {:noreply, assign(socket, songs: filtered_songs, search_term: term)}
+    # If there's a search term, automatically expand sections that have matching songs
+    expanded_sections = if term != "" do
+      filtered_songs
+      |> Enum.group_by(& &1.status)
+      |> Map.keys()
+      |> Enum.reduce(socket.assigns.expanded_sections, fn status, acc ->
+        Map.put(acc, status, true)
+      end)
+    else
+      # When search is cleared, collapse all sections
+      %{}
+    end
+
+    {:noreply, assign(socket, songs: filtered_songs, search_term: term, expanded_sections: expanded_sections)}
   end
 
   @impl true
@@ -119,6 +132,11 @@ defmodule BandDbWeb.SongLive do
 
     # Reset the updating flag
     {:noreply, assign(socket, songs: songs, updating_song: nil)}
+  end
+
+  @impl true
+  def handle_event("clear_search", _params, socket) do
+    {:noreply, assign(socket, songs: SongServer.list_songs(), search_term: "", expanded_sections: %{})}
   end
 
   def section_expanded?(expanded_sections, status) do
@@ -180,4 +198,12 @@ defmodule BandDbWeb.SongLive do
   def status_color(:performed), do: "bg-blue-100 text-blue-800"
   def status_color(:suggested), do: "bg-purple-100 text-purple-800"
   def status_color(_), do: "bg-gray-100 text-gray-800"
+
+  def highlight_matches(text, search_term) when is_binary(text) and is_binary(search_term) and search_term != "" do
+    regex = Regex.compile!(Regex.escape(String.downcase(search_term)), "i")
+    Regex.replace(regex, text, fn match ->
+      ~s|<mark class="bg-yellow-100 not-italic font-normal">#{match}</mark>|
+    end)
+  end
+  def highlight_matches(text, _), do: text
 end
