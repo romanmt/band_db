@@ -10,3 +10,20 @@ erl_crash.dump
 .elixir_ls/
 .vscode/
 priv/*.dets
+
+# Generated static files
+/priv/static/assets/*.js
+/priv/static/assets/*.css
+/priv/static/assets/*.gz
+/priv/static/cache_manifest.json
+/priv/static/*.gz
+/priv/static/images/*.gz
+/priv/static/*-*.ico
+/priv/static/*-*.svg
+/priv/static/*-*.txt
+/priv/static/images/*.svg
+
+# Node modules
+/assets/node_modules/
+/assets/package-lock.json
+/assets/package.json

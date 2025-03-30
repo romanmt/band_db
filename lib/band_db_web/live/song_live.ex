@@ -15,7 +15,9 @@ defmodule BandDbWeb.SongLive do
         updating_song: nil,
         show_edit_modal: false,
         editing_song: nil,
-        edit_changeset: nil
+        edit_changeset: nil,
+        show_bulk_import_modal: false,
+        bulk_import_text: ""
       )}
   end
 
@@ -155,6 +157,37 @@ defmodule BandDbWeb.SongLive do
   @impl true
   def handle_event("hide_edit_modal", _params, socket) do
     {:noreply, assign(socket, show_edit_modal: false, editing_song: nil)}
+  end
+
+  @impl true
+  def handle_event("show_bulk_import_modal", _params, socket) do
+    {:noreply, assign(socket, show_bulk_import_modal: true)}
+  end
+
+  @impl true
+  def handle_event("hide_bulk_import_modal", _params, socket) do
+    {:noreply, assign(socket, show_bulk_import_modal: false, bulk_import_text: "")}
+  end
+
+  @impl true
+  def handle_event("update_bulk_import_text", %{"text" => text}, socket) do
+    {:noreply, assign(socket, bulk_import_text: text)}
+  end
+
+  @impl true
+  def handle_event("bulk_import_songs", _params, socket) do
+    case SongServer.bulk_import_songs(socket.assigns.bulk_import_text) do
+      {:ok, count} ->
+        songs = SongServer.list_songs()
+        {:noreply,
+          socket
+          |> assign(songs: songs, show_bulk_import_modal: false, bulk_import_text: "")
+          |> put_flash(:info, "Successfully imported #{count} songs")}
+      {:error, reason} ->
+        {:noreply,
+          socket
+          |> put_flash(:error, "Failed to import songs: #{reason}")}
+    end
   end
 
   @impl true
