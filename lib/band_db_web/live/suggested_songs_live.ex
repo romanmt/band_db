@@ -119,8 +119,8 @@ defmodule BandDbWeb.SuggestedSongsLive do
     end
   end
 
-  defp status_color(:needs_learning), do: "bg-yellow-100 text-yellow-800"
-  defp status_color(:ready), do: "bg-green-100 text-green-800"
-  defp status_color(:performed), do: "bg-blue-100 text-blue-800"
-  defp status_color(:suggested), do: "bg-purple-100 text-purple-800"
+  # defp status_color(:needs_learning), do: "bg-yellow-100 text-yellow-800"
+  # defp status_color(:ready), do: "bg-green-100 text-green-800"
+  # defp status_color(:performed), do: "bg-blue-100 text-blue-800"
+  # defp status_color(:suggested), do: "bg-purple-100 text-purple-800"
 end
