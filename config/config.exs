@@ -8,6 +8,7 @@
 import Config
 
 config :band_db,
+  ecto_repos: [BandDb.Repo],
   generators: [timestamp_type: :utc_datetime]
 
 # Configures the endpoint

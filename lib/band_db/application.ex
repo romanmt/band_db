@@ -13,6 +13,8 @@ defmodule BandDb.Application do
       {Phoenix.PubSub, name: BandDb.PubSub},
       # Start the Finch HTTP client for sending emails
       {Finch, name: BandDb.Finch},
+      # Start the Ecto repository
+      BandDb.Repo,
       # Start our song server
       BandDb.SongServer,
       BandDb.SetListServer,
