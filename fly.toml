@@ -13,6 +13,9 @@ kill_signal = 'SIGTERM'
   PHX_HOST = 'band-db.fly.dev'
   PORT = '8080'
 
+[deploy]
+  release_command = "/app/bin/band_db eval \"BandDb.Release.migrate\""
+
 [http_service]
   internal_port = 8080
   force_https = true
