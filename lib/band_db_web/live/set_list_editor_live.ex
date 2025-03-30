@@ -172,12 +172,20 @@ defmodule BandDbWeb.SetListEditorLive do
 
   @impl true
   def handle_event("save_set_list", %{"name" => name}, socket) do
-    SetListServer.save_set_list(name, socket.assigns.set_list, socket.assigns.total_duration)
-    {:noreply,
-      socket
-      |> assign(show_save_modal: false)
-      |> put_flash(:info, "Set list '#{name}' saved successfully")
-      |> push_navigate(to: ~p"/set-list/history")}
+    case SetListServer.add_set_list(name, socket.assigns.set_list, socket.assigns.total_duration) do
+      {:ok, _set_list} ->
+        {:noreply,
+          socket
+          |> assign(show_save_modal: false)
+          |> put_flash(:info, "Set list '#{name}' saved successfully")
+          |> push_navigate(to: ~p"/set-list/history")}
+      {:error, :set_list_already_exists} ->
+        {:noreply,
+          socket
+          |> assign(show_save_modal: false)
+          |> put_flash(:error, "A set list with that name already exists")
+          |> push_navigate(to: ~p"/set-list/history")}
+    end
   end
 
   defp calculate_total_duration(songs) do
