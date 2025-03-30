@@ -1,9 +1,20 @@
 defmodule BandDb.Song do
+  use Ecto.Schema
+  import Ecto.Changeset
+
   @type status :: :performed | :needs_learning | :needs_rehearsal | :ready | :suggested
   @type tuning :: :standard | :drop_d | :e_flat | :drop_c_sharp
 
-  @enforce_keys [:title, :status, :band_name]
-  defstruct [:title, :status, :notes, :band_name, :duration, tuning: :standard]
+  schema "songs" do
+    field :title, :string
+    field :status, Ecto.Enum, values: [:performed, :needs_learning, :needs_rehearsal, :ready, :suggested]
+    field :notes, :string
+    field :band_name, :string
+    field :duration, :integer
+    field :tuning, Ecto.Enum, values: [:standard, :drop_d, :e_flat, :drop_c_sharp], default: :standard
+
+    timestamps()
+  end
 
   @type t :: %__MODULE__{
     title: String.t(),
@@ -11,31 +22,25 @@ defmodule BandDb.Song do
     notes: String.t() | nil,
     band_name: String.t(),
     duration: non_neg_integer() | nil,  # Duration in seconds
-    tuning: tuning()
+    tuning: tuning(),
+    inserted_at: NaiveDateTime.t() | nil,
+    updated_at: NaiveDateTime.t() | nil
   }
 
-  def changeset(%__MODULE__{} = song, params) do
-    # Create a map with atom keys for the form data
-    form_data = %{
-      title: params["title"] || song.title,
-      band_name: params["band_name"] || song.band_name,
-      status: (params["status"] && String.to_existing_atom(params["status"])) || song.status,
-      notes: params["notes"],
-      tuning: (params["tuning"] && String.to_existing_atom(params["tuning"])) || song.tuning
-    }
-
-    # Merge the form data with the existing song
-    Map.merge(song, form_data)
+  def changeset(%__MODULE__{} = song, params) when is_map(params) do
+    song
+    |> cast(params, [:title, :status, :notes, :band_name, :duration, :tuning])
+    |> validate_required([:title, :status, :band_name])
+    |> unique_constraint(:title)
   end
 end
 
 defmodule BandDb.SongServer do
   use GenServer
   require Logger
-  alias BandDb.Song
+  alias BandDb.{Song, Repo}
   use BandDb.Persistence,
-    table_name: :songs_table,
-    storage_file: "priv/songs.dets"
+    table_name: :songs_table
 
   # Client API
 

@@ -1,9 +1,6 @@
 defmodule BandDb.SetListServer do
   use GenServer
   require Logger
-  use BandDb.Persistence,
-    table_name: :set_lists_table,
-    storage_file: "priv/set_lists.dets"
 
   # Client API
   def start_link(_) do
@@ -21,10 +18,7 @@ defmodule BandDb.SetListServer do
   # Server Callbacks
   @impl true
   def init(_) do
-    state = init_persistence()
-    # Ensure we have a set_lists list
-    state = if Map.has_key?(state, :set_lists), do: state, else: %{set_lists: []}
-    {:ok, state}
+    {:ok, %{set_lists: []}}
   end
 
   @impl true
@@ -45,7 +39,4 @@ defmodule BandDb.SetListServer do
     sorted_lists = Enum.sort_by(state.set_lists, & &1.created_at, {:desc, DateTime})
     {:reply, sorted_lists, state}
   end
-
-  @impl true
-  def handle_info(:backup, state), do: handle_backup(state)
 end

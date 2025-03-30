@@ -1,9 +1,6 @@
 defmodule BandDb.RehearsalPlanServer do
   use GenServer
   require Logger
-  use BandDb.Persistence,
-    table_name: :rehearsal_plans_table,
-    storage_file: "priv/rehearsal_plans.dets"
 
   # Client API
   def start_link(_) do
@@ -21,10 +18,7 @@ defmodule BandDb.RehearsalPlanServer do
   # Server Callbacks
   @impl true
   def init(_) do
-    state = init_persistence()
-    # Ensure we have a plans list
-    state = if Map.has_key?(state, :plans), do: state, else: %{plans: []}
-    {:ok, state}
+    {:ok, %{plans: []}}
   end
 
   @impl true
@@ -47,8 +41,4 @@ defmodule BandDb.RehearsalPlanServer do
       |> Enum.sort_by(& &1.date, {:desc, Date})
     {:reply, sorted_plans, state}
   end
-
-  @impl true
-  def handle_info(:backup, state), do: handle_backup(state)
-
 end
