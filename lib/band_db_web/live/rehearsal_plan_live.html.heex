@@ -87,7 +87,7 @@
     <div class="px-4 py-5 sm:p-6">
       <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
         <span class="px-3 py-1 text-sm font-semibold rounded-full bg-indigo-100 text-indigo-800">
-          Set List (<%= length(@rehearsal_plan.set) %>)
+          Practice Set List (<%= length(@rehearsal_plan.set) %>)
         </span>
         <span class="text-sm text-gray-500">
           - Total time: <%= @rehearsal_plan.set |> Enum.map(& &1.duration) |> Enum.reject(&is_nil/1) |> Enum.sum() |> format_duration() %>

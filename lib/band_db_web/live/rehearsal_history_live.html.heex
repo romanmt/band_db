@@ -1,95 +1,171 @@
-<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-  <div class="px-4 py-6 sm:px-0">
-    <div class="flex justify-between items-center mb-8">
-      <h1 class="text-3xl font-bold">Rehearsal History</h1>
-      <div class="flex items-center space-x-4">
-        <.link navigate={~p"/rehearsal"} class="text-indigo-600 hover:text-indigo-900">
-          Back to Rehearsal Plan
-        </.link>
-      </div>
-    </div>
+<div id="rehearsal-history" phx-hook="RehearsalHistory" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="flex justify-between items-center mb-8">
+    <h1 class="text-2xl font-bold text-gray-900">Rehearsal History</h1>
+    <.link
+      navigate={~p"/rehearsal"}
+      class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+    >
+      New Rehearsal Plan
+    </.link>
+  </div>
 
-    <div class="space-y-8">
-      <%= for plan <- @plans do %>
-        <div class="bg-white shadow rounded-lg overflow-hidden">
-          <div class="px-4 py-5 sm:p-6">
-            <div class="flex justify-between items-center mb-4">
-              <h2 class="text-xl font-semibold text-gray-900">
-                Rehearsal on <%= Date.to_string(plan.date) %>
-              </h2>
-              <span class="text-sm text-gray-500">
-                Total time: <%= format_duration(plan.duration) %>
+  <div class="space-y-4">
+    <%= for plan <- @plans do %>
+      <div class="bg-white shadow rounded-lg overflow-hidden">
+        <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
+          <div class="flex items-center space-x-4">
+            <button
+              phx-click="toggle_plan"
+              phx-value-id={plan.date}
+              class="text-gray-400 hover:text-gray-500"
+            >
+              <.icon name={if plan.expanded, do: "hero-chevron-down", else: "hero-chevron-right"} class="h-5 w-5" />
+            </button>
+            <div class="flex items-center gap-2">
+              <.icon name="hero-calendar" class="h-5 w-5 text-gray-400" />
+              <span class="text-lg font-medium text-gray-900">
+                <%= Calendar.strftime(plan.date, "%B %d, %Y") %>
               </span>
             </div>
-
-            <!-- Rehearsal Songs -->
-            <div class="mb-6">
-              <h3 class="text-lg font-medium text-gray-900 mb-3">Songs Rehearsed</h3>
-              <ul class="divide-y divide-gray-200">
-                <%= for song <- plan.rehearsal_songs do %>
-                  <li class="py-3">
-                    <div class="grid grid-cols-12 gap-4 items-center">
-                      <div class="col-span-3">
-                        <span class="text-sm font-medium text-gray-900"><%= song.title %></span>
-                      </div>
-                      <div class="col-span-3">
-                        <span class="text-sm text-gray-500">by <%= song.band_name %></span>
-                      </div>
-                      <div class="col-span-2">
-                        <%= if song.duration do %>
-                          <span class="text-sm text-gray-500">(<%= format_duration(song.duration) %>)</span>
-                        <% end %>
-                      </div>
-                      <div class="col-span-4">
-                        <%= if song.notes do %>
-                          <span class="text-sm text-gray-500 truncate"><%= song.notes %></span>
-                        <% end %>
-                      </div>
-                    </div>
-                  </li>
-                <% end %>
-              </ul>
-            </div>
-
-            <!-- Set List -->
-            <div>
-              <h3 class="text-lg font-medium text-gray-900 mb-3">Set List</h3>
-              <ul class="divide-y divide-gray-200">
-                <%= for {song, index} <- Enum.with_index(plan.set_songs) do %>
-                  <li class="py-3">
-                    <div class="grid grid-cols-12 gap-4 items-center">
-                      <div class="col-span-1">
-                        <span class="text-sm font-medium text-gray-500"><%= index + 1 %>.</span>
-                      </div>
-                      <div class="col-span-2">
-                        <span class="text-sm font-medium text-gray-900"><%= song.title %></span>
-                      </div>
-                      <div class="col-span-2">
-                        <span class="text-sm text-gray-500">by <%= song.band_name %></span>
-                      </div>
-                      <div class="col-span-2">
-                        <%= if song.duration do %>
-                          <span class="text-sm text-gray-500">(<%= format_duration(song.duration) %>)</span>
-                        <% end %>
-                      </div>
-                      <div class="col-span-2">
-                        <span class={"px-2 py-1 text-xs font-medium rounded-full #{status_color(song.status)}"}>
-                          <%= String.replace(to_string(song.status), "_", " ") |> String.capitalize() %>
-                        </span>
-                      </div>
-                      <div class="col-span-3">
-                        <%= if song.notes do %>
-                          <span class="text-sm text-gray-500 truncate"><%= song.notes %></span>
-                        <% end %>
-                      </div>
-                    </div>
-                  </li>
-                <% end %>
-              </ul>
-            </div>
+          </div>
+          <div class="flex items-center space-x-2">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+              <%= length(plan.rehearsal_songs) %> rehearsal songs
+            </span>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              <%= length(plan.set_songs) %> set list songs
+            </span>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+              <%= format_duration(plan.duration) %>
+            </span>
+            <button
+              phx-click="print_plan"
+              phx-value-id={plan.date}
+              class="ml-2 text-gray-400 hover:text-gray-500"
+            >
+              <.icon name="hero-printer" class="h-5 w-5" />
+            </button>
           </div>
         </div>
-      <% end %>
-    </div>
+
+        <%= if plan.expanded do %>
+          <div class="border-t border-gray-200 px-4 py-5 sm:px-6">
+            <div class="space-y-6">
+              <%= if Map.get(plan, :notes, "") != "" do %>
+                <div>
+                  <h2 class="text-lg font-semibold text-gray-900">Notes</h2>
+                  <div class="mt-2 text-gray-700 whitespace-pre-wrap"><%= plan.notes %></div>
+                </div>
+              <% end %>
+              
+              <div>
+                <h2 class="text-lg font-semibold text-gray-900">Songs to Work On</h2>
+                <%= for {tuning, songs} <- Enum.group_by(plan.rehearsal_songs, & &1.tuning) do %>
+                  <div class="mt-4">
+                    <h3 class="text-sm font-medium text-gray-500 mb-2">Tuning: <%= tuning || "Standard" %></h3>
+                    <ul class="space-y-2">
+                      <%= for song <- songs do %>
+                        <li class="flex items-center justify-between">
+                          <div class="flex items-center gap-2">
+                            <span class="hero-musical-note text-gray-400 h-5 w-5"></span>
+                            <span class="text-gray-700"><%= song.title %></span>
+                            <span class="text-gray-500 text-sm">- <%= song.band_name %></span>
+                          </div>
+                          <span class="text-gray-500"><%= format_duration(song.duration) %></span>
+                        </li>
+                      <% end %>
+                    </ul>
+                  </div>
+                <% end %>
+              </div>
+
+              <div>
+                <h2 class="text-xl font-semibold text-gray-900">Set List</h2>
+                <%= for {tuning, songs} <- Enum.group_by(plan.set_songs, & &1.tuning) do %>
+                  <div class="mt-4">
+                    <h3 class="text-sm font-medium text-gray-500 mb-2">Tuning: <%= tuning || "Standard" %></h3>
+                    <div class="space-y-2">
+                      <%= for song <- songs do %>
+                        <div class="flex items-center justify-between">
+                          <div class="flex items-center gap-2">
+                            <span class="hero-musical-note text-gray-400 h-5 w-5"></span>
+                            <span class="text-gray-700"><%= song.title %></span>
+                            <span class="text-gray-500 text-sm">- <%= song.band_name %></span>
+                          </div>
+                          <span class="text-gray-500"><%= format_duration(song.duration) %></span>
+                        </div>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
   </div>
+</div>
+
+<div class="print-only hidden">
+  <%= for plan <- @plans do %>
+    <%= if plan.expanded do %>
+      <div class="print-plan p-8" data-date={plan.date}>
+        <div class="mb-8 flex justify-between items-center">
+          <h1 class="text-2xl font-bold text-gray-900">Rehearsal Plan</h1>
+          <p class="text-gray-600"><%= Calendar.strftime(plan.date, "%B %d, %Y") %></p>
+        </div>
+        <div class="space-y-6">
+          <%= if Map.get(plan, :notes, "") != "" do %>
+            <div>
+              <h2 class="text-xl font-semibold text-gray-900">Notes</h2>
+              <div class="mt-2 text-gray-700 whitespace-pre-wrap"><%= plan.notes %></div>
+            </div>
+          <% end %>
+
+          <div>
+            <h2 class="text-xl font-semibold text-gray-900">Songs to Work On</h2>
+            <%= for {tuning, songs} <- Enum.group_by(plan.rehearsal_songs, & &1.tuning) do %>
+              <div class="mt-4">
+                <h3 class="text-sm font-medium text-gray-500 mb-2">Tuning: <%= tuning || "Standard" %></h3>
+                <ul class="space-y-2">
+                  <%= for song <- songs do %>
+                    <li class="flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                        <span class="hero-musical-note text-gray-400 h-5 w-5"></span>
+                        <span class="text-gray-700"><%= song.title %></span>
+                        <span class="text-gray-500 text-sm">- <%= song.band_name %></span>
+                      </div>
+                      <span class="text-gray-500"><%= format_duration(song.duration) %></span>
+                    </li>
+                  <% end %>
+                </ul>
+              </div>
+            <% end %>
+          </div>
+
+          <div>
+            <h2 class="text-xl font-semibold text-gray-900">Set List</h2>
+            <%= for {tuning, songs} <- Enum.group_by(plan.set_songs, & &1.tuning) do %>
+              <div class="mt-4">
+                <h3 class="text-sm font-medium text-gray-500 mb-2">Tuning: <%= tuning || "Standard" %></h3>
+                <div class="space-y-2">
+                  <%= for song <- songs do %>
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                        <span class="hero-musical-note text-gray-400 h-5 w-5"></span>
+                        <span class="text-gray-700"><%= song.title %></span>
+                        <span class="text-gray-500 text-sm">- <%= song.band_name %></span>
+                      </div>
+                      <span class="text-gray-500"><%= format_duration(song.duration) %></span>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
 </div> 
