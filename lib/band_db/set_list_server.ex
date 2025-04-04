@@ -89,13 +89,13 @@ defmodule BandDb.SetListServer do
     updated_set_lists = Enum.map(state.set_lists, fn set_list ->
       cond do
         # Handle old format with songs array
-        is_list(set_list.songs) and not is_list(Map.get(set_list, :sets, nil)) ->
+        Map.has_key?(set_list, :songs) and not Map.has_key?(set_list, :sets) ->
           %SetList{
             name: set_list.name,
             sets: [
               %BandDb.Set{
                 name: "Set 1",
-                songs: Enum.map(set_list.songs, & &1.title),
+                songs: set_list.songs,
                 duration: set_list.duration,
                 break_duration: nil,
                 set_order: 1
