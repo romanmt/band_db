@@ -124,12 +124,25 @@ defmodule BandDbWeb.SetListEditorLive do
     selected_song = Enum.find(socket.assigns.songs, &(&1.id == song_id))
 
     if selected_song do
-      # Add song to the set
+      # Add song to the set and update its duration
       new_sets = List.update_at(socket.assigns.new_set_list.sets, set_index, fn set ->
-        %{set | songs: [selected_song.title | set.songs]}
+        new_songs = [selected_song.title | set.songs]
+        # Add the song's duration to the set's duration
+        new_duration = (set.duration || 0) + (selected_song.duration || 0)
+        %{set | songs: new_songs, duration: new_duration}
       end)
 
-      new_set_list = %{socket.assigns.new_set_list | sets: new_sets}
+      # Calculate total duration including breaks
+      total_duration = Enum.reduce(new_sets, 0, fn set, acc ->
+        set_duration = (set.duration || 0)
+        break_duration = (set.break_duration || 0)
+        acc + set_duration + break_duration
+      end)
+
+      new_set_list = %{socket.assigns.new_set_list |
+        sets: new_sets,
+        total_duration: total_duration
+      }
 
       # Remove the song from available songs
       available_songs = Enum.reject(socket.assigns.songs, &(&1.id == song_id))
@@ -149,11 +162,28 @@ defmodule BandDbWeb.SetListEditorLive do
   def handle_event("remove_from_set", %{"song-id" => song_id, "set-index" => set_index}, socket) do
     set_index = String.to_integer(set_index)
 
+    # Find the song's duration from the full song list
+    song = Enum.find(SongServer.list_songs(), &(&1.title == song_id))
+    song_duration = if song, do: song.duration || 0, else: 0
+
     new_sets = List.update_at(socket.assigns.new_set_list.sets, set_index, fn set ->
-      %{set | songs: List.delete(set.songs, song_id)}
+      new_songs = List.delete(set.songs, song_id)
+      # Subtract the song's duration from the set's duration
+      new_duration = (set.duration || 0) - song_duration
+      %{set | songs: new_songs, duration: new_duration}
     end)
 
-    new_set_list = %{socket.assigns.new_set_list | sets: new_sets}
+    # Calculate total duration including breaks
+    total_duration = Enum.reduce(new_sets, 0, fn set, acc ->
+      set_duration = (set.duration || 0)
+      break_duration = (set.break_duration || 0)
+      acc + set_duration + break_duration
+    end)
+
+    new_set_list = %{socket.assigns.new_set_list |
+      sets: new_sets,
+      total_duration: total_duration
+    }
 
     {:noreply, assign(socket, new_set_list: new_set_list)}
   end
