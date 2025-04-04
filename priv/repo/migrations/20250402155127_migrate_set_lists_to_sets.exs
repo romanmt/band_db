@@ -15,7 +15,7 @@ defmodule BandDb.Repo.Migrations.MigrateSetListsToSets do
       add :name, :string, null: false
       add :songs, {:array, :string}, null: false
       add :duration, :integer
-      add :break_duration, :integer
+      add :break_duration, :integer, default: 0
       add :set_order, :integer, null: false
       add :inserted_at, :naive_datetime, null: false
       add :updated_at, :naive_datetime, null: false
@@ -35,7 +35,7 @@ defmodule BandDb.Repo.Migrations.MigrateSetListsToSets do
       'Set 1',
       sl.songs,
       sl.duration,
-      sl.break_duration,
+      0,  -- Set break_duration to 0 since it doesn't exist in the old table
       1,
       sl.inserted_at,
       sl.updated_at
@@ -56,19 +56,17 @@ defmodule BandDb.Repo.Migrations.MigrateSetListsToSets do
       add :name, :string, null: false
       add :songs, {:array, :string}
       add :duration, :integer
-      add :break_duration, :integer
       add :inserted_at, :naive_datetime, null: false
       add :updated_at, :naive_datetime, null: false
     end
 
     # Migrate data back to old format
     execute """
-    INSERT INTO set_lists_old (name, songs, duration, break_duration, inserted_at, updated_at)
+    INSERT INTO set_lists_old (name, songs, duration, inserted_at, updated_at)
     SELECT
       sl.name,
       s.songs,
       s.duration,
-      s.break_duration,
       sl.inserted_at,
       sl.updated_at
     FROM set_lists sl
