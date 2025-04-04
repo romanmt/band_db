@@ -69,10 +69,6 @@ defmodule BandDb.SongServer do
     GenServer.call(__MODULE__, {:update_tuning, title, new_tuning})
   end
 
-  def migrate_songs do
-    GenServer.call(__MODULE__, :migrate_songs)
-  end
-
   def update_song(title, attrs) do
     GenServer.call(__MODULE__, {:update_song, title, attrs})
   end
@@ -88,18 +84,6 @@ defmodule BandDb.SongServer do
     state = init_persistence()
     # Ensure we have a songs list
     state = if Map.has_key?(state, :songs), do: state, else: %{songs: []}
-
-    # Ensure all songs have the tuning field
-    updated_songs = Enum.map(state.songs, fn song ->
-      if Map.has_key?(song, :tuning) do
-        song
-      else
-        Map.put(song, :tuning, :standard)
-      end
-    end)
-
-    state = %{state | songs: updated_songs}
-
     {:ok, state}
   end
 
@@ -155,23 +139,6 @@ defmodule BandDb.SongServer do
         new_state = %{state | songs: updated_songs}
         {:reply, :ok, new_state}
     end
-  end
-
-  @impl true
-  def handle_call(:migrate_songs, _from, state) do
-    updated_songs = Enum.map(state.songs, fn song ->
-      if Map.has_key?(song, :tuning) do
-        song
-      else
-        Map.put(song, :tuning, :standard)
-      end
-    end)
-
-    new_state = %{state | songs: updated_songs}
-    # Persist the migrated data
-    handle_backup(new_state)
-
-    {:reply, {:ok, length(updated_songs)}, new_state}
   end
 
   @impl true

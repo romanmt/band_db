@@ -1,6 +1,7 @@
 defmodule BandDbWeb.RehearsalHistoryLive do
   use BandDbWeb, :live_view
   alias BandDb.RehearsalPlanServer
+  import BandDbWeb.Components.PageHeader
 
   @impl true
   def mount(_params, _session, socket) do

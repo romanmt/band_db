@@ -1,15 +1,12 @@
 <!-- Header with navigation -->
 <div class="max-w-7xl mx-auto">
-  <div class="mb-8">
-    <div class="flex justify-between items-center">
-      <h1 class="text-3xl font-bold">Set List Editor</h1>
-      <div class="flex items-center space-x-3">
-        <.link navigate={~p"/set-list"} class="text-indigo-600 hover:text-indigo-700 px-2 py-1">
-          Back to Set Lists
-        </.link>
-      </div>
-    </div>
-  </div>
+  <.page_header title="Set List Editor">
+    <:action>
+      <.link navigate={~p"/set-list"} class="text-indigo-600 hover:text-indigo-700 px-2 py-1">
+        Back to Set Lists
+      </.link>
+    </:action>
+  </.page_header>
 </div>
 
 <!-- Set Configuration -->

@@ -1,48 +1,7 @@
-defmodule BandDb.Set do
-  use Ecto.Schema
-  import Ecto.Changeset
-
-  @primary_key false
-  embedded_schema do
-    field :name, :string
-    field :songs, {:array, :string}
-    field :duration, :integer  # Duration in seconds
-    field :break_duration, :integer  # Break duration in seconds after this set (nil for last set)
-    field :set_order, :integer  # Order of the set in the set list
-  end
-
-  def changeset(%__MODULE__{} = set, params) when is_map(params) do
-    set
-    |> cast(params, [:name, :songs, :duration, :break_duration, :set_order])
-    |> validate_required([:name, :songs, :set_order])
-  end
-end
-
-defmodule BandDb.SetList do
-  use Ecto.Schema
-  import Ecto.Changeset
-
-  schema "set_lists" do
-    field :name, :string
-    embeds_many :sets, BandDb.Set
-    field :total_duration, :integer  # Total duration including breaks in seconds
-
-    timestamps()
-  end
-
-  def changeset(%__MODULE__{} = set_list, params) when is_map(params) do
-    set_list
-    |> cast(params, [:name, :total_duration])
-    |> cast_embed(:sets)
-    |> validate_required([:name])
-    |> unique_constraint(:name)
-  end
-end
-
 defmodule BandDb.SetListServer do
   use GenServer
   require Logger
-  alias BandDb.{SetList, Repo}
+  alias BandDb.{SetList, Set}
   use BandDb.Persistence,
     table_name: :set_lists_table
 
@@ -80,36 +39,7 @@ defmodule BandDb.SetListServer do
     state = init_persistence()
     # Ensure we have a set_lists list
     state = if Map.has_key?(state, :set_lists), do: state, else: %{set_lists: []}
-    # Migrate any old format set lists to new format
-    state = migrate_old_set_lists(state)
     {:ok, state}
-  end
-
-  defp migrate_old_set_lists(state) do
-    updated_set_lists = Enum.map(state.set_lists, fn set_list ->
-      cond do
-        # Handle old format with songs array
-        Map.has_key?(set_list, :songs) and not Map.has_key?(set_list, :sets) ->
-          %SetList{
-            name: set_list.name,
-            sets: [
-              %BandDb.Set{
-                name: "Set 1",
-                songs: set_list.songs,
-                duration: set_list.duration,
-                break_duration: nil,
-                set_order: 1
-              }
-            ],
-            total_duration: set_list.duration
-          }
-        # Already in new format
-        true ->
-          set_list
-      end
-    end)
-
-    %{state | set_lists: updated_set_lists}
   end
 
   @impl true

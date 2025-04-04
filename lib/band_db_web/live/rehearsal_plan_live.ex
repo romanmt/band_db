@@ -1,5 +1,7 @@
 defmodule BandDbWeb.RehearsalPlanLive do
   use BandDbWeb, :live_view
+  import BandDbWeb.Components.PageHeader
+
   alias BandDb.{SongServer, RehearsalPlanServer}
 
   @impl true

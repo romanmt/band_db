@@ -1,71 +1,68 @@
-<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-  <div class="px-4 py-6 sm:px-0">
-    <div class="flex justify-between items-center mb-8">
-      <h1 class="text-3xl font-bold">Saved Set Lists</h1>
-      <div class="flex items-center space-x-4">
-        <.link navigate={~p"/set-list/new"} class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-          <.icon name="hero-plus" class="h-5 w-5 mr-2" />
-          Create New Set List
-        </.link>
-      </div>
-    </div>
+<div class="max-w-7xl mx-auto">
+  <.page_header title="Saved Set Lists">
+    <:action>
+      <.link navigate={~p"/set-list/new"} class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+        <.icon name="hero-plus" class="h-5 w-5 mr-2" />
+        Create New Set List
+      </.link>
+    </:action>
+  </.page_header>
 
-    <div class="space-y-4">
-      <%= for set_list <- @set_lists do %>
-        <div>
-          <.expandable_section
-            id={"set-list-#{set_list.name}"}
-            icon_name="hero-musical-note"
-            title={set_list.name}
-            meta_fields={[
-              "#{length(set_list.sets)} sets",
-              format_duration(set_list.total_duration)
-            ]}
-            expanded={Map.get(@expanded_sets, set_list.name, false)}
-            on_toggle={"toggle_details?name=#{set_list.name}"}
-          >
-            <%= for {set, index} <- Enum.with_index(set_list.sets) do %>
-              <div class="mb-8 last:mb-0">
-                <div class="flex items-center justify-between mb-4">
-                  <h4 class="text-lg font-medium text-gray-900"><%= set.name %></h4>
-                  <div class="text-sm text-gray-500">
-                    Duration: <%= format_duration(set.duration) %>
-                    <%= if set.break_duration && set.break_duration > 0 do %>
-                      <span class="mx-2">•</span>
-                      Break: <%= format_duration(set.break_duration) %>
-                    <% end %>
-                  </div>
-                </div>
-                
-                <div class="space-y-2">
-                  <%= for song <- set.songs do %>
-                    <div class="flex items-center p-2 rounded-lg">
-                      <div class="flex-shrink-0 mr-2">
-                        <.icon name="hero-musical-note" class="h-4 w-4 text-gray-400" />
-                      </div>
-                      <div class="flex-1 min-w-0">
-                        <div class="flex items-center justify-between">
-                          <div class="flex items-center space-x-2">
-                            <span class="font-medium text-gray-900 truncate"><%= song %></span>
-                            <%= if band_name = get_band_name(song, @songs) do %>
-                              <span class="text-sm text-gray-500">by <%= band_name %></span>
-                            <% end %>
-                          </div>
-                          <%= if tuning = get_tuning(song, @songs) do %>
-                            <span class={"px-2 py-0.5 text-xs rounded-full #{tuning_color(tuning)}"}>
-                              <%= display_tuning(tuning) %>
-                            </span>
-                          <% end %>
-                        </div>
-                      </div>
-                    </div>
+  <div class="space-y-4">
+    <%= for set_list <- @set_lists do %>
+      <div>
+        <.expandable_section
+          id={"set-list-#{set_list.name}"}
+          icon_name="hero-musical-note"
+          title={set_list.name}
+          meta_fields={[
+            "#{length(set_list.sets)} sets",
+            format_duration(set_list.total_duration)
+          ]}
+          expanded={Map.get(@expanded_sets, set_list.name, false)}
+          on_toggle={"toggle_details?name=#{set_list.name}"}
+        >
+          <%= for {set, index} <- Enum.with_index(set_list.sets) do %>
+            <div class="mb-8 last:mb-0">
+              <div class="flex items-center justify-between mb-4">
+                <h4 class="text-lg font-medium text-gray-900"><%= set.name %></h4>
+                <div class="text-sm text-gray-500">
+                  Duration: <%= format_duration(set.duration) %>
+                  <%= if set.break_duration && set.break_duration > 0 do %>
+                    <span class="mx-2">•</span>
+                    Break: <%= format_duration(set.break_duration) %>
                   <% end %>
                 </div>
               </div>
-            <% end %>
-          </.expandable_section>
-        </div>
-      <% end %>
-    </div>
+              
+              <div class="space-y-2">
+                <%= for song <- set.songs do %>
+                  <div class="flex items-center p-2 rounded-lg">
+                    <div class="flex-shrink-0 mr-2">
+                      <.icon name="hero-musical-note" class="h-4 w-4 text-gray-400" />
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                          <span class="font-medium text-gray-900 truncate"><%= song %></span>
+                          <%= if band_name = get_band_name(song, @songs) do %>
+                            <span class="text-sm text-gray-500">by <%= band_name %></span>
+                          <% end %>
+                        </div>
+                        <%= if tuning = get_tuning(song, @songs) do %>
+                          <span class={"px-2 py-0.5 text-xs rounded-full #{tuning_color(tuning)}"}>
+                            <%= display_tuning(tuning) %>
+                          </span>
+                        <% end %>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </.expandable_section>
+      </div>
+    <% end %>
   </div>
 </div> 
