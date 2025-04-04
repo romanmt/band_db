@@ -4,134 +4,185 @@
     <div class="flex justify-between items-center">
       <h1 class="text-3xl font-bold">Set List Editor</h1>
       <div class="flex items-center space-x-3">
-        <.link navigate={~p"/set-list/history"} class="text-indigo-600 hover:text-indigo-700 px-2 py-1">
-          View Saved Set Lists
+        <.link navigate={~p"/set-list"} class="text-indigo-600 hover:text-indigo-700 px-2 py-1">
+          Back to Set Lists
         </.link>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Two column layout -->
-<div class="max-w-7xl mx-auto">
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-    <!-- Available Songs Column -->
-    <div class="bg-white rounded-lg shadow p-6">
-      <h2 class="text-2xl font-bold mb-4">Available Songs</h2>
-      <div class="space-y-2">
-        <%= for song <- @available_songs do %>
-          <div class="flex flex-col p-3 bg-gray-50 rounded-lg">
-            <div class="flex justify-end mb-2">
-              <button phx-click="add_to_set" phx-value-song-id={song.title}
-                      class="p-1 text-indigo-600 hover:text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
-                </svg>
-              </button>
-            </div>
-            <div class="flex items-center space-x-2">
-              <span class="font-medium"><%= song.title %></span>
-              <span class={"px-2 py-0.5 text-xs rounded-full #{status_color(song.status)}"}>
-                <%= String.capitalize(to_string(song.status)) %>
-              </span>
-            </div>
-            <%= if song.duration do %>
-              <span class="text-sm text-gray-500">
-                <%= format_duration(song.duration) %>
-              </span>
-            <% end %>
-          </div>
-        <% end %>
-      </div>
-    </div>
-
-    <!-- Set List Column -->
-    <div class="bg-white rounded-lg shadow p-6">
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-2xl font-bold">Set List</h2>
-        <div class="text-sm text-gray-600">
-          Total Duration: <%= format_duration(@total_duration) %>
+<!-- Set Configuration -->
+<div class="max-w-7xl mx-auto mb-8">
+  <div class="bg-white shadow rounded-lg p-6">
+    <h2 class="text-xl font-semibold mb-4">Set Configuration</h2>
+    <div class="space-y-4">
+      <div class="flex items-center space-x-4">
+        <label class="text-sm font-medium text-gray-700">Number of Sets:</label>
+        <div class="flex items-center space-x-2">
+          <button phx-click="remove_set" class="p-1 text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded">
+            <.icon name="hero-minus" class="h-5 w-5" />
+          </button>
+          <span class="text-lg font-medium text-gray-900"><%= @num_sets %></span>
+          <button phx-click="add_set" class="p-1 text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded">
+            <.icon name="hero-plus" class="h-5 w-5" />
+          </button>
         </div>
       </div>
-      <div class="space-y-2">
-        <%= for {song, index} <- Enum.with_index(@set_list) do %>
-          <div class="flex flex-col p-3 bg-gray-50 rounded-lg">
-            <div class="flex justify-end mb-2">
-              <div class="flex items-center space-x-1">
-                <button phx-click="move_up" phx-value-song-id={song.title}
-                        disabled={index == 0}
-                        class={"p-1 rounded #{if index == 0, do: "text-gray-300 cursor-not-allowed", else: "text-gray-600 hover:text-gray-900"} focus:outline-none focus:ring-2 focus:ring-gray-500"}>
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                  </svg>
-                </button>
-                <button phx-click="move_down" phx-value-song-id={song.title}
-                        disabled={index == length(@set_list) - 1}
-                        class={"p-1 rounded #{if index == length(@set_list) - 1, do: "text-gray-300 cursor-not-allowed", else: "text-gray-600 hover:text-gray-900"} focus:outline-none focus:ring-2 focus:ring-gray-500"}>
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                  </svg>
-                </button>
-                <button phx-click="remove_from_set" phx-value-song-id={song.title}
-                        class="p-1 text-red-600 hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 rounded">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                  </svg>
-                </button>
+      
+      <%= for {set, index} <- Enum.with_index(@new_set_list.sets) do %>
+        <div class="border-t border-gray-200 pt-4">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-medium text-gray-900"><%= set.name %></h3>
+            <%= if index < length(@new_set_list.sets) - 1 do %>
+              <div class="flex items-center space-x-4">
+                <label class="text-sm font-medium text-gray-700">Break Duration:</label>
+                <div class="flex items-center space-x-2">
+                  <button phx-click="toggle_break_duration" phx-value-set-index={index} class="p-1 text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded">
+                    <.icon name={if set.break_duration, do: "hero-minus", else: "hero-plus"} class="h-5 w-5" />
+                  </button>
+                  <%= if set.break_duration do %>
+                    <input type="number" name="duration" value={set.break_duration} min="0" step="30" phx-change="update_break_duration" phx-value-set-index={index} class="w-20 text-gray-900 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                  <% end %>
+                </div>
               </div>
-            </div>
-            <div class="flex items-center space-x-2">
-              <span class="font-medium"><%= song.title %></span>
-              <span class={"px-2 py-0.5 text-xs rounded-full #{status_color(song.status)}"}>
-                <%= String.capitalize(to_string(song.status)) %>
-              </span>
-            </div>
-            <%= if song.duration do %>
-              <span class="text-sm text-gray-500">
-                <%= format_duration(song.duration) %>
-              </span>
             <% end %>
           </div>
-        <% end %>
-      </div>
+          
+          <!-- Available Songs Column -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="bg-gray-50 rounded-lg shadow p-6">
+              <h4 class="text-lg font-bold mb-4">Available Songs</h4>
+              <div class="space-y-2">
+                <%= for song <- @songs do %>
+                  <div class="flex items-center p-2 bg-white rounded-lg">
+                    <div class="flex-shrink-0 mr-2">
+                      <.icon name="hero-musical-note" class="h-4 w-4 text-gray-400" />
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                          <span class="font-medium text-gray-900 truncate"><%= song.title %></span>
+                          <span class="text-sm text-gray-500">by <%= song.band_name %></span>
+                          <%= if song.duration do %>
+                            <span class="text-sm text-gray-500">(<%= format_duration(song.duration) %>)</span>
+                          <% end %>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                          <%= if song.tuning do %>
+                            <span class={"px-2 py-0.5 text-xs rounded-full #{tuning_color(song.tuning)}"}>
+                              <%= display_tuning(song.tuning) %>
+                            </span>
+                          <% end %>
+                          <button phx-click="select_song" phx-value-song-id={song.id} phx-value-set-index={index}
+                                  class="p-1 text-indigo-600 hover:text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded">
+                            <.icon name="hero-plus" class="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
 
-      <!-- Save Button -->
-      <div class="mt-6 flex justify-end">
-        <button phx-click="show_save_modal"
-                class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-            <path d="M7.707 10.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V6h-2v5.586l-1.293-1.293z" />
-          </svg>
-          Save Set List
-        </button>
-      </div>
+            <!-- Set Songs Column -->
+            <div class="bg-white rounded-lg shadow p-6">
+              <div class="flex justify-between items-center mb-4">
+                <h4 class="text-lg font-bold">Set <%= index + 1 %> Songs</h4>
+                <div class="text-sm text-gray-600">
+                  Duration: <%= format_duration(set.duration) %>
+                </div>
+              </div>
+              <div class="space-y-2">
+                <%= for {song_title, song_index} <- Enum.with_index(set.songs) do %>
+                  <div class="flex items-center p-2 bg-gray-50 rounded-lg">
+                    <div class="flex-shrink-0 mr-2">
+                      <.icon name="hero-musical-note" class="h-4 w-4 text-gray-400" />
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                          <span class="font-medium text-gray-900 truncate"><%= song_title %></span>
+                          <%= if band_name = get_band_name(song_title, @songs) do %>
+                            <span class="text-sm text-gray-500">by <%= band_name %></span>
+                          <% end %>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                          <%= if tuning = get_tuning(song_title, @songs) do %>
+                            <span class={"px-2 py-0.5 text-xs rounded-full #{tuning_color(tuning)}"}>
+                              <%= display_tuning(tuning) %>
+                            </span>
+                          <% end %>
+                          <div class="flex items-center space-x-1">
+                            <button phx-click="move_up" phx-value-song-id={song_title} phx-value-set-index={index} phx-value-song-index={song_index}
+                                    disabled={song_index == 0}
+                                    class={"p-1 rounded #{if song_index == 0, do: "text-gray-300 cursor-not-allowed", else: "text-gray-600 hover:text-gray-900"} focus:outline-none focus:ring-2 focus:ring-gray-500"}>
+                              <.icon name="hero-arrow-up" class="h-4 w-4" />
+                            </button>
+                            <button phx-click="move_down" phx-value-song-id={song_title} phx-value-set-index={index} phx-value-song-index={song_index}
+                                    disabled={song_index == length(set.songs) - 1}
+                                    class={"p-1 rounded #{if song_index == length(set.songs) - 1, do: "text-gray-300 cursor-not-allowed", else: "text-gray-600 hover:text-gray-900"} focus:outline-none focus:ring-2 focus:ring-gray-500"}>
+                              <.icon name="hero-arrow-down" class="h-4 w-4" />
+                            </button>
+                            <button phx-click="remove_from_set" phx-value-song-id={song_title} phx-value-set-index={index}
+                                    class="p-1 text-red-600 hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 rounded">
+                              <.icon name="hero-trash" class="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
     </div>
+  </div>
+</div>
+
+<!-- Save Button -->
+<div class="max-w-7xl mx-auto">
+  <div class="flex justify-end">
+    <button phx-click="show_save_modal" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+      Save Set List
+    </button>
   </div>
 </div>
 
 <!-- Save Modal -->
 <%= if @show_save_modal do %>
-  <div class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center">
-    <div class="bg-white p-6 rounded-lg shadow-xl w-96">
-      <h3 class="text-lg font-medium mb-4">Save Set List</h3>
-      <form phx-submit="save_set_list">
-        <div class="mb-4">
-          <label for="name" class="block text-sm font-medium text-gray-700">Set List Name</label>
-          <input type="text" name="name" id="name" required
-                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                 value={@set_list_name}>
-        </div>
-        <div class="flex justify-end space-x-3">
-          <button type="button" phx-click="hide_save_modal"
-                  class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500">
-            Cancel
-          </button>
-          <button type="submit"
-                  class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">
-            Save
-          </button>
-        </div>
-      </form>
+  <div class="fixed z-10 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+      <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+      <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+      <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+        <form phx-submit="save_set_list">
+          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <div class="sm:flex sm:items-start">
+              <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
+                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                  Save Set List
+                </h3>
+                <div class="mt-2">
+                  <input type="text" name="name" value={@new_set_list.name} phx-change="update_name" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md" placeholder="Enter set list name">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+            <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm">
+              Save
+            </button>
+            <button type="button" phx-click="hide_save_modal" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 <% end %> 

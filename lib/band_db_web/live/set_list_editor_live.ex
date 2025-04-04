@@ -1,104 +1,144 @@
 defmodule BandDbWeb.SetListEditorLive do
   use BandDbWeb, :live_view
-  alias BandDb.{SongServer, SetListServer}
+  alias BandDb.{SetListServer, SongServer, SetList, Set}
+  alias Phoenix.LiveView.JS
 
   @impl true
   def mount(_params, _session, socket) do
+    if connected?(socket) do
+      :timer.send_interval(1000, self(), :update)
+    end
+
+    # Filter out suggested and needs_learning songs
     songs = SongServer.list_songs()
-    # Get songs that are ready or have been performed
-    available_songs = Enum.filter(songs, & &1.status in [:ready, :performed])
-    # Sort by status (ready first) and title
-    available_songs = Enum.sort_by(available_songs, & {if(&1.status == :ready, do: 0, else: 1), &1.title})
+    |> Enum.filter(fn song ->
+      song.status in [:ready, :performed]
+    end)
+
+    set_lists = SetListServer.list_set_lists()
+    new_set_list = %SetList{
+      name: "",
+      sets: [
+        %Set{
+          name: "Set 1",
+          songs: [],
+          duration: 0,
+          break_duration: nil,
+          set_order: 1
+        }
+      ],
+      total_duration: 0
+    }
 
     {:ok, assign(socket,
-      available_songs: available_songs,
-      set_list: [],
-      total_duration: 0,
-      show_save_modal: false,
-      set_list_name: "",
-      drag_over: false,
-      dragged_id: nil
+      songs: songs,
+      set_lists: set_lists,
+      new_set_list: new_set_list,
+      num_sets: 1,
+      show_song_selector: false,
+      selected_set_index: 0,
+      selected_song: nil,
+      show_break_duration: false,
+      break_duration: 0,
+      show_save_modal: false
     )}
   end
 
   @impl true
-  def handle_event("dragstart", %{"id" => id}, socket) do
-    IO.inspect("Dragstart event", label: "Dragstart")
-    {:noreply, assign(socket, dragged_id: id)}
-  end
+  def handle_event("add_set", _params, socket) do
+    if socket.assigns.num_sets < 3 do
+      new_set = %Set{
+        name: "Set #{socket.assigns.num_sets + 1}",
+        songs: [],
+        duration: 0,
+        break_duration: nil,
+        set_order: socket.assigns.num_sets + 1
+      }
 
-  @impl true
-  def handle_event("dragend", _params, socket) do
-    IO.inspect("Dragend event", label: "Dragend")
-    {:noreply, assign(socket, dragged_id: nil)}
-  end
-
-  @impl true
-  def handle_event("dragover", _params, socket) do
-    IO.inspect("Dragover event", label: "Dragover")
-    {:noreply, assign(socket, drag_over: true)}
-  end
-
-  @impl true
-  def handle_event("dragleave", _params, socket) do
-    IO.inspect("Dragleave event", label: "Dragleave")
-    {:noreply, assign(socket, drag_over: false)}
-  end
-
-  @impl true
-  def handle_event("drop", %{"id" => id, "target" => target}, socket) do
-    IO.inspect(%{id: id, target: target}, label: "Drop event")
-
-    {source_list, target_list} = case target do
-      "set-list" -> {:available_songs, :set_list}
-      "available" -> {:set_list, :available_songs}
-    end
-
-    song = Enum.find(socket.assigns[source_list], & &1.title == id)
-
-    if song do
-      new_source = Enum.reject(socket.assigns[source_list], & &1.title == id)
-      new_target = [song | socket.assigns[target_list]]
-
-      total_duration = calculate_total_duration(new_target)
+      new_sets = socket.assigns.new_set_list.sets ++ [new_set]
+      new_set_list = %{socket.assigns.new_set_list | sets: new_sets}
 
       {:noreply, assign(socket,
-        available_songs: if(source_list == :available_songs, do: new_source, else: new_target),
-        set_list: if(source_list == :set_list, do: new_source, else: new_target),
-        total_duration: total_duration,
-        drag_over: false,
-        dragged_id: nil
+        new_set_list: new_set_list,
+        num_sets: socket.assigns.num_sets + 1
       )}
     else
-      {:noreply, assign(socket, drag_over: false, dragged_id: nil)}
+      {:noreply, socket}
     end
   end
 
   @impl true
-  def handle_event("reorder", %{"id" => id, "target" => target}, socket) do
-    song = Enum.find(socket.assigns.set_list, & &1.title == id)
-    new_set_list = socket.assigns.set_list
-      |> Enum.reject(& &1.title == id)
-      |> List.insert_at(String.to_integer(target), song)
+  def handle_event("remove_set", _params, socket) do
+    if socket.assigns.num_sets > 1 do
+      new_sets = List.delete_at(socket.assigns.new_set_list.sets, -1)
+      new_set_list = %{socket.assigns.new_set_list | sets: new_sets}
 
+      {:noreply, assign(socket,
+        new_set_list: new_set_list,
+        num_sets: socket.assigns.num_sets - 1
+      )}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("toggle_break_duration", %{"set-index" => set_index}, socket) do
+    set_index = String.to_integer(set_index)
+    new_sets = List.update_at(socket.assigns.new_set_list.sets, set_index, fn set ->
+      %{set | break_duration: if(set.break_duration, do: nil, else: 0)}
+    end)
+
+    new_set_list = %{socket.assigns.new_set_list | sets: new_sets}
+
+    {:noreply, assign(socket, new_set_list: new_set_list)}
+  end
+
+  @impl true
+  def handle_event("update_break_duration", %{"set-index" => set_index, "duration" => duration}, socket) do
+    set_index = String.to_integer(set_index)
+    duration = String.to_integer(duration)
+
+    new_sets = List.update_at(socket.assigns.new_set_list.sets, set_index, fn set ->
+      %{set | break_duration: duration}
+    end)
+
+    new_set_list = %{socket.assigns.new_set_list | sets: new_sets}
+
+    {:noreply, assign(socket, new_set_list: new_set_list)}
+  end
+
+  @impl true
+  def handle_event("toggle_song_selector", %{"set-index" => set_index}, socket) do
     {:noreply, assign(socket,
-      set_list: new_set_list,
-      total_duration: calculate_total_duration(new_set_list)
+      show_song_selector: true,
+      selected_set_index: String.to_integer(set_index)
     )}
   end
 
   @impl true
-  def handle_event("add_to_set", %{"song-id" => title}, socket) do
-    song = Enum.find(socket.assigns.available_songs, & &1.title == title)
-    if song do
-      new_available = Enum.reject(socket.assigns.available_songs, & &1.title == title)
-      new_set_list = socket.assigns.set_list ++ [song]
-      new_total = calculate_total_duration(new_set_list)
+  def handle_event("select_song", %{"song-id" => song_id, "set-index" => set_index}, socket) do
+    song_id = String.to_integer(song_id)
+    set_index = String.to_integer(set_index)
+
+    selected_song = Enum.find(socket.assigns.songs, &(&1.id == song_id))
+
+    if selected_song do
+      # Add song to the set
+      new_sets = List.update_at(socket.assigns.new_set_list.sets, set_index, fn set ->
+        %{set | songs: [selected_song.title | set.songs]}
+      end)
+
+      new_set_list = %{socket.assigns.new_set_list | sets: new_sets}
+
+      # Remove the song from available songs
+      available_songs = Enum.reject(socket.assigns.songs, &(&1.id == song_id))
 
       {:noreply, assign(socket,
-        available_songs: new_available,
-        set_list: new_set_list,
-        total_duration: new_total
+        new_set_list: new_set_list,
+        songs: available_songs,
+        show_song_selector: false,
+        selected_song: selected_song
       )}
     else
       {:noreply, socket}
@@ -106,103 +146,162 @@ defmodule BandDbWeb.SetListEditorLive do
   end
 
   @impl true
-  def handle_event("remove_from_set", %{"song-id" => title}, socket) do
-    song = Enum.find(socket.assigns.set_list, & &1.title == title)
-    if song do
-      new_set_list = Enum.reject(socket.assigns.set_list, & &1.title == title)
-      new_available = [song | socket.assigns.available_songs]
-        |> Enum.sort_by(& {if(&1.status == :ready, do: 0, else: 1), &1.title})
-      new_total = calculate_total_duration(new_set_list)
+  def handle_event("remove_from_set", %{"song-id" => song_id, "set-index" => set_index}, socket) do
+    set_index = String.to_integer(set_index)
 
-      {:noreply, assign(socket,
-        set_list: new_set_list,
-        available_songs: new_available,
-        total_duration: new_total
-      )}
+    new_sets = List.update_at(socket.assigns.new_set_list.sets, set_index, fn set ->
+      %{set | songs: List.delete(set.songs, song_id)}
+    end)
+
+    new_set_list = %{socket.assigns.new_set_list | sets: new_sets}
+
+    {:noreply, assign(socket, new_set_list: new_set_list)}
+  end
+
+  @impl true
+  def handle_event("move_up", %{"song-id" => song_id, "set-index" => set_index, "song-index" => song_index}, socket) do
+    set_index = String.to_integer(set_index)
+    song_index = String.to_integer(song_index)
+
+    if song_index > 0 do
+      new_sets = List.update_at(socket.assigns.new_set_list.sets, set_index, fn set ->
+        songs = set.songs
+        {song, songs} = List.pop_at(songs, song_index)
+        songs = List.insert_at(songs, song_index - 1, song)
+        %{set | songs: songs}
+      end)
+
+      new_set_list = %{socket.assigns.new_set_list | sets: new_sets}
+
+      {:noreply, assign(socket, new_set_list: new_set_list)}
     else
       {:noreply, socket}
     end
   end
 
   @impl true
-  def handle_event("move_up", %{"song-id" => title}, socket) do
-    set_list = socket.assigns.set_list
-    case Enum.find_index(set_list, & &1.title == title) do
-      0 -> {:noreply, socket}  # Already at top
-      nil -> {:noreply, socket}  # Not found
-      index ->
-        # Get the elements to swap
-        current = Enum.at(set_list, index)
-        previous = Enum.at(set_list, index - 1)
-        # Replace both elements
-        new_set_list = set_list
-          |> List.replace_at(index - 1, current)
-          |> List.replace_at(index, previous)
-        {:noreply, assign(socket, set_list: new_set_list)}
+  def handle_event("move_down", %{"song-id" => song_id, "set-index" => set_index, "song-index" => song_index}, socket) do
+    set_index = String.to_integer(set_index)
+    song_index = String.to_integer(song_index)
+
+    new_sets = List.update_at(socket.assigns.new_set_list.sets, set_index, fn set ->
+      songs = set.songs
+      if song_index < length(songs) - 1 do
+        {song, songs} = List.pop_at(songs, song_index)
+        songs = List.insert_at(songs, song_index + 1, song)
+        %{set | songs: songs}
+      else
+        set
+      end
+    end)
+
+    new_set_list = %{socket.assigns.new_set_list | sets: new_sets}
+
+    {:noreply, assign(socket, new_set_list: new_set_list)}
+  end
+
+  @impl true
+  def handle_event("save_set_list", _params, socket) do
+    # Calculate total duration including breaks
+    total_duration = Enum.reduce(socket.assigns.new_set_list.sets, 0, fn set, acc ->
+      acc + set.duration + (set.break_duration || 0)
+    end)
+
+    new_set_list = %{socket.assigns.new_set_list | total_duration: total_duration}
+
+    case SetListServer.add_set_list(new_set_list.name, new_set_list.sets, total_duration) do
+      {:ok, _set_list} ->
+        {:noreply,
+          socket
+          |> put_flash(:info, "Set list saved successfully")
+          |> redirect(to: ~p"/set-list")}
+
+      {:error, :set_list_already_exists} ->
+        {:noreply,
+          socket
+          |> put_flash(:error, "A set list with this name already exists")
+          |> assign(new_set_list: new_set_list)}
     end
   end
 
   @impl true
-  def handle_event("move_down", %{"song-id" => title}, socket) do
-    set_list = socket.assigns.set_list
-    case Enum.find_index(set_list, & &1.title == title) do
-      nil -> {:noreply, socket}  # Not found
-      index when index == length(set_list) - 1 -> {:noreply, socket}  # Already at bottom
-      index ->
-        # Get the elements to swap
-        current = Enum.at(set_list, index)
-        next = Enum.at(set_list, index + 1)
-        # Replace both elements
-        new_set_list = set_list
-          |> List.replace_at(index, next)
-          |> List.replace_at(index + 1, current)
-        {:noreply, assign(socket, set_list: new_set_list)}
-    end
+  def handle_event("update_name", %{"name" => name}, socket) do
+    new_set_list = %{socket.assigns.new_set_list | name: name}
+    {:noreply, assign(socket, new_set_list: new_set_list)}
   end
 
   @impl true
-  def handle_event("show_save_modal", _, socket) do
+  def handle_event("show_save_modal", _params, socket) do
     {:noreply, assign(socket, show_save_modal: true)}
   end
 
   @impl true
-  def handle_event("hide_save_modal", _, socket) do
+  def handle_event("hide_save_modal", _params, socket) do
     {:noreply, assign(socket, show_save_modal: false)}
   end
 
   @impl true
-  def handle_event("save_set_list", %{"name" => name}, socket) do
-    case SetListServer.add_set_list(name, socket.assigns.set_list, socket.assigns.total_duration) do
-      {:ok, _set_list} ->
-        {:noreply,
-          socket
-          |> assign(show_save_modal: false)
-          |> put_flash(:info, "Set list '#{name}' saved successfully")
-          |> push_navigate(to: ~p"/set-list/history")}
-      {:error, :set_list_already_exists} ->
-        {:noreply,
-          socket
-          |> assign(show_save_modal: false)
-          |> put_flash(:error, "A set list with that name already exists")
-          |> push_navigate(to: ~p"/set-list/history")}
-    end
+  def handle_info(:update, socket) do
+    # Get all songs from the server
+    all_songs = SongServer.list_songs()
+
+    # Filter out suggested and needs_learning songs
+    filtered_songs = all_songs
+    |> Enum.filter(fn song ->
+      song.status in [:ready, :performed]
+    end)
+
+    # Get songs that are already in any set
+    used_songs = socket.assigns.new_set_list.sets
+    |> Enum.flat_map(fn set -> set.songs end)
+
+    # Remove songs that are already in sets
+    available_songs = filtered_songs
+    |> Enum.reject(fn song ->
+      Enum.member?(used_songs, song.title)
+    end)
+
+    set_lists = SetListServer.list_set_lists()
+    {:noreply, assign(socket, songs: available_songs, set_lists: set_lists)}
   end
 
-  defp calculate_total_duration(songs) do
-    songs
-    |> Enum.map(& &1.duration)
-    |> Enum.reject(&is_nil/1)
-    |> Enum.sum()
-  end
-
-  defp format_duration(nil), do: ""
   defp format_duration(seconds) when is_integer(seconds) do
     minutes = div(seconds, 60)
     remaining_seconds = rem(seconds, 60)
-    :io_lib.format("~2..0B:~2..0B", [minutes, remaining_seconds])
+    "#{minutes}:#{String.pad_leading("#{remaining_seconds}", 2, "0")}"
   end
+  defp format_duration(_), do: "0:00"
 
   defp status_color(:ready), do: "bg-green-100 text-green-800"
   defp status_color(:performed), do: "bg-blue-100 text-blue-800"
-  defp status_color(:suggested), do: "bg-purple-100 text-purple-800"
+  defp status_color(:not_ready), do: "bg-red-100 text-red-800"
+  defp status_color(:needs_learning), do: "bg-yellow-100 text-yellow-800"
+  defp status_color(_), do: "bg-gray-100 text-gray-800"
+
+  defp tuning_color(:standard), do: "bg-indigo-100 text-indigo-800"
+  defp tuning_color(:drop_d), do: "bg-blue-100 text-blue-800"
+  defp tuning_color(:e_flat), do: "bg-green-100 text-green-800"
+  defp tuning_color(:drop_c_sharp), do: "bg-purple-100 text-purple-800"
+  defp tuning_color(_), do: "bg-gray-100 text-gray-800"
+
+  defp display_tuning(:standard), do: "Standard"
+  defp display_tuning(:drop_d), do: "Drop D"
+  defp display_tuning(:e_flat), do: "Eb"
+  defp display_tuning(:drop_c_sharp), do: "Drop C#"
+  defp display_tuning(tuning) when is_atom(tuning), do: String.capitalize(to_string(tuning))
+  defp display_tuning(_), do: "Unknown"
+
+  defp get_band_name(song_title, songs) do
+    case Enum.find(songs, &(&1.title == song_title)) do
+      nil -> nil
+      song -> song.band_name
+    end
+  end
+
+  defp get_tuning(song_title, songs) do
+    case Enum.find(songs, &(&1.title == song_title)) do
+      nil -> nil
+      song -> song.tuning
+    end
+  end
 end
