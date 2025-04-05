@@ -31,6 +31,7 @@
           <div class="relative" x-data="{ open: false }">
             <button
               @click="open = !open"
+              @mouseenter="open = true"
               class="flex items-center gap-2 px-3 py-2 text-gray-800 hover:text-indigo-700 hover:bg-indigo-50 rounded-md transition-all duration-150 ease-in-out font-medium"
               aria-expanded="false"
               aria-haspopup="true"
@@ -43,8 +44,9 @@
             <div
               x-show="open"
               x-cloak
-              @click.away="open = false"
+              @mouseenter="open = true"
               @mouseleave="open = false"
+              @click.away="open = false"
               x-transition:enter="transition ease-out duration-100"
               x-transition:enter-start="transform opacity-0 scale-95"
               x-transition:enter-end="transform opacity-100 scale-100"
