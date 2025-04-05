@@ -4,6 +4,8 @@ defmodule BandDbWeb.SongLive do
 
   alias BandDb.{Song, SongServer}
 
+  on_mount {BandDbWeb.UserAuth, :ensure_authenticated}
+
   @impl true
   def mount(_params, _session, socket) do
     songs = SongServer.list_songs()
