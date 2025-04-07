@@ -55,20 +55,13 @@
             </:content>
           </.dropdown>
         <% else %>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-6">
             <.link
-              href={~p"/users/register"}
-              class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-md transition-colors duration-150"
-            >
-              <.icon name="hero-user-plus" class="h-4 w-4 mr-1" />
-              Register
-            </.link>
-            <.link
+              :if={!@current_user}
               href={~p"/users/log_in"}
-              class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors duration-150"
+              class="text-sm font-semibold leading-6 text-gray-900"
             >
-              <.icon name="hero-arrow-right-on-rectangle" class="h-4 w-4 mr-1" />
-              Log in
+              Log in <span aria-hidden="true">&rarr;</span>
             </.link>
           </div>
         <% end %>

@@ -350,4 +350,62 @@ defmodule BandDb.Accounts do
       {:error, :user, changeset, _} -> {:error, changeset}
     end
   end
+
+  ## User deletion
+
+  @doc """
+  Deletes a user and all their associated data.
+
+  ## Examples
+
+      iex> delete_user(user)
+      {:ok, %User{}}
+
+      iex> delete_user(invalid_user)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_user(%User{} = user) do
+    Ecto.Multi.new()
+    |> Ecto.Multi.delete_all(:tokens, UserToken.by_user_and_contexts_query(user, :all))
+    |> Ecto.Multi.delete(:user, user)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{user: user}} -> {:ok, user}
+      {:error, :user, changeset, _} -> {:error, changeset}
+    end
+  end
+
+  ## Invitation
+
+  @doc """
+  Generates a unique invitation token.
+  """
+  def generate_invitation_token do
+    token = :crypto.strong_rand_bytes(32) |> Base.url_encode64(padding: false)
+
+    case Repo.get_by(User, invitation_token: token) do
+      nil -> token
+      _user -> generate_invitation_token()  # Recursively try again if token exists
+    end
+  end
+
+  @doc """
+  Validates if an invitation token is valid and unused.
+  """
+  def valid_invitation_token?(token) do
+    case Repo.get_by(User, invitation_token: token) do
+      nil -> true
+      _user -> false
+    end
+  end
+
+  @doc """
+  Generates an invitation link with a unique token.
+  """
+  def generate_invitation_link(base_url) do
+    token = generate_invitation_token()
+    invitation_url = "#{base_url}/users/register/#{token}"
+    {token, invitation_url}
+  end
 end

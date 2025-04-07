@@ -30,10 +30,14 @@ defmodule BandDbWeb.UserResetPasswordLive do
         </:actions>
       </.simple_form>
 
-      <p class="text-center text-sm mt-4">
-        <.link href={~p"/users/register"}>Register</.link>
-        | <.link href={~p"/users/log_in"}>Log in</.link>
-      </p>
+      <div class="mt-4">
+        <.link
+          href={~p"/users/log_in"}
+          class="text-sm font-semibold text-indigo-600 hover:text-indigo-500"
+        >
+          Back to login
+        </.link>
+      </div>
     </div>
     """
   end

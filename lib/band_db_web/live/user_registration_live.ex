@@ -71,6 +71,8 @@ defmodule BandDbWeb.UserRegistrationLive do
             </div>
           </div>
 
+          <input type="hidden" name="user[invitation_token]" value={@invitation_token} />
+
           <div>
             <.button phx-disable-with="Creating account..." class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
               <span class="absolute left-0 inset-y-0 flex items-center pl-3">
@@ -85,18 +87,41 @@ defmodule BandDbWeb.UserRegistrationLive do
     """
   end
 
+  def mount(%{"token" => token}, _session, socket) do
+    case Accounts.valid_invitation_token?(token) do
+      true ->
+        changeset = Accounts.change_user_registration(%User{})
+
+        socket =
+          socket
+          |> assign(trigger_submit: false, check_errors: false)
+          |> assign(:invitation_token, token)
+          |> assign_form(changeset)
+
+        {:ok, socket, temporary_assigns: [form: nil]}
+
+      false ->
+        {:ok,
+          socket
+          |> put_flash(:error, "Invalid or expired invitation link")
+          |> redirect(to: ~p"/users/log_in")
+        }
+    end
+  end
+
+  # Fallback mount for direct access without token
   def mount(_params, _session, socket) do
-    changeset = Accounts.change_user_registration(%User{})
-
-    socket =
+    {:ok,
       socket
-      |> assign(trigger_submit: false, check_errors: false)
-      |> assign_form(changeset)
-
-    {:ok, socket, temporary_assigns: [form: nil]}
+      |> put_flash(:error, "An invitation is required to register")
+      |> redirect(to: ~p"/users/log_in")
+    }
   end
 
   def handle_event("save", %{"user" => user_params}, socket) do
+    # Add the invitation token from the socket assigns
+    user_params = Map.put(user_params, "invitation_token", socket.assigns.invitation_token)
+
     case Accounts.register_user(user_params) do
       {:ok, user} ->
         {:ok, _} =

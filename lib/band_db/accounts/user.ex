@@ -8,6 +8,7 @@ defmodule BandDb.Accounts.User do
     field :hashed_password, :string, redact: true
     field :current_password, :string, virtual: true, redact: true
     field :confirmed_at, :utc_datetime
+    field :invitation_token, :string
 
     timestamps(type: :utc_datetime)
   end
@@ -37,9 +38,17 @@ defmodule BandDb.Accounts.User do
   """
   def registration_changeset(user, attrs, opts \\ []) do
     user
-    |> cast(attrs, [:email, :password])
+    |> cast(attrs, [:email, :password, :invitation_token])
+    |> validate_required([:email, :password, :invitation_token])
     |> validate_email(opts)
     |> validate_password(opts)
+    |> validate_invitation_token()
+  end
+
+  defp validate_invitation_token(changeset) do
+    changeset
+    |> unsafe_validate_unique(:invitation_token, BandDb.Repo)
+    |> unique_constraint(:invitation_token)
   end
 
   defp validate_email(changeset, opts) do

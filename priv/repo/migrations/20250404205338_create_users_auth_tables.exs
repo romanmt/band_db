@@ -8,11 +8,13 @@ defmodule BandDb.Repo.Migrations.CreateUsersAuthTables do
       add :email, :citext, null: false
       add :hashed_password, :string, null: false
       add :confirmed_at, :utc_datetime
+      add :invitation_token, :string
 
       timestamps(type: :utc_datetime)
     end
 
     create unique_index(:users, [:email])
+    create unique_index(:users, [:invitation_token])
 
     create table(:users_tokens) do
       add :user_id, references(:users, on_delete: :delete_all), null: false

@@ -12,12 +12,6 @@ defmodule BandDbWeb.UserLoginLive do
           <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Welcome back
           </h2>
-          <p class="mt-2 text-center text-sm text-gray-600">
-            Don't have an account?
-            <.link navigate={~p"/users/register"} class="font-medium text-indigo-600 hover:text-indigo-500">
-              Sign up
-            </.link>
-          </p>
         </div>
 
         <.simple_form for={@form} id="login_form" action={~p"/users/log_in"} phx-update="ignore" class="mt-8 space-y-6">
