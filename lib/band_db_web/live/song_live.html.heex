@@ -94,6 +94,12 @@
                         <% end %>
                       </div>
                       <div class="flex-shrink-0 ml-4 flex gap-2">
+                        <%= if Map.get(song, :youtube_link) do %>
+                          <a href={song.youtube_link} target="_blank" class="text-indigo-600 hover:text-indigo-900 flex items-center gap-1">
+                            <.icon name="hero-play" class="h-4 w-4" />
+                            <span class="text-sm">YouTube</span>
+                          </a>
+                        <% end %>
                         <button phx-click="show_edit_modal" phx-value-title={song.title}
                           class="inline-flex items-center px-2 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -196,6 +202,12 @@
                     <input type="text" name="song[notes]"
                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
                   </div>
+
+                  <div class="sm:col-span-3">
+                    <label class="block text-sm font-medium text-gray-700">YouTube URL</label>
+                    <input type="url" name="song[youtube_link]" placeholder="https://www.youtube.com/watch?v=..."
+                      class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                  </div>
                 </div>
 
                 <div class="mt-5 sm:mt-6">
@@ -278,6 +290,12 @@
                   <div class="sm:col-span-6">
                     <label class="block text-sm font-medium text-gray-700">Notes</label>
                     <input type="text" name="song[notes]" value={@editing_song.notes}
+                      class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                  </div>
+
+                  <div class="sm:col-span-6">
+                    <label class="block text-sm font-medium text-gray-700">YouTube URL</label>
+                    <input type="url" name="song[youtube_link]" value={Map.get(@editing_song, :youtube_link)} placeholder="https://www.youtube.com/watch?v=..."
                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
                   </div>
                 </div>

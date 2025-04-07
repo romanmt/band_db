@@ -12,6 +12,7 @@ defmodule BandDb.Song do
     field :band_name, :string
     field :duration, :integer
     field :tuning, Ecto.Enum, values: [:standard, :drop_d, :e_flat, :drop_c_sharp], default: :standard
+    field :youtube_link, :string
 
     timestamps()
   end
@@ -23,13 +24,14 @@ defmodule BandDb.Song do
     band_name: String.t(),
     duration: non_neg_integer() | nil,  # Duration in seconds
     tuning: tuning(),
+    youtube_link: String.t() | nil,
     inserted_at: NaiveDateTime.t() | nil,
     updated_at: NaiveDateTime.t() | nil
   }
 
   def changeset(%__MODULE__{} = song, params) when is_map(params) do
     song
-    |> cast(params, [:title, :status, :notes, :band_name, :duration, :tuning])
+    |> cast(params, [:title, :status, :notes, :band_name, :duration, :tuning, :youtube_link])
     |> validate_required([:title, :status, :band_name])
     |> unique_constraint(:title)
   end
@@ -49,8 +51,8 @@ defmodule BandDb.SongServer do
     GenServer.start_link(__MODULE__, [], name: name)
   end
 
-  def add_song(title, status, band_name, duration \\ nil, notes \\ nil, tuning \\ :standard) do
-    GenServer.call(__MODULE__, {:add_song, title, status, band_name, duration, notes, tuning})
+  def add_song(title, status, band_name, duration \\ nil, notes \\ nil, tuning \\ :standard, youtube_link \\ nil) do
+    GenServer.call(__MODULE__, {:add_song, title, status, band_name, duration, notes, tuning, youtube_link})
   end
 
   def list_songs do
@@ -88,11 +90,11 @@ defmodule BandDb.SongServer do
   end
 
   @impl true
-  def handle_call({:add_song, title, status, band_name, duration, notes, tuning}, _from, state) do
+  def handle_call({:add_song, title, status, band_name, duration, notes, tuning, youtube_link}, _from, state) do
     songs = state.songs
     case Enum.find(songs, fn song -> song.title == title end) do
       nil ->
-        new_song = %Song{title: title, status: status, band_name: band_name, duration: duration, notes: notes, tuning: tuning}
+        new_song = %Song{title: title, status: status, band_name: band_name, duration: duration, notes: notes, tuning: tuning, youtube_link: youtube_link}
         new_state = %{state | songs: [new_song | songs]}
         {:reply, {:ok, new_song}, new_state}
       _existing ->

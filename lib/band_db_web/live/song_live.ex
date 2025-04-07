@@ -66,7 +66,8 @@ defmodule BandDbWeb.SongLive do
       song_params["band_name"],
       duration_seconds,
       song_params["notes"],
-      tuning
+      tuning,
+      song_params["youtube_link"]
     ) do
       {:ok, _song} ->
         songs = SongServer.list_songs()
@@ -215,7 +216,8 @@ defmodule BandDbWeb.SongLive do
       duration: duration_seconds,
       notes: song_params["notes"],
       status: status,
-      tuning: tuning
+      tuning: tuning,
+      youtube_link: song_params["youtube_link"]
     }) do
       {:ok, _updated_song} ->
         songs = SongServer.list_songs()
