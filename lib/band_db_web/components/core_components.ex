@@ -646,6 +646,57 @@ defmodule BandDbWeb.CoreComponents do
     |> JS.pop_focus()
   end
 
+   @doc """
+  Renders a dropdown menu component.
+
+  ## Examples
+
+      <.dropdown>
+        <:trigger>
+          <button class="btn">Menu</button>
+        </:trigger>
+        <:content>
+          <a href="#" class="dropdown-item">Item 1</a>
+          <a href="#" class="dropdown-item">Item 2</a>
+        </:content>
+      </.dropdown>
+
+  ## Options
+
+    * `:id` - The unique identifier for the dropdown (required)
+    * `:class` - Additional CSS classes for the dropdown container
+    * `:position` - The position of the dropdown menu ("bottom-right", "bottom-left", "top-right", "top-left")
+  """
+  attr :id, :string, required: true
+  attr :class, :string, default: nil
+  attr :position, :string, default: "bottom-right", values: ~w(bottom-right bottom-left top-right top-left)
+
+  slot :trigger, required: true
+  slot :content, required: true
+
+  def dropdown(assigns) do
+    ~H"""
+    <div class={["relative inline-block text-left", @class]}>
+      <div phx-click={JS.show(to: "##{@id}-menu")}>
+        <%= render_slot(@trigger) %>
+      </div>
+      <div
+        id={"#{@id}-menu"}
+        class="hidden absolute mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none"
+        phx-click-away={JS.hide(to: "##{@id}-menu")}
+        role="menu"
+        aria-orientation="vertical"
+        aria-labelledby={"#{@id}-button"}
+        tabindex="-1"
+      >
+        <div class="py-1" role="none">
+          <%= render_slot(@content) %>
+        </div>
+      </div>
+    </div>
+    """
+  end
+
   @doc """
   Translates an error message using gettext.
   """

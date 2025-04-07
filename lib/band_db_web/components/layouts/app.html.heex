@@ -28,54 +28,32 @@
 
       <div class="ml-4 flex items-center">
         <%= if @current_user do %>
-          <div class="relative" x-data="{ open: false }">
-            <button
-              @click="open = !open"
-              @mouseenter="open = true"
-              class="flex items-center gap-2 px-3 py-2 text-gray-800 hover:text-indigo-700 hover:bg-indigo-50 rounded-md transition-all duration-150 ease-in-out font-medium"
-              aria-expanded="false"
-              aria-haspopup="true"
-            >
-              <.icon name="hero-user-circle" class="h-5 w-5" />
-              <span class="text-sm">{@current_user.email}</span>
-              <.icon name="hero-chevron-down" class="h-4 w-4" />
-            </button>
-
-            <div
-              x-show="open"
-              x-cloak
-              @mouseenter="open = true"
-              @mouseleave="open = false"
-              @click.away="open = false"
-              x-transition:enter="transition ease-out duration-100"
-              x-transition:enter-start="transform opacity-0 scale-95"
-              x-transition:enter-end="transform opacity-100 scale-100"
-              x-transition:leave="transition ease-in duration-75"
-              x-transition:leave-start="transform opacity-100 scale-100"
-              x-transition:leave-end="transform opacity-0 scale-95"
-              class="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
-            >
-              <div class="py-1" role="menu" aria-orientation="vertical">
-                <.link
-                  href={~p"/users/settings"}
-                  class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                  role="menuitem"
-                >
-                  <.icon name="hero-cog-6-tooth" class="h-4 w-4" />
-                  Settings
-                </.link>
-                <.link
-                  href={~p"/users/log_out"}
-                  method="delete"
-                  class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                  role="menuitem"
-                >
-                  <.icon name="hero-arrow-right-on-rectangle" class="h-4 w-4" />
-                  Log out
-                </.link>
-              </div>
-            </div>
-          </div>
+          <.dropdown id="user-menu">
+            <:trigger>
+              <button class="flex items-center gap-2 px-3 py-2 text-gray-800 hover:text-indigo-700 hover:bg-indigo-50 rounded-md transition-all duration-150 ease-in-out font-medium">
+                <.icon name="hero-user-circle" class="h-5 w-5" />
+                <span class="text-sm">{@current_user.email}</span>
+                <.icon name="hero-chevron-down" class="h-4 w-4" />
+              </button>
+            </:trigger>
+            <:content>
+              <.link
+                href={~p"/users/settings"}
+                class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+              >
+                <.icon name="hero-cog-6-tooth" class="h-4 w-4" />
+                Settings
+              </.link>
+              <.link
+                href={~p"/users/log_out"}
+                method="delete"
+                class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+              >
+                <.icon name="hero-arrow-right-on-rectangle" class="h-4 w-4" />
+                Log out
+              </.link>
+            </:content>
+          </.dropdown>
         <% else %>
           <div class="flex items-center gap-2">
             <.link
