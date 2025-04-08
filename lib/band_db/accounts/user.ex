@@ -9,6 +9,8 @@ defmodule BandDb.Accounts.User do
     field :current_password, :string, virtual: true, redact: true
     field :confirmed_at, :utc_datetime
     field :invitation_token, :string
+    field :invitation_token_expires_at, :utc_datetime
+    field :is_admin, :boolean, default: false
 
     timestamps(type: :utc_datetime)
   end
@@ -38,7 +40,7 @@ defmodule BandDb.Accounts.User do
   """
   def registration_changeset(user, attrs, opts \\ []) do
     user
-    |> cast(attrs, [:email, :password, :invitation_token])
+    |> cast(attrs, [:email, :password, :invitation_token, :invitation_token_expires_at])
     |> validate_required([:email, :password, :invitation_token])
     |> validate_email(opts)
     |> validate_password(opts)
@@ -49,6 +51,19 @@ defmodule BandDb.Accounts.User do
     changeset
     |> unsafe_validate_unique(:invitation_token, BandDb.Repo)
     |> unique_constraint(:invitation_token)
+    |> validate_invitation_token_expiry()
+  end
+
+  defp validate_invitation_token_expiry(changeset) do
+    case get_field(changeset, :invitation_token_expires_at) do
+      nil -> changeset
+      expires_at ->
+        if DateTime.compare(expires_at, DateTime.utc_now()) == :gt do
+          changeset
+        else
+          add_error(changeset, :invitation_token, "has expired")
+        end
+    end
   end
 
   defp validate_email(changeset, opts) do

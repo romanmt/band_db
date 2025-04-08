@@ -8,6 +8,8 @@ defmodule BandDb.Accounts do
 
   alias BandDb.Accounts.{User, UserToken, UserNotifier}
 
+  @invitation_token_validity_in_days 7
+
   ## Database getters
 
   @doc """
@@ -24,6 +26,22 @@ defmodule BandDb.Accounts do
   """
   def get_user_by_email(email) when is_binary(email) do
     Repo.get_by(User, email: email)
+  end
+
+  @doc """
+  Lists all users.
+  """
+  def list_users do
+    Repo.all(User)
+  end
+
+  @doc """
+  Updates a user's admin status.
+  """
+  def update_user_admin_status(user, is_admin) do
+    user
+    |> Ecto.Changeset.change(%{is_admin: is_admin})
+    |> Repo.update()
   end
 
   @doc """
@@ -383,9 +401,10 @@ defmodule BandDb.Accounts do
   """
   def generate_invitation_token do
     token = :crypto.strong_rand_bytes(32) |> Base.url_encode64(padding: false)
+    expires_at = DateTime.utc_now() |> DateTime.add(@invitation_token_validity_in_days, :day)
 
     case Repo.get_by(User, invitation_token: token) do
-      nil -> token
+      nil -> {token, expires_at}
       _user -> generate_invitation_token()  # Recursively try again if token exists
     end
   end
@@ -395,7 +414,12 @@ defmodule BandDb.Accounts do
   """
   def valid_invitation_token?(token) do
     case Repo.get_by(User, invitation_token: token) do
-      nil -> true
+      nil ->
+        # Check if token exists in the database with expiration
+        case Repo.one(from u in User, where: u.invitation_token == ^token and u.invitation_token_expires_at > ^DateTime.utc_now()) do
+          nil -> false
+          _user -> true
+        end
       _user -> false
     end
   end
@@ -404,8 +428,8 @@ defmodule BandDb.Accounts do
   Generates an invitation link with a unique token.
   """
   def generate_invitation_link(base_url) do
-    token = generate_invitation_token()
+    {token, expires_at} = generate_invitation_token()
     invitation_url = "#{base_url}/users/register/#{token}"
-    {token, invitation_url}
+    {token, invitation_url, expires_at}
   end
 end

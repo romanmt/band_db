@@ -17,21 +17,27 @@ defmodule BandDbWeb.Router do
     plug :accepts, ["json"]
   end
 
-  scope "/", BandDbWeb do
-    pipe_through [:browser, :require_authenticated_user]
+  pipeline :admin do
+    plug :require_authenticated_user
+    plug :require_admin_user
+  end
 
-    live_session :require_authenticated_user,
-      on_mount: [{BandDbWeb.UserAuth, :ensure_authenticated}] do
-      live "/", SongLive
-      live "/songs", SongLive
-      live "/suggested-songs", SuggestedSongsLive
-      live "/rehearsal", RehearsalPlanLive
-      live "/rehearsal/history", RehearsalHistoryLive
-      live "/set-list", SetListHistoryLive
-      live "/set-list/new", SetListEditorLive
-      live "/set-list/history", SetListHistoryLive
-      live "/users/settings", UserSettingsLive, :edit
-      live "/users/settings/confirm_email/:token", UserSettingsLive, :confirm_email
+  def require_admin_user(conn, _opts) do
+    if conn.assigns[:current_user] && conn.assigns[:current_user].is_admin do
+      conn
+    else
+      conn
+      |> put_flash(:error, "You must be an admin to access this page.")
+      |> redirect(to: "/")
+      |> halt()
+    end
+  end
+
+  scope "/admin", BandDbWeb do
+    pipe_through [:browser, :admin]
+
+    live_session :admin, on_mount: [{BandDbWeb.UserAuth, :ensure_authenticated}] do
+      live "/users", AdminLive.UsersLive, :index
     end
   end
 
@@ -63,13 +69,31 @@ defmodule BandDbWeb.Router do
 
     live_session :redirect_if_user_is_authenticated,
       on_mount: [{BandDbWeb.UserAuth, :redirect_if_user_is_authenticated}] do
-      live "/users/register/:token", UserRegistrationLive, :new
+      live "/users/register", UserRegistrationLive, :new
       live "/users/log_in", UserLoginLive, :new
       live "/users/reset_password", UserForgotPasswordLive, :new
       live "/users/reset_password/:token", UserResetPasswordLive, :edit
     end
 
     post "/users/log_in", UserSessionController, :create
+  end
+
+  scope "/", BandDbWeb do
+    pipe_through [:browser, :require_authenticated_user]
+
+    live_session :require_authenticated_user,
+      on_mount: [{BandDbWeb.UserAuth, :ensure_authenticated}] do
+      live "/", SongLive
+      live "/songs", SongLive
+      live "/suggested-songs", SuggestedSongsLive
+      live "/rehearsal", RehearsalPlanLive
+      live "/rehearsal/history", RehearsalHistoryLive
+      live "/set-list", SetListHistoryLive
+      live "/set-list/new", SetListEditorLive
+      live "/set-list/history", SetListHistoryLive
+      live "/users/settings", UserSettingsLive, :edit
+      live "/users/settings/confirm_email/:token", UserSettingsLive, :confirm_email
+    end
   end
 
   scope "/", BandDbWeb do

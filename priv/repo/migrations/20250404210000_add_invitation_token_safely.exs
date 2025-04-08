@@ -17,6 +17,21 @@ defmodule BandDb.Repo.Migrations.AddInvitationTokenSafely do
     END $$;
     """
 
+    # Add expiration column
+    execute """
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'users'
+        AND column_name = 'invitation_token_expires_at'
+      ) THEN
+        ALTER TABLE users ADD COLUMN invitation_token_expires_at timestamp with time zone;
+      END IF;
+    END $$;
+    """
+
     # Create the index if it doesn't exist
     execute """
     DO $$

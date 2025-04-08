@@ -50,3 +50,14 @@ Enum.each(songs, fn {title, status, band_name, duration, notes} ->
 end)
 
 IO.puts("\nSeeding complete!")
+
+# Make the specified email an admin
+admin_email = System.get_env("ADMIN_EMAIL") || "your-email@example.com"
+
+case BandDb.Repo.get_by(BandDb.Accounts.User, email: admin_email) do
+  nil ->
+    IO.puts("User #{admin_email} not found. Please create the user first.")
+  user ->
+    BandDb.Repo.update!(Ecto.Changeset.change(user, %{is_admin: true}))
+    IO.puts("User #{admin_email} is now an admin.")
+end
