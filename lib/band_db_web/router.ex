@@ -22,17 +22,6 @@ defmodule BandDbWeb.Router do
     plug :require_admin_user
   end
 
-  def require_admin_user(conn, _opts) do
-    if conn.assigns[:current_user] && conn.assigns[:current_user].is_admin do
-      conn
-    else
-      conn
-      |> put_flash(:error, "You must be an admin to access this page.")
-      |> redirect(to: "/")
-      |> halt()
-    end
-  end
-
   scope "/admin", BandDbWeb do
     pipe_through [:browser, :admin]
 
