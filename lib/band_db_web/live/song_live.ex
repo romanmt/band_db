@@ -1,6 +1,7 @@
 defmodule BandDbWeb.SongLive do
   use BandDbWeb, :live_view
   import BandDbWeb.Components.PageHeader
+  import BandDbWeb.Components.SongForm
 
   alias BandDb.{Song, SongServer}
 

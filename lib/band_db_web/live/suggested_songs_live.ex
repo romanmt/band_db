@@ -1,6 +1,7 @@
 defmodule BandDbWeb.SuggestedSongsLive do
   use BandDbWeb, :live_view
   import BandDbWeb.Components.PageHeader
+  import BandDbWeb.Components.SongForm
 
   alias BandDb.{Song, SongServer}
 
@@ -8,7 +9,7 @@ defmodule BandDbWeb.SuggestedSongsLive do
   def mount(_params, _session, socket) do
     songs = SongServer.list_songs()
     suggested_songs = Enum.filter(songs, & &1.status == :suggested)
-    {:ok, assign(socket, songs: suggested_songs, search_term: "", updating_song: nil, show_modal: false)}
+    {:ok, assign(socket, songs: suggested_songs, search_term: "", updating_song: nil, show_modal: false, show_edit_modal: false, editing_song: nil)}
   end
 
   @impl true
@@ -74,6 +75,56 @@ defmodule BandDbWeb.SuggestedSongsLive do
     suggested_songs = Enum.filter(songs, & &1.status == :suggested)
     filtered_songs = filter_songs(suggested_songs, socket.assigns.search_term)
     {:noreply, assign(socket, songs: filtered_songs, updating_song: nil)}
+  end
+
+  @impl true
+  def handle_event("show_edit_modal", %{"title" => title}, socket) do
+    song = Enum.find(socket.assigns.songs, & &1.title == title)
+    {:noreply, assign(socket, show_edit_modal: true, editing_song: song)}
+  end
+
+  @impl true
+  def handle_event("hide_edit_modal", _params, socket) do
+    {:noreply, assign(socket, show_edit_modal: false, editing_song: nil)}
+  end
+
+  @impl true
+  def handle_event("update_song", %{"song" => song_params}, socket) do
+    duration_seconds = case song_params["duration"] do
+      "" -> nil
+      nil -> nil
+      duration_str ->
+        [minutes_str, seconds_str] = String.split(duration_str, ":")
+        String.to_integer(minutes_str) * 60 + String.to_integer(seconds_str)
+    end
+
+    status = String.to_existing_atom(song_params["status"])
+    tuning = String.to_existing_atom(song_params["tuning"] || "standard")
+    original_title = song_params["original_title"]
+
+    case SongServer.update_song(original_title, %{
+      title: song_params["title"],
+      band_name: song_params["band_name"],
+      duration: duration_seconds,
+      notes: song_params["notes"],
+      status: status,
+      tuning: tuning,
+      youtube_link: song_params["youtube_link"]
+    }) do
+      {:ok, _song} ->
+        songs = SongServer.list_songs()
+        suggested_songs = Enum.filter(songs, & &1.status == :suggested)
+        filtered_songs = filter_songs(suggested_songs, socket.assigns.search_term)
+        {:noreply,
+          socket
+          |> assign(songs: filtered_songs, show_edit_modal: false, editing_song: nil)
+          |> put_flash(:info, "Song updated successfully")}
+
+      {:error, :not_found} ->
+        {:noreply,
+          socket
+          |> put_flash(:error, "Song not found")}
+    end
   end
 
   defp filter_songs(songs, ""), do: songs
