@@ -13,6 +13,7 @@ defmodule BandDb.Song do
     field :duration, :integer
     field :tuning, Ecto.Enum, values: [:standard, :drop_d, :e_flat, :drop_c_sharp], default: :standard
     field :youtube_link, :string
+    field :uuid, Ecto.UUID
 
     timestamps()
   end
@@ -25,15 +26,17 @@ defmodule BandDb.Song do
     duration: non_neg_integer() | nil,  # Duration in seconds
     tuning: tuning(),
     youtube_link: String.t() | nil,
+    uuid: String.t(),
     inserted_at: NaiveDateTime.t() | nil,
     updated_at: NaiveDateTime.t() | nil
   }
 
   def changeset(%__MODULE__{} = song, params) when is_map(params) do
     song
-    |> cast(params, [:title, :status, :notes, :band_name, :duration, :tuning, :youtube_link])
-    |> validate_required([:title, :status, :band_name])
+    |> cast(params, [:title, :status, :notes, :band_name, :duration, :tuning, :youtube_link, :uuid])
+    |> validate_required([:title, :status, :band_name, :uuid])
     |> unique_constraint(:title)
+    |> unique_constraint(:uuid)
   end
 end
 
@@ -94,7 +97,16 @@ defmodule BandDb.SongServer do
     songs = state.songs
     case Enum.find(songs, fn song -> song.title == title end) do
       nil ->
-        new_song = %Song{title: title, status: status, band_name: band_name, duration: duration, notes: notes, tuning: tuning, youtube_link: youtube_link}
+        new_song = %Song{
+          title: title,
+          status: status,
+          band_name: band_name,
+          duration: duration,
+          notes: notes,
+          tuning: tuning,
+          youtube_link: youtube_link,
+          uuid: Ecto.UUID.generate()
+        }
         new_state = %{state | songs: [new_song | songs]}
         {:reply, {:ok, new_song}, new_state}
       _existing ->
@@ -188,7 +200,8 @@ defmodule BandDb.SongServer do
             duration: duration_seconds,
             status: String.to_existing_atom(String.trim(status)),
             tuning: tuning_atom,
-            notes: String.trim(notes)
+            notes: String.trim(notes),
+            uuid: Ecto.UUID.generate()
           }
       end
     end)
@@ -201,7 +214,11 @@ defmodule BandDb.SongServer do
         updated_songs = Enum.reduce(new_songs, songs, fn new_song, acc ->
           case Enum.find_index(acc, &(&1.title == new_song.title)) do
             nil -> [new_song | acc]
-            index -> List.update_at(acc, index, fn _ -> new_song end)
+            index ->
+              # Preserve the UUID when updating an existing song
+              existing_song = Enum.at(acc, index)
+              updated_song = %{new_song | uuid: existing_song.uuid}
+              List.update_at(acc, index, fn _ -> updated_song end)
           end
         end)
 
