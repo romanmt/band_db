@@ -6,7 +6,7 @@ defmodule BandDb.Accounts do
   import Ecto.Query, warn: false
   alias BandDb.Repo
 
-  alias BandDb.Accounts.{User, UserToken, UserNotifier}
+  alias BandDb.Accounts.{User, UserToken, UserNotifier, InvitationToken}
 
   @invitation_token_validity_in_days 7
 
@@ -399,13 +399,23 @@ defmodule BandDb.Accounts do
   @doc """
   Generates a unique invitation token.
   """
-  def generate_invitation_token do
+  def generate_invitation_token(created_by_id \\ nil) do
     token = :crypto.strong_rand_bytes(32) |> Base.url_encode64(padding: false)
     expires_at = DateTime.utc_now() |> DateTime.add(@invitation_token_validity_in_days, :day)
 
-    case Repo.get_by(User, invitation_token: token) do
-      nil -> {token, expires_at}
-      _user -> generate_invitation_token()  # Recursively try again if token exists
+    case Repo.get_by(InvitationToken, token: token) do
+      nil ->
+        {:ok, invitation_token} =
+          %InvitationToken{}
+          |> InvitationToken.changeset(%{
+            token: token,
+            expires_at: expires_at,
+            created_by_id: created_by_id
+          })
+          |> Repo.insert()
+
+        {token, expires_at}
+      _invitation_token -> generate_invitation_token(created_by_id)  # Recursively try again if token exists
     end
   end
 
@@ -413,22 +423,32 @@ defmodule BandDb.Accounts do
   Validates if an invitation token is valid and unused.
   """
   def valid_invitation_token?(token) do
-    case Repo.get_by(User, invitation_token: token) do
-      nil ->
-        # Check if token exists in the database with expiration
-        case Repo.one(from u in User, where: u.invitation_token == ^token and u.invitation_token_expires_at > ^DateTime.utc_now()) do
-          nil -> false
-          _user -> true
-        end
-      _user -> false
+    case Repo.get_by(InvitationToken, token: token) do
+      nil -> false
+      invitation_token ->
+        DateTime.compare(invitation_token.expires_at, DateTime.utc_now()) == :gt &&
+          is_nil(invitation_token.used_at)
+    end
+  end
+
+  @doc """
+  Marks an invitation token as used.
+  """
+  def mark_invitation_token_used(token) do
+    case Repo.get_by(InvitationToken, token: token) do
+      nil -> {:error, :not_found}
+      invitation_token ->
+        invitation_token
+        |> InvitationToken.changeset(%{used_at: DateTime.utc_now()})
+        |> Repo.update()
     end
   end
 
   @doc """
   Generates an invitation link with a unique token.
   """
-  def generate_invitation_link(base_url) do
-    {token, expires_at} = generate_invitation_token()
+  def generate_invitation_link(base_url, created_by_id \\ nil) do
+    {token, expires_at} = generate_invitation_token(created_by_id)
     invitation_url = "#{base_url}/users/register/#{token}"
     {token, invitation_url, expires_at}
   end

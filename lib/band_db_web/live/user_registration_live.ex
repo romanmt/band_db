@@ -124,6 +124,9 @@ defmodule BandDbWeb.UserRegistrationLive do
 
     case Accounts.register_user(user_params) do
       {:ok, user} ->
+        # Mark the invitation token as used
+        {:ok, _} = Accounts.mark_invitation_token_used(socket.assigns.invitation_token)
+
         {:ok, _} =
           Accounts.deliver_user_confirmation_instructions(
             user,

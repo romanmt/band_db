@@ -59,6 +59,7 @@ defmodule BandDbWeb.Router do
     live_session :redirect_if_user_is_authenticated,
       on_mount: [{BandDbWeb.UserAuth, :redirect_if_user_is_authenticated}] do
       live "/users/register", UserRegistrationLive, :new
+      live "/users/register/:token", UserRegistrationLive, :new
       live "/users/log_in", UserLoginLive, :new
       live "/users/reset_password", UserForgotPasswordLive, :new
       live "/users/reset_password/:token", UserResetPasswordLive, :edit
