@@ -50,13 +50,21 @@ defmodule BandDb.Rehearsals.RehearsalServer do
     plans = state.plans
     case Enum.find(plans, fn plan -> plan.date == date end) do
       nil ->
+        # Extract just the UUIDs from the song structs
+        rehearsal_song_uuids = Enum.map(rehearsal_songs, & &1.uuid)
+        set_song_uuids = Enum.map(set_songs, & &1.uuid)
+
         new_plan = %RehearsalPlan{
           date: date,
-          rehearsal_songs: rehearsal_songs,
-          set_songs: set_songs,
+          rehearsal_songs: rehearsal_song_uuids,
+          set_songs: set_song_uuids,
           duration: duration
         }
         new_state = %{state | plans: [new_plan | plans]}
+
+        # Broadcast that a plan was saved
+        Phoenix.PubSub.broadcast(BandDb.PubSub, "rehearsal_plans", {:plan_saved, new_plan})
+
         {:reply, {:ok, new_plan}, new_state}
       _existing ->
         {:reply, {:error, :plan_already_exists}, state}
@@ -65,14 +73,76 @@ defmodule BandDb.Rehearsals.RehearsalServer do
 
   @impl true
   def handle_call(:list_plans, _from, state) do
-    {:reply, state.plans, state}
+    # Make sure full song objects are loaded for each plan
+    plans = Enum.map(state.plans, fn plan ->
+      case plan do
+        %{rehearsal_songs: rehearsal_songs, set_songs: set_songs} when is_list(rehearsal_songs) and is_list(set_songs) ->
+          # Check if the first item is a string (UUID) or a song struct
+          if (Enum.empty?(rehearsal_songs) or is_binary(List.first(rehearsal_songs))) or
+             (Enum.empty?(set_songs) or is_binary(List.first(set_songs))) do
+
+            # Convert UUIDs to full song objects
+            song_uuids = MapSet.new(rehearsal_songs ++ set_songs)
+            songs_by_uuid = BandDb.Songs.SongServer.list_songs()
+                            |> Enum.filter(&(&1.uuid in song_uuids))
+                            |> Enum.reduce(%{}, fn song, acc -> Map.put(acc, song.uuid, song) end)
+
+            # Map UUIDs to song objects
+            rehearsal_song_objects = Enum.map(rehearsal_songs, fn uuid ->
+              Map.get(songs_by_uuid, uuid)
+            end) |> Enum.reject(&is_nil/1)
+
+            set_song_objects = Enum.map(set_songs, fn uuid ->
+              Map.get(songs_by_uuid, uuid)
+            end) |> Enum.reject(&is_nil/1)
+
+            %{plan | rehearsal_songs: rehearsal_song_objects, set_songs: set_song_objects}
+          else
+            plan # Already has song objects
+          end
+        _ ->
+          plan # Not the expected format, return as is
+      end
+    end)
+
+    {:reply, plans, state}
   end
 
   @impl true
   def handle_call({:get_plan, date}, _from, state) do
     case Enum.find(state.plans, fn plan -> plan.date == date end) do
       nil -> {:reply, {:error, :not_found}, state}
-      plan -> {:reply, {:ok, plan}, state}
+      plan ->
+        # Check if we need to convert UUIDs to song objects
+        plan = case plan do
+          %{rehearsal_songs: rehearsal_songs, set_songs: set_songs} when is_list(rehearsal_songs) and is_list(set_songs) ->
+            if (Enum.empty?(rehearsal_songs) or is_binary(List.first(rehearsal_songs))) or
+               (Enum.empty?(set_songs) or is_binary(List.first(set_songs))) do
+
+              # Convert UUIDs to full song objects
+              song_uuids = MapSet.new(rehearsal_songs ++ set_songs)
+              songs_by_uuid = BandDb.Songs.SongServer.list_songs()
+                              |> Enum.filter(&(&1.uuid in song_uuids))
+                              |> Enum.reduce(%{}, fn song, acc -> Map.put(acc, song.uuid, song) end)
+
+              # Map UUIDs to song objects
+              rehearsal_song_objects = Enum.map(rehearsal_songs, fn uuid ->
+                Map.get(songs_by_uuid, uuid)
+              end) |> Enum.reject(&is_nil/1)
+
+              set_song_objects = Enum.map(set_songs, fn uuid ->
+                Map.get(songs_by_uuid, uuid)
+              end) |> Enum.reject(&is_nil/1)
+
+              %{plan | rehearsal_songs: rehearsal_song_objects, set_songs: set_song_objects}
+            else
+              plan # Already has song objects
+            end
+          _ ->
+            plan # Not the expected format, return as is
+        end
+
+        {:reply, {:ok, plan}, state}
     end
   end
 

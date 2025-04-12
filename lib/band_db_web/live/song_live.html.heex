@@ -233,16 +233,17 @@
       on_close="hide_edit_modal"
       submit_button_text="Update Song"
       status_options={[
-        {"Not Started", "not_started"},
-        {"In Progress", "in_progress"},
-        {"Ready", "ready"},
-        {"Performed", "performed"}
+        {"Suggested", :suggested},
+        {"Needs Learning", :needs_learning},
+        {"Needs Rehearsing", :needs_rehearsing},
+        {"Ready", :ready},
+        {"Performed", :performed}
       ]}
       tuning_options={[
-        {"Standard", "standard"},
-        {"Drop D", "drop_d"},
-        {"Half Step Down", "half_step_down"},
-        {"Full Step Down", "full_step_down"}
+        {"Standard", :standard},
+        {"Drop D", :drop_d},
+        {"E flat", :e_flat},
+        {"Drop C#", :drop_c_sharp}
       ]}
       format_duration={fn duration ->
         minutes = div(duration, 60)

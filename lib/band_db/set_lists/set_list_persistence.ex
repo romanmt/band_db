@@ -1,80 +1,66 @@
 defmodule BandDb.SetLists.SetListPersistence do
   @moduledoc """
-  Handles persistence of set lists to disk.
+  Handles persistence of set lists using Ecto.
   """
   require Logger
-  alias BandDb.SetLists.{SetList, Set}
-
-  @set_lists_file "set_lists.json"
+  alias BandDb.{Repo, SetLists.SetList, SetLists.Set}
+  import Ecto.Query
 
   @doc """
-  Loads set lists from disk.
+  Loads set lists from the database.
   """
   def load_set_lists do
-    case File.read(@set_lists_file) do
-      {:ok, content} ->
-        case Jason.decode(content) do
-          {:ok, decoded} ->
-            set_lists = decoded
-            |> Enum.map(fn {name, data} ->
-              sets = Enum.map(data["sets"], fn set_data ->
-                Set.new(%{
-                  name: set_data["name"],
-                  songs: Enum.map(set_data["songs"], fn song_data ->
-                    %{
-                      title: song_data["title"],
-                      artist: song_data["artist"],
-                      duration: song_data["duration"]
-                    }
-                  end)
-                })
-              end)
-              {name, SetList.new(%{name: name, sets: sets})}
-            end)
-            |> Map.new()
-            {:ok, set_lists}
-          {:error, reason} ->
-            Logger.error("Failed to decode set lists: #{inspect(reason)}")
-            {:error, :decode_failed}
-        end
-      {:error, :enoent} ->
-        {:ok, %{}}
-      {:error, reason} ->
-        Logger.error("Failed to read set lists file: #{inspect(reason)}")
-        {:error, :read_failed}
+    try do
+      set_lists = Repo.all(from sl in SetList,
+        preload: [:sets])
+      |> Enum.map(fn set_list ->
+        {set_list.name, set_list}
+      end)
+      |> Map.new()
+
+      {:ok, set_lists}
+    rescue
+      e ->
+        Logger.error("Failed to load set lists: #{inspect(e)}")
+        {:error, :load_failed}
     end
   end
 
   @doc """
-  Persists set lists to disk.
+  Persists set lists to the database.
   """
   def persist_set_lists(state) do
-    encoded = state
-    |> Enum.map(fn {name, set_list} ->
-      {name, %{
-        "name" => set_list.name,
-        "sets" => Enum.map(set_list.sets, fn set ->
-          %{
-            "name" => set.name,
-            "songs" => Enum.map(set.songs, fn song ->
-              %{
-                "title" => song.title,
-                "artist" => song.artist,
-                "duration" => song.duration
-              }
-            end)
-          }
-        end)
-      }}
-    end)
-    |> Map.new()
-    |> Jason.encode!()
+    Repo.transaction(fn ->
+      # Delete all existing set lists and their sets
+      Repo.delete_all(Set)
+      Repo.delete_all(SetList)
 
-    case File.write(@set_lists_file, encoded) do
-      :ok -> :ok
+      # Insert all set lists and their sets
+      Enum.each(state, fn {_name, set_list} ->
+        # Create the set list
+        {:ok, db_set_list} = Repo.insert(%SetList{
+          name: set_list.name,
+          total_duration: set_list.total_duration
+        })
+
+        # Create all sets for this set list
+        Enum.each(set_list.sets, fn set ->
+          Repo.insert!(%Set{
+            set_list_id: db_set_list.id,
+            name: set.name,
+            songs: set.songs,
+            duration: set.duration,
+            break_duration: set.break_duration,
+            set_order: set.set_order
+          })
+        end)
+      end)
+    end)
+    |> case do
+      {:ok, _} -> :ok
       {:error, reason} ->
-        Logger.error("Failed to write set lists: #{inspect(reason)}")
-        {:error, :write_failed}
+        Logger.error("Failed to persist set lists: #{inspect(reason)}")
+        {:error, :persist_failed}
     end
   end
 end

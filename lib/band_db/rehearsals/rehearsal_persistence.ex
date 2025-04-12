@@ -22,9 +22,14 @@ defmodule BandDb.Rehearsals.RehearsalPersistence do
     # Get all rehearsal plans
     plans = Repo.all(RehearsalPlan)
     |> Enum.map(fn plan ->
-      # Convert the stored UUIDs back to full song structs
-      rehearsal_songs = Enum.map(plan.rehearsal_songs, &Map.fetch!(songs_by_uuid, &1))
-      set_songs = Enum.map(plan.set_songs, &Map.fetch!(songs_by_uuid, &1))
+      # Convert the stored UUIDs back to full song structs, skipping any that don't exist
+      rehearsal_songs = Enum.map(plan.rehearsal_songs, fn uuid ->
+        Map.get(songs_by_uuid, uuid)
+      end) |> Enum.reject(&is_nil/1)
+
+      set_songs = Enum.map(plan.set_songs, fn uuid ->
+        Map.get(songs_by_uuid, uuid)
+      end) |> Enum.reject(&is_nil/1)
 
       %{plan |
         rehearsal_songs: rehearsal_songs,
@@ -41,22 +46,59 @@ defmodule BandDb.Rehearsals.RehearsalPersistence do
   """
   def persist_plans(plans) do
     Repo.transaction(fn ->
-      Repo.delete_all(RehearsalPlan)
+      # Get existing plans indexed by date for comparison
+      existing_plans = Repo.all(RehearsalPlan)
+      existing_dates = MapSet.new(existing_plans, & &1.date)
 
+      # Insert or update each plan
       Enum.each(plans, fn plan ->
-        # Store the song UUIDs
-        rehearsal_song_uuids = Enum.map(plan.rehearsal_songs, & &1.uuid)
-        set_song_uuids = Enum.map(plan.set_songs, & &1.uuid)
+        # Get the song UUIDs (handling both string UUIDs and song structs)
+        rehearsal_song_uuids = Enum.map(plan.rehearsal_songs, fn song ->
+          cond do
+            is_binary(song) -> song  # Already a UUID string
+            is_map(song) and Map.has_key?(song, :uuid) -> song.uuid
+            true -> nil
+          end
+        end) |> Enum.reject(&is_nil/1)
 
-        %RehearsalPlan{}
-        |> RehearsalPlan.changeset(%{
-          date: plan.date,
-          duration: plan.duration,
-          rehearsal_songs: rehearsal_song_uuids,
-          set_songs: set_song_uuids
-        })
-        |> Repo.insert!()
+        set_song_uuids = Enum.map(plan.set_songs, fn song ->
+          cond do
+            is_binary(song) -> song  # Already a UUID string
+            is_map(song) and Map.has_key?(song, :uuid) -> song.uuid
+            true -> nil
+          end
+        end) |> Enum.reject(&is_nil/1)
+
+        if MapSet.member?(existing_dates, plan.date) do
+          # Find existing plan and update it
+          existing = Enum.find(existing_plans, & &1.date == plan.date)
+          RehearsalPlan.changeset(existing, %{
+            date: plan.date,
+            duration: plan.duration,
+            rehearsal_songs: rehearsal_song_uuids,
+            set_songs: set_song_uuids
+          })
+          |> Repo.update!()
+        else
+          # Insert new plan
+          %RehearsalPlan{}
+          |> RehearsalPlan.changeset(%{
+            date: plan.date,
+            duration: plan.duration,
+            rehearsal_songs: rehearsal_song_uuids,
+            set_songs: set_song_uuids
+          })
+          |> Repo.insert!()
+        end
       end)
+
+      # Delete plans that no longer exist in memory
+      current_dates = MapSet.new(plans, & &1.date)
+      plans_to_delete = Enum.filter(existing_plans, fn plan ->
+        not MapSet.member?(current_dates, plan.date)
+      end)
+
+      Enum.each(plans_to_delete, &Repo.delete!/1)
     end)
   end
 end

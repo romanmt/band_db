@@ -26,6 +26,7 @@ Ready to run in production? Please [check our deployment guides](https://hexdocs
 11. Use pattern matching and guards to make function clauses clear and maintainable
 12. Prefer immutable data structures and pure functions where possible
 13. Write unit tests for business logic
+14. Don't make unncessary changes without asking
 
 # Architectural Strategy
 

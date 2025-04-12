@@ -3,32 +3,27 @@ defmodule BandDb.SetLists.Set do
   Schema representing a set within a set list.
   A set is a collection of songs with metadata like duration and break time.
   """
-  defstruct [:id, :name, :songs, :duration, :break_duration, :set_order, :set_list_id]
+  use Ecto.Schema
+  import Ecto.Changeset
 
-  @doc """
-  Creates a new Set with the given attributes.
-  Generates a UUID for the set and sets default values.
-  """
-  def new(attrs \\ %{}) do
-    struct!(__MODULE__, Map.merge(%{
-      id: Ecto.UUID.generate(),
-      name: nil,
-      songs: [],
-      duration: nil,
-      break_duration: nil,
-      set_order: nil,
-      set_list_id: nil
-    }, attrs))
+  schema "sets" do
+    field :name, :string
+    field :songs, {:array, :string}
+    field :duration, :integer
+    field :break_duration, :integer
+    field :set_order, :integer
+    belongs_to :set_list, BandDb.SetLists.SetList
+
+    timestamps()
   end
 
   @doc """
   Creates a changeset for a set.
-  This is kept for compatibility with the existing code and future database migration.
   """
-  def changeset(%__MODULE__{} = set, params) when is_map(params) do
+  def changeset(set, attrs) do
     set
-    |> Map.from_struct()
-    |> Map.merge(params)
-    |> new()
+    |> cast(attrs, [:name, :songs, :duration, :break_duration, :set_order, :set_list_id])
+    |> validate_required([:name, :songs, :set_order, :set_list_id])
+    |> foreign_key_constraint(:set_list_id)
   end
 end

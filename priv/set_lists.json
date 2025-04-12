@@ -1,0 +1,19 @@
+{
+  "set1": {
+    "name": "set1",
+    "sets": [
+      {
+        "break_duration": null,
+        "duration": 830,
+        "name": "Set 1",
+        "set_order": 1,
+        "songs": [
+          "Remedy",
+          "Love Removal Machine",
+          "Everlong"
+        ]
+      }
+    ],
+    "total_duration": 830
+  }
+}

@@ -71,7 +71,7 @@
                               <%= display_tuning(song.tuning) %>
                             </span>
                           <% end %>
-                          <button phx-click="select_song" phx-value-song-id={song.id} phx-value-set-index={index}
+                          <button phx-click="select_song" phx-value-song-uuid={song.uuid} phx-value-set-index={index}
                                   class="p-1 text-indigo-600 hover:text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded">
                             <.icon name="hero-plus" class="h-4 w-4" />
                           </button>

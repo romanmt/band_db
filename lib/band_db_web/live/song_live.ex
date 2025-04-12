@@ -58,8 +58,17 @@ defmodule BandDbWeb.SongLive do
         String.to_integer(minutes_str) * 60 + String.to_integer(seconds_str)
     end
 
-    status = String.to_existing_atom(song_params["status"])
-    tuning = String.to_existing_atom(song_params["tuning"] || "standard")
+    # Only convert to atom if it's a string
+    status = case song_params["status"] do
+      status when is_binary(status) -> String.to_existing_atom(status)
+      status -> status  # Already an atom
+    end
+
+    # Only convert to atom if it's a string
+    tuning = case song_params["tuning"] do
+      tuning when is_binary(tuning) -> String.to_existing_atom(tuning)
+      tuning -> tuning  # Already an atom
+    end
 
     case SongServer.add_song(
       song_params["title"],
@@ -207,8 +216,18 @@ defmodule BandDbWeb.SongLive do
         String.to_integer(minutes_str) * 60 + String.to_integer(seconds_str)
     end
 
-    status = String.to_existing_atom(song_params["status"])
-    tuning = String.to_existing_atom(song_params["tuning"])
+    # Only convert to atom if it's a string
+    status = case song_params["status"] do
+      status when is_binary(status) -> String.to_existing_atom(status)
+      status -> status  # Already an atom
+    end
+
+    # Only convert to atom if it's a string
+    tuning = case song_params["tuning"] do
+      tuning when is_binary(tuning) -> String.to_existing_atom(tuning)
+      tuning -> tuning  # Already an atom
+    end
+
     original_title = song_params["original_title"]
 
     case SongServer.update_song(original_title, %{
@@ -221,6 +240,13 @@ defmodule BandDbWeb.SongLive do
       youtube_link: song_params["youtube_link"]
     }) do
       {:ok, _updated_song} ->
+        songs = SongServer.list_songs()
+        {:noreply,
+          socket
+          |> assign(songs: songs, show_edit_modal: false, editing_song: nil)
+          |> put_flash(:info, "Song updated successfully")}
+
+      :ok ->
         songs = SongServer.list_songs()
         {:noreply,
           socket
@@ -262,10 +288,11 @@ defmodule BandDbWeb.SongLive do
 
   def status_options do
     [
+      {"Suggested", :suggested},
       {"Needs Learning", :needs_learning},
+      {"Needs Rehearsing", :needs_rehearsing},
       {"Ready", :ready},
-      {"Performed", :performed},
-      {"Suggested", :suggested}
+      {"Performed", :performed}
     ]
   end
 
@@ -289,6 +316,7 @@ defmodule BandDbWeb.SongLive do
   end
 
   def status_color(:needs_learning), do: "bg-yellow-100 text-yellow-800"
+  def status_color(:needs_rehearsing), do: "bg-orange-100 text-orange-800"
   def status_color(:ready), do: "bg-green-100 text-green-800"
   def status_color(:performed), do: "bg-blue-100 text-blue-800"
   def status_color(:suggested), do: "bg-purple-100 text-purple-800"

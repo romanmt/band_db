@@ -115,10 +115,11 @@ defmodule BandDbWeb.Components.SongForm do
 
   defp status_options do
     [
+      {"Suggested", :suggested},
       {"Needs Learning", :needs_learning},
+      {"Needs Rehearsing", :needs_rehearsing},
       {"Ready", :ready},
-      {"Performed", :performed},
-      {"Suggested", :suggested}
+      {"Performed", :performed}
     ]
   end
 

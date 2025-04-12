@@ -7,10 +7,6 @@ defmodule BandDbWeb.SetListHistoryLive do
 
   @impl true
   def mount(_params, _session, socket) do
-    if connected?(socket) do
-      :timer.send_interval(1000, self(), :update)
-    end
-
     set_lists = SetListServer.list_set_lists()
     songs = case Process.whereis(BandDb.Songs.SongServer) do
       nil -> []
@@ -39,16 +35,6 @@ defmodule BandDbWeb.SetListHistoryLive do
   def handle_info({:set_list_updated, _}, socket) do
     set_lists = SetListServer.list_set_lists()
     {:noreply, assign(socket, set_lists: set_lists)}
-  end
-
-  @impl true
-  def handle_info(:update, socket) do
-    set_lists = SetListServer.list_set_lists()
-    songs = case Process.whereis(BandDb.Songs.SongServer) do
-      nil -> []
-      _ -> SongServer.list_songs()
-    end
-    {:noreply, assign(socket, set_lists: set_lists, songs: songs)}
   end
 
   defp format_duration(seconds) when is_integer(seconds) do

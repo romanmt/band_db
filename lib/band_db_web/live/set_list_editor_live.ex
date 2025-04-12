@@ -7,10 +7,6 @@ defmodule BandDbWeb.SetListEditorLive do
 
   @impl true
   def mount(_params, _session, socket) do
-    if connected?(socket) do
-      :timer.send_interval(1000, self(), :update)
-    end
-
     # Filter out suggested and needs_learning songs
     songs = SongServer.list_songs()
     |> Enum.filter(fn song ->
@@ -119,41 +115,25 @@ defmodule BandDbWeb.SetListEditorLive do
   end
 
   @impl true
-  def handle_event("select_song", %{"song-id" => song_id, "set-index" => set_index}, socket) do
-    song_id = String.to_integer(song_id)
+  def handle_event("select_song", %{"set-index" => set_index, "song-uuid" => song_uuid}, socket) do
     set_index = String.to_integer(set_index)
+    song = Enum.find(socket.assigns.songs, &(&1.uuid == song_uuid))
 
-    selected_song = Enum.find(socket.assigns.songs, &(&1.id == song_id))
+    if song do
+      # Extract the song duration for later use
+      song_duration = song.duration || 0
 
-    if selected_song do
-      # Add song to the set and update its duration
-      new_sets = List.update_at(socket.assigns.new_set_list.sets, set_index, fn set ->
-        new_songs = [selected_song.title | set.songs]
-        # Add the song's duration to the set's duration
-        new_duration = (set.duration || 0) + (selected_song.duration || 0)
-        %{set | songs: new_songs, duration: new_duration}
+      updated_sets = List.update_at(socket.assigns.new_set_list.sets, set_index, fn set ->
+        # Add only the song title, not the entire struct
+        %{set |
+          songs: [song.title | set.songs],
+          duration: (set.duration || 0) + song_duration
+        }
       end)
-
-      # Calculate total duration including breaks
-      total_duration = Enum.reduce(new_sets, 0, fn set, acc ->
-        set_duration = (set.duration || 0)
-        break_duration = (set.break_duration || 0)
-        acc + set_duration + break_duration
-      end)
-
-      new_set_list = %{socket.assigns.new_set_list |
-        sets: new_sets,
-        total_duration: total_duration
-      }
-
-      # Remove the song from available songs
-      available_songs = Enum.reject(socket.assigns.songs, &(&1.id == song_id))
 
       {:noreply, assign(socket,
-        new_set_list: new_set_list,
-        songs: available_songs,
-        show_song_selector: false,
-        selected_song: selected_song
+        new_set_list: %{socket.assigns.new_set_list | sets: updated_sets},
+        songs: socket.assigns.songs |> Enum.filter(&(&1.uuid != song_uuid))
       )}
     else
       {:noreply, socket}
@@ -234,24 +214,40 @@ defmodule BandDbWeb.SetListEditorLive do
 
   @impl true
   def handle_event("save_set_list", _params, socket) do
-    # Calculate total duration including breaks
-    total_duration = Enum.reduce(socket.assigns.new_set_list.sets, 0, fn set, acc ->
-      acc + set.duration + (set.break_duration || 0)
+    new_set_list = socket.assigns.new_set_list
+
+    # Create proper Set structs for each set
+    sets = Enum.map(new_set_list.sets, fn set ->
+      %Set{
+        name: set.name,
+        duration: set.duration,
+        break_duration: set.break_duration,
+        songs: set.songs
+      }
     end)
 
-    new_set_list = %{socket.assigns.new_set_list | total_duration: total_duration}
-
-    case SetListServer.add_set_list(SetListServer, new_set_list.name, new_set_list.sets) do
+    case SetListServer.add_set_list(new_set_list.name, sets) do
       :ok ->
         {:noreply,
-          socket
-          |> put_flash(:info, "Set list saved successfully")
-          |> redirect(to: ~p"/set-list")}
-      {:error, reason} ->
+         socket
+         |> put_flash(:info, "Set list saved successfully!")
+         |> push_navigate(to: ~p"/set-list")}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply,
-          socket
-          |> put_flash(:error, "Failed to save set list: #{reason}")
-          |> assign(show_save_modal: false)}
+         socket
+         |> put_flash(:error, error_message_from_changeset(changeset))
+         |> assign(:changeset, changeset)}
+
+      {:error, message} when is_binary(message) ->
+        {:noreply,
+         socket
+         |> put_flash(:error, message)}
+
+      {:error, _} ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "Failed to save set list. Please try again.")}
     end
   end
 
@@ -328,5 +324,17 @@ defmodule BandDbWeb.SetListEditorLive do
       nil -> nil
       song -> song.tuning
     end
+  end
+
+  defp error_message_from_changeset(%Ecto.Changeset{} = changeset) do
+    Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
+      Enum.reduce(opts, msg, fn {key, value}, acc ->
+        String.replace(acc, "%{#{key}}", to_string(value))
+      end)
+    end)
+    |> Enum.map(fn {field, errors} ->
+      "#{Phoenix.Naming.humanize(field)} #{Enum.join(errors, ", ")}"
+    end)
+    |> Enum.join(". ")
   end
 end

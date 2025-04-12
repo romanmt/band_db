@@ -24,15 +24,32 @@ defmodule BandDb.Songs.SongPersistence do
   """
   def persist_songs(songs) do
     Repo.transaction(fn ->
-      # Delete all existing songs
-      Repo.delete_all(Song)
+      # Get existing songs indexed by UUID for comparison
+      existing_songs = Repo.all(Song)
+      existing_uuids = MapSet.new(existing_songs, & &1.uuid)
 
-      # Insert all songs
+      # Insert or update each song
       Enum.each(songs, fn song ->
-        %Song{}
-        |> Song.changeset(Map.from_struct(song))
-        |> Repo.insert!()
+        if MapSet.member?(existing_uuids, song.uuid) do
+          # Find existing song and update it
+          existing = Enum.find(existing_songs, & &1.uuid == song.uuid)
+          Song.changeset(existing, Map.from_struct(song))
+          |> Repo.update!()
+        else
+          # Insert new song
+          %Song{}
+          |> Song.changeset(Map.from_struct(song))
+          |> Repo.insert!()
+        end
       end)
+
+      # Delete songs that no longer exist in memory
+      current_uuids = MapSet.new(songs, & &1.uuid)
+      songs_to_delete = Enum.filter(existing_songs, fn song ->
+        not MapSet.member?(current_uuids, song.uuid)
+      end)
+
+      Enum.each(songs_to_delete, &Repo.delete!/1)
     end)
   end
 end
