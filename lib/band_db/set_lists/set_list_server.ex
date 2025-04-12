@@ -1,9 +1,7 @@
 defmodule BandDb.SetLists.SetListServer do
   use GenServer
   require Logger
-  alias BandDb.SetLists.SetList
-  use BandDb.Shared.Persistence,
-    table_name: :set_lists_table
+  alias BandDb.SetLists.{SetList, SetListPersistence}
 
   # Client API
 
@@ -36,10 +34,15 @@ defmodule BandDb.SetLists.SetListServer do
 
   @impl true
   def init(_args) do
-    state = init_persistence()
-    # Ensure we have a set_lists list
-    state = if Map.has_key?(state, :set_lists), do: state, else: %{set_lists: []}
-    {:ok, state}
+    # Load initial state from persistence
+    case SetListPersistence.load_set_lists() do
+      {:ok, set_lists} ->
+        SetListPersistence.schedule_backup(self())
+        {:ok, %{set_lists: set_lists}}
+      _ ->
+        SetListPersistence.schedule_backup(self())
+        {:ok, %{set_lists: []}}
+    end
   end
 
   @impl true
@@ -97,5 +100,10 @@ defmodule BandDb.SetLists.SetListServer do
   end
 
   @impl true
-  def handle_info(:backup, state), do: handle_backup(state)
+  def handle_info(:backup, state) do
+    Logger.info("Backing up set lists")
+    SetListPersistence.persist_set_lists(state.set_lists)
+    SetListPersistence.schedule_backup(self())
+    {:noreply, state}
+  end
 end
