@@ -8,19 +8,24 @@ defmodule BandDb.Application do
   @impl true
   def start(_type, _args) do
     children = [
+      # Start the Telemetry supervisor
       BandDbWeb.Telemetry,
+      # Start the DNS cluster
       {DNSCluster, query: Application.get_env(:band_db, :dns_cluster_query) || :ignore},
+      # Start the PubSub system
       {Phoenix.PubSub, name: BandDb.PubSub},
       # Start the Finch HTTP client for sending emails
       {Finch, name: BandDb.Finch},
       # Start the Ecto repository
       BandDb.Repo,
-      # Start our song server
-      BandDb.SongServer,
-      BandDb.SetListServer,
-      BandDb.RehearsalPlanServer,
-      # Start to serve requests, typically the last entry
-      BandDbWeb.Endpoint
+      # Start the Endpoint (http/https)
+      BandDbWeb.Endpoint,
+      # Start the Song Server
+      BandDb.Songs.SongServer,
+      # Start the Set List Server
+      BandDb.SetLists.SetListServer,
+      # Start the Rehearsal Server
+      BandDb.Rehearsals.RehearsalServer
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

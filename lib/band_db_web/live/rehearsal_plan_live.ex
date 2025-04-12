@@ -1,8 +1,10 @@
 defmodule BandDbWeb.RehearsalPlanLive do
   use BandDbWeb, :live_view
   import BandDbWeb.Components.PageHeader
+  alias BandDb.Songs.SongServer
+  alias BandDb.Rehearsals.RehearsalServer
 
-  alias BandDb.{SongServer, RehearsalPlanServer}
+  on_mount {BandDbWeb.UserAuth, :ensure_authenticated}
 
   @impl true
   def mount(_params, _session, socket) do
@@ -40,7 +42,7 @@ defmodule BandDbWeb.RehearsalPlanLive do
   @impl true
   def handle_event("accept_plan", %{"date" => date}, socket) do
     date = Date.from_iso8601!(date)
-    RehearsalPlanServer.save_plan(
+    RehearsalServer.save_plan(
       date,
       socket.assigns.rehearsal_plan.rehearsal,
       socket.assigns.rehearsal_plan.set,
@@ -65,7 +67,7 @@ defmodule BandDbWeb.RehearsalPlanLive do
   # Generate a rehearsal plan with songs that need rehearsal and a full set of ready/performed songs
   defp generate_plan(needs_rehearsal, ready_songs) do
     # Get rehearsal history
-    plans = RehearsalPlanServer.list_plans()
+    plans = RehearsalServer.list_plans()
 
     # Create a map of song titles to their last rehearsal date
     last_rehearsal_dates = Enum.reduce(plans, %{}, fn plan, acc ->

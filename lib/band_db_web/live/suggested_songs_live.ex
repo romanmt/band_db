@@ -3,7 +3,9 @@ defmodule BandDbWeb.SuggestedSongsLive do
   import BandDbWeb.Components.PageHeader
   import BandDbWeb.Components.SongForm
 
-  alias BandDb.{Song, SongServer}
+  alias BandDb.Songs.SongServer
+
+  on_mount {BandDbWeb.UserAuth, :ensure_authenticated}
 
   @impl true
   def mount(_params, _session, socket) do

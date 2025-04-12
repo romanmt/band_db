@@ -1,6 +1,6 @@
-defmodule BandDb.SongServerTest do
+defmodule BandDb.Songs.SongServerTest do
   use ExUnit.Case
-  alias BandDb.SongServer
+  alias BandDb.Songs.SongServer
 
   setup do
     # Start the server with a different name for testing

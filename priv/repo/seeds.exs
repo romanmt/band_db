@@ -5,7 +5,7 @@
 # Or from IEx:
 #     Code.eval_file("priv/repo/seeds.exs")
 
-alias BandDb.SongServer
+alias BandDb.Songs.SongServer
 
 # Helper function to convert "MM:SS" to seconds
 defmodule Seeds.Helper do

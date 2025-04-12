@@ -1,14 +1,18 @@
 defmodule BandDbWeb.RehearsalHistoryLive do
   use BandDbWeb, :live_view
-  alias BandDb.RehearsalPlanServer
   import BandDbWeb.Components.PageHeader
+  alias BandDb.Rehearsals.RehearsalServer
+  alias BandDb.Songs.SongServer
+
+  on_mount {BandDbWeb.UserAuth, :ensure_authenticated}
 
   @impl true
   def mount(_params, _session, socket) do
-    plans = RehearsalPlanServer.list_plans()
+    plans = RehearsalServer.list_plans()
+    songs = SongServer.list_songs()
     # Add expanded state to each plan
     plans = Enum.map(plans, &Map.put(&1, :expanded, false))
-    {:ok, assign(socket, plans: plans)}
+    {:ok, assign(socket, plans: plans, songs: songs)}
   end
 
   @impl true

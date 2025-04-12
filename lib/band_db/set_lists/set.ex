@@ -1,4 +1,4 @@
-defmodule BandDb.Set do
+defmodule BandDb.SetLists.Set do
   @moduledoc """
   Schema representing a set within a set list.
   A set is a collection of songs with metadata like duration and break time.

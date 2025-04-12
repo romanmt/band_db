@@ -1,8 +1,8 @@
 defmodule BandDbWeb.SetListHistoryLive do
   use BandDbWeb, :live_view
   import BandDbWeb.Components.PageHeader
-  alias BandDb.{SetListServer, SongServer}
-  alias BandDb.SetList
+  alias BandDb.{SetLists.SetListServer, Songs.SongServer}
+  alias BandDb.SetLists.SetList
   import BandDbWeb.Components.ExpandableSection
 
   @impl true

@@ -9,10 +9,9 @@ Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
 
 Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
 
-## Learn more
-
-  * Official website: https://www.phoenixframework.org/
-  * Guides: https://hexdocs.pm/phoenix/overview.html
-  * Docs: https://hexdocs.pm/phoenix
-  * Forum: https://elixirforum.com/c/phoenix-forum
-  * Source: https://github.com/phoenixframework/phoenix
+# Development Rules
+1. State should be managed in memeory and persisted only for server restarts and resiliencey. 
+2. Keep state management, business logic and persistance code separate
+3. All migrations should have an up and down so that we can safely migrate down
+4. Always develop in small steps and find ways to test your code. 
+5. Always use conventional commit messages

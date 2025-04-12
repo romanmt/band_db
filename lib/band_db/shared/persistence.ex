@@ -1,4 +1,4 @@
-defmodule BandDb.Persistence do
+defmodule BandDb.Shared.Persistence do
   require Logger
   import Ecto.Query
 
@@ -12,7 +12,7 @@ defmodule BandDb.Persistence do
       def init_persistence do
         Logger.info("Initializing persistence for #{@table_name}")
         # Recover state from database
-        recovered_state = BandDb.Persistence.recover_state(@table_name)
+        recovered_state = BandDb.Shared.Persistence.recover_state(@table_name)
         # Schedule periodic backup
         schedule_backup()
         recovered_state
@@ -20,7 +20,7 @@ defmodule BandDb.Persistence do
 
       def handle_backup(state) do
         Logger.info("Backing up #{@table_name} state")
-        BandDb.Persistence.persist_state(@table_name, state)
+        BandDb.Shared.Persistence.persist_state(@table_name, state)
         schedule_backup()
         {:noreply, state}
       end
@@ -32,7 +32,7 @@ defmodule BandDb.Persistence do
   end
 
   def recover_state(:songs_table) do
-    case BandDb.Repo.all(BandDb.Song) do
+    case BandDb.Repo.all(BandDb.Songs.Song) do
       songs when is_list(songs) -> %{songs: songs}
       _ -> %{songs: []}
     end
@@ -42,12 +42,12 @@ defmodule BandDb.Persistence do
     # Start a transaction
     BandDb.Repo.transaction(fn ->
       # Delete all existing songs
-      BandDb.Repo.delete_all(BandDb.Song)
+      BandDb.Repo.delete_all(BandDb.Songs.Song)
 
       # Insert all songs
       Enum.each(songs, fn song ->
-        %BandDb.Song{}
-        |> BandDb.Song.changeset(Map.from_struct(song))
+        %BandDb.Songs.Song{}
+        |> BandDb.Songs.Song.changeset(Map.from_struct(song))
         |> BandDb.Repo.insert!()
       end)
     end)
@@ -55,14 +55,14 @@ defmodule BandDb.Persistence do
 
   def recover_state(:rehearsal_plans_table) do
     # Get all non-deleted songs indexed by UUID
-    songs_by_uuid = from(s in BandDb.Song)
+    songs_by_uuid = from(s in BandDb.Songs.Song)
     |> BandDb.Repo.all()
     |> Enum.reduce(%{}, fn song, acc ->
       Map.put(acc, song.uuid, song)
     end)
 
     # Get all rehearsal plans
-    plans = BandDb.Repo.all(BandDb.RehearsalPlan)
+    plans = BandDb.Repo.all(BandDb.Rehearsals.RehearsalPlan)
       |> Enum.map(fn plan ->
         # Convert the stored UUIDs back to full song structs
         rehearsal_songs = Enum.map(plan.rehearsal_songs, &Map.fetch!(songs_by_uuid, &1))
@@ -79,15 +79,15 @@ defmodule BandDb.Persistence do
 
   def persist_state(:rehearsal_plans_table, %{plans: plans}) do
     BandDb.Repo.transaction(fn ->
-      BandDb.Repo.delete_all(BandDb.RehearsalPlan)
+      BandDb.Repo.delete_all(BandDb.Rehearsals.RehearsalPlan)
 
       Enum.each(plans, fn plan ->
         # Store the song UUIDs
         rehearsal_song_uuids = Enum.map(plan.rehearsal_songs, & &1.uuid)
         set_song_uuids = Enum.map(plan.set_songs, & &1.uuid)
 
-        %BandDb.RehearsalPlan{}
-        |> BandDb.RehearsalPlan.changeset(%{
+        %BandDb.Rehearsals.RehearsalPlan{}
+        |> BandDb.Rehearsals.RehearsalPlan.changeset(%{
           date: plan.date,
           duration: plan.duration,
           rehearsal_songs: rehearsal_song_uuids,

@@ -2,7 +2,7 @@ defmodule BandDbWeb.SetListEditorLive do
   use BandDbWeb, :live_view
   import BandDbWeb.Components.PageHeader
 
-  alias BandDb.{SetListServer, SongServer, SetList, Set}
+  alias BandDb.{SetLists.SetListServer, Songs.SongServer, SetLists.SetList, SetLists.Set}
   alias Phoenix.LiveView.JS
 
   @impl true

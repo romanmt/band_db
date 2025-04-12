@@ -1,10 +1,10 @@
-defmodule BandDb.SetList do
+defmodule BandDb.SetLists.SetList do
   @moduledoc """
   Schema representing a set list, which is a collection of sets.
   """
   use Ecto.Schema
   import Ecto.Changeset
-  alias BandDb.Set
+  alias BandDb.SetLists.Set
 
   schema "set_lists" do
     field :name, :string

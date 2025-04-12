@@ -1,8 +1,8 @@
-defmodule BandDb.SetListServer do
+defmodule BandDb.SetLists.SetListServer do
   use GenServer
   require Logger
-  alias BandDb.{SetList, Set}
-  use BandDb.Persistence,
+  alias BandDb.SetLists.SetList
+  use BandDb.Shared.Persistence,
     table_name: :set_lists_table
 
   # Client API
