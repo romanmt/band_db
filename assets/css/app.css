@@ -3,3 +3,38 @@
 @import "tailwindcss/utilities";
 
 /* This file is for your main application CSS */
+
+/* Print styles */
+@media print {
+  body {
+    background-color: white;
+  }
+  
+  .hidden-print {
+    display: none !important;
+  }
+  
+  .print-only {
+    display: block !important;
+  }
+  
+  /* Set margins for printing */
+  @page {
+    margin: 1cm;
+  }
+  
+  /* Remove unwanted elements when printing */
+  header, nav, footer, button {
+    display: none !important;
+  }
+  
+  /* Ensure text is black for better printing */
+  .print-setlist, .print-plan {
+    color: black !important;
+  }
+  
+  /* Format song titles and band names */
+  .print-setlist span, .print-plan span {
+    color: black !important;
+  }
+}

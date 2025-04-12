@@ -1,4 +1,4 @@
-<div class="max-w-7xl mx-auto">
+<div class="max-w-7xl mx-auto" id="set-list-history" phx-hook="SetListHistory">
   <.page_header title="Saved Set Lists">
     <:action>
       <.link navigate={~p"/set-list/new"} class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
@@ -22,6 +22,17 @@
           expanded={Map.get(@expanded_sets, set_list.name, false)}
           on_toggle={"toggle_details?name=#{set_list.name}"}
         >
+          <:actions>
+            <button 
+              phx-click="print_set_list"
+              phx-value-name={set_list.name}
+              class="inline-flex items-center px-2 py-1 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              <.icon name="hero-printer" class="h-4 w-4 mr-1" />
+              Print
+            </button>
+          </:actions>
+          
           <%= for {set, index} <- Enum.with_index(set_list.sets) do %>
             <div class="mb-8 last:mb-0">
               <div class="flex items-center justify-between mb-4">
@@ -65,4 +76,61 @@
       </div>
     <% end %>
   </div>
+</div>
+
+<div id="setlist-print-container" class="print-only hidden">
+  <%= for set_list <- @set_lists do %>
+    <div class="print-setlist p-8" data-name={set_list.name}>
+      <div class="mb-8 flex justify-between items-center">
+        <h1 class="text-2xl font-bold text-gray-900">Set List</h1>
+        <p class="text-xl text-gray-900 font-semibold"><%= set_list.name %></p>
+      </div>
+      
+      <div class="space-y-8">
+        <%= for {set, index} <- Enum.with_index(set_list.sets) do %>
+          <div class="mb-6">
+            <div class="flex items-center justify-between mb-3 border-b pb-2">
+              <h2 class="text-xl font-semibold text-gray-900"><%= set.name %></h2>
+              <div class="text-sm text-gray-700">
+                Duration: <%= format_duration(set.duration) %>
+                <%= if set.break_duration && set.break_duration > 0 do %>
+                  <span class="mx-2">•</span>
+                  Break: <%= format_duration(set.break_duration) %>
+                <% end %>
+              </div>
+            </div>
+            
+            <div class="space-y-3">
+              <%= for {song, idx} <- Enum.with_index(set.songs) do %>
+                <div class="flex items-center p-1">
+                  <div class="flex-shrink-0 mr-3 text-gray-500">
+                    <%= idx + 1 %>.
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center space-x-2">
+                        <span class="font-medium text-gray-900"><%= song %></span>
+                        <%= if band_name = get_band_name(song, @songs) do %>
+                          <span class="text-sm text-gray-600">- <%= band_name %></span>
+                        <% end %>
+                      </div>
+                      <%= if tuning = get_tuning(song, @songs) do %>
+                        <span class="text-sm text-gray-600">
+                          <%= display_tuning(tuning) %>
+                        </span>
+                      <% end %>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+        
+        <div class="mt-6 pt-4 border-t text-right text-sm text-gray-500">
+          Total Duration: <%= format_duration(set_list.total_duration) %>
+        </div>
+      </div>
+    </div>
+  <% end %>
 </div> 

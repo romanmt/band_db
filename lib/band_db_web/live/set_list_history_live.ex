@@ -32,6 +32,18 @@ defmodule BandDbWeb.SetListHistoryLive do
   end
 
   @impl true
+  def handle_event("print_set_list", %{"name" => name}, socket) do
+    # First expand the set list
+    expanded_sets = Map.put(socket.assigns.expanded_sets, name, true)
+
+    # Trigger the print event in the browser
+    {:noreply,
+      socket
+      |> assign(expanded_sets: expanded_sets)
+      |> push_event("print_set_list", %{name: name})}
+  end
+
+  @impl true
   def handle_info({:set_list_updated, _}, socket) do
     set_lists = SetListServer.list_set_lists()
     {:noreply, assign(socket, set_lists: set_lists)}

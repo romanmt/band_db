@@ -33,4 +33,37 @@ Hooks.RehearsalHistory = {
   }
 }
 
+Hooks.SetListHistory = {
+  mounted() {
+    this.handleEvent("print_set_list", ({name}) => {
+      // Hide the main content
+      document.getElementById('set-list-history').style.display = 'none';
+      
+      // Hide all print set lists except the one we want to print
+      const printSetLists = document.querySelectorAll('.print-setlist');
+      printSetLists.forEach(setList => {
+        setList.style.display = 'none';
+      });
+      
+      // Show only the set list we want to print
+      const targetSetList = document.querySelector(`.print-setlist[data-name="${name}"]`);
+      if (targetSetList) {
+        targetSetList.style.display = 'block';
+      }
+      
+      // Show the print-only container
+      document.querySelector('#setlist-print-container').classList.remove('hidden');
+      
+      // Wait a short moment for the content to be visible
+      setTimeout(() => {
+        window.print();
+        
+        // Restore the main content and hide the print-only container
+        document.getElementById('set-list-history').style.display = 'block';
+        document.querySelector('#setlist-print-container').classList.add('hidden');
+      }, 100);
+    });
+  }
+}
+
 export default Hooks; 
