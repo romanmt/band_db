@@ -1,10 +1,7 @@
 defmodule BandDb.Rehearsals.RehearsalServer do
   use GenServer
   require Logger
-  alias BandDb.Rehearsals.RehearsalPlan
-  alias BandDb.Repo
-  use BandDb.Shared.Persistence,
-    table_name: :rehearsal_plans_table
+  alias BandDb.Rehearsals.{RehearsalPlan, RehearsalPersistence}
 
   # Client API
 
@@ -37,10 +34,15 @@ defmodule BandDb.Rehearsals.RehearsalServer do
 
   @impl true
   def init(_args) do
-    state = init_persistence()
-    # Ensure we have a plans list
-    state = if Map.has_key?(state, :plans), do: state, else: %{plans: []}
-    {:ok, state}
+    # Load initial state from persistence
+    case RehearsalPersistence.load_plans() do
+      {:ok, plans} ->
+        schedule_backup()
+        {:ok, %{plans: plans}}
+      _ ->
+        schedule_backup()
+        {:ok, %{plans: []}}
+    end
   end
 
   @impl true
@@ -103,5 +105,14 @@ defmodule BandDb.Rehearsals.RehearsalServer do
   end
 
   @impl true
-  def handle_info(:backup, state), do: handle_backup(state)
+  def handle_info(:backup, state) do
+    Logger.info("Backing up rehearsal plans")
+    RehearsalPersistence.persist_plans(state.plans)
+    schedule_backup()
+    {:noreply, state}
+  end
+
+  defp schedule_backup do
+    Process.send_after(self(), :backup, :timer.minutes(1))
+  end
 end
