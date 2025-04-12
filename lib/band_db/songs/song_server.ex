@@ -1,10 +1,7 @@
 defmodule BandDb.Songs.SongServer do
   use GenServer
   require Logger
-  alias BandDb.Songs.Song
-  alias BandDb.Repo
-  use BandDb.Shared.Persistence,
-    table_name: :songs_table
+  alias BandDb.Songs.{Song, SongPersistence}
 
   # Client API
 
@@ -45,10 +42,15 @@ defmodule BandDb.Songs.SongServer do
 
   @impl true
   def init(_args) do
-    state = init_persistence()
-    # Ensure we have a songs list
-    state = if Map.has_key?(state, :songs), do: state, else: %{songs: []}
-    {:ok, state}
+    # Load initial state from persistence
+    case SongPersistence.load_songs() do
+      {:ok, songs} ->
+        schedule_backup()
+        {:ok, %{songs: songs}}
+      _ ->
+        schedule_backup()
+        {:ok, %{songs: []}}
+    end
   end
 
   @impl true
@@ -187,5 +189,14 @@ defmodule BandDb.Songs.SongServer do
   end
 
   @impl true
-  def handle_info(:backup, state), do: handle_backup(state)
+  def handle_info(:backup, state) do
+    Logger.info("Backing up songs")
+    SongPersistence.persist_songs(state.songs)
+    schedule_backup()
+    {:noreply, state}
+  end
+
+  defp schedule_backup do
+    Process.send_after(self(), :backup, :timer.minutes(1))
+  end
 end
