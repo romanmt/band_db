@@ -3,27 +3,32 @@ defmodule BandDb.SetLists.Set do
   Schema representing a set within a set list.
   A set is a collection of songs with metadata like duration and break time.
   """
-  use Ecto.Schema
-  import Ecto.Changeset
+  defstruct [:id, :name, :songs, :duration, :break_duration, :set_order, :set_list_id]
 
-  @primary_key false
-  embedded_schema do
-    field :name, :string
-    field :songs, {:array, :string}
-    field :duration, :integer  # Duration in seconds
-    field :break_duration, :integer  # Break duration in seconds after this set (nil for last set)
-    field :set_order, :integer  # Order of the set in the set list
+  @doc """
+  Creates a new Set with the given attributes.
+  Generates a UUID for the set and sets default values.
+  """
+  def new(attrs \\ %{}) do
+    struct!(__MODULE__, Map.merge(%{
+      id: Ecto.UUID.generate(),
+      name: nil,
+      songs: [],
+      duration: nil,
+      break_duration: nil,
+      set_order: nil,
+      set_list_id: nil
+    }, attrs))
   end
 
   @doc """
   Creates a changeset for a set.
+  This is kept for compatibility with the existing code and future database migration.
   """
   def changeset(%__MODULE__{} = set, params) when is_map(params) do
     set
-    |> cast(params, [:name, :songs, :duration, :break_duration, :set_order])
-    |> validate_required([:name, :songs, :set_order])
-    |> validate_number(:duration, greater_than_or_equal_to: 0)
-    |> validate_number(:break_duration, greater_than_or_equal_to: 0)
-    |> validate_number(:set_order, greater_than: 0)
+    |> Map.from_struct()
+    |> Map.merge(params)
+    |> new()
   end
 end

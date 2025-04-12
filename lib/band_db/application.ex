@@ -21,9 +21,9 @@ defmodule BandDb.Application do
       # Start the Endpoint (http/https)
       BandDbWeb.Endpoint,
       # Start the Song Server
-      BandDb.Songs.SongServer,
+      {BandDb.Songs.SongServer, BandDb.Songs.SongServer},
       # Start the Set List Server
-      BandDb.SetLists.SetListServer,
+      {BandDb.SetLists.SetListServer, BandDb.SetLists.SetListServer},
       # Start the Rehearsal Server
       BandDb.Rehearsals.RehearsalServer
     ]

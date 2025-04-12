@@ -241,25 +241,18 @@ defmodule BandDbWeb.SetListEditorLive do
 
     new_set_list = %{socket.assigns.new_set_list | total_duration: total_duration}
 
-    case SetListServer.add_set_list(new_set_list.name, new_set_list.sets, total_duration) do
-      {:ok, _set_list} ->
+    case SetListServer.add_set_list(SetListServer, new_set_list.name, new_set_list.sets) do
+      :ok ->
         {:noreply,
           socket
           |> put_flash(:info, "Set list saved successfully")
           |> redirect(to: ~p"/set-list")}
-
-      {:error, :set_list_already_exists} ->
+      {:error, reason} ->
         {:noreply,
           socket
-          |> put_flash(:error, "A set list with this name already exists")
-          |> assign(new_set_list: new_set_list)}
+          |> put_flash(:error, "Failed to save set list: #{reason}")
+          |> assign(show_save_modal: false)}
     end
-  end
-
-  @impl true
-  def handle_event("update_name", %{"name" => name}, socket) do
-    new_set_list = %{socket.assigns.new_set_list | name: name}
-    {:noreply, assign(socket, new_set_list: new_set_list)}
   end
 
   @impl true
@@ -273,28 +266,28 @@ defmodule BandDbWeb.SetListEditorLive do
   end
 
   @impl true
+  def handle_event("update_name", %{"name" => name}, socket) do
+    new_set_list = %{socket.assigns.new_set_list | name: name}
+    {:noreply, assign(socket, new_set_list: new_set_list)}
+  end
+
+  @impl true
   def handle_info(:update, socket) do
-    # Get all songs from the server
-    all_songs = SongServer.list_songs()
-
-    # Filter out suggested and needs_learning songs
-    filtered_songs = all_songs
-    |> Enum.filter(fn song ->
-      song.status in [:ready, :performed]
-    end)
-
-    # Get songs that are already in any set
-    used_songs = socket.assigns.new_set_list.sets
-    |> Enum.flat_map(fn set -> set.songs end)
-
-    # Remove songs that are already in sets
-    available_songs = filtered_songs
-    |> Enum.reject(fn song ->
-      Enum.member?(used_songs, song.title)
-    end)
-
     set_lists = SetListServer.list_set_lists()
-    {:noreply, assign(socket, songs: available_songs, set_lists: set_lists)}
+
+    # Get all songs that are currently in any set
+    used_song_titles = socket.assigns.new_set_list.sets
+    |> Enum.flat_map(& &1.songs)
+    |> MapSet.new()
+
+    # Filter out songs that are already in sets
+    songs = SongServer.list_songs()
+    |> Enum.filter(fn song ->
+      song.status in [:ready, :performed] and
+      not MapSet.member?(used_song_titles, song.title)
+    end)
+
+    {:noreply, assign(socket, set_lists: set_lists, songs: songs)}
   end
 
   defp format_duration(seconds) when is_integer(seconds) do

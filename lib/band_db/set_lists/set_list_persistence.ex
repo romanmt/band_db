@@ -1,59 +1,80 @@
 defmodule BandDb.SetLists.SetListPersistence do
   @moduledoc """
-  Handles all persistence operations for set lists using DETS.
-  This module is responsible for loading and saving set lists to DETS.
+  Handles persistence of set lists to disk.
   """
-
   require Logger
-  alias BandDb.SetLists.SetList
+  alias BandDb.SetLists.{SetList, Set}
 
-  @table_name :set_lists_table
-  @backup_interval :timer.minutes(1)
+  @set_lists_file "set_lists.json"
 
   @doc """
-  Loads all set lists from DETS.
-  Returns {:ok, set_lists} or {:error, reason}
+  Loads set lists from disk.
   """
   def load_set_lists do
-    case :dets.open_file(@table_name, type: :set) do
-      {:ok, table} ->
-        set_lists = :dets.match_object(table, {:"$1", :"$2"})
-        |> Enum.map(fn {_key, set_list} -> set_list end)
-        :dets.close(table)
-        {:ok, set_lists}
+    case File.read(@set_lists_file) do
+      {:ok, content} ->
+        case Jason.decode(content) do
+          {:ok, decoded} ->
+            set_lists = decoded
+            |> Enum.map(fn {name, data} ->
+              sets = Enum.map(data["sets"], fn set_data ->
+                Set.new(%{
+                  name: set_data["name"],
+                  songs: Enum.map(set_data["songs"], fn song_data ->
+                    %{
+                      title: song_data["title"],
+                      artist: song_data["artist"],
+                      duration: song_data["duration"]
+                    }
+                  end)
+                })
+              end)
+              {name, SetList.new(%{name: name, sets: sets})}
+            end)
+            |> Map.new()
+            {:ok, set_lists}
+          {:error, reason} ->
+            Logger.error("Failed to decode set lists: #{inspect(reason)}")
+            {:error, :decode_failed}
+        end
+      {:error, :enoent} ->
+        {:ok, %{}}
       {:error, reason} ->
-        Logger.error("Failed to open DETS table: #{inspect(reason)}")
-        {:ok, []}
+        Logger.error("Failed to read set lists file: #{inspect(reason)}")
+        {:error, :read_failed}
     end
   end
 
   @doc """
-  Persists all set lists to DETS.
-  Returns :ok on success or {:error, reason} on failure.
+  Persists set lists to disk.
   """
-  def persist_set_lists(set_lists) do
-    case :dets.open_file(@table_name, type: :set) do
-      {:ok, table} ->
-        # Delete all existing entries
-        :dets.delete_all_objects(table)
-
-        # Insert all set lists
-        Enum.each(set_lists, fn set_list ->
-          :dets.insert(table, {set_list.name, set_list})
+  def persist_set_lists(state) do
+    encoded = state
+    |> Enum.map(fn {name, set_list} ->
+      {name, %{
+        "name" => set_list.name,
+        "sets" => Enum.map(set_list.sets, fn set ->
+          %{
+            "name" => set.name,
+            "songs" => Enum.map(set.songs, fn song ->
+              %{
+                "title" => song.title,
+                "artist" => song.artist,
+                "duration" => song.duration
+              }
+            end)
+          }
         end)
+      }}
+    end)
+    |> Map.new()
+    |> Jason.encode!()
 
-        :dets.close(table)
-        :ok
+    case File.write(@set_lists_file, encoded) do
+      :ok -> :ok
       {:error, reason} ->
-        Logger.error("Failed to open DETS table: #{inspect(reason)}")
-        {:error, reason}
+        Logger.error("Failed to write set lists: #{inspect(reason)}")
+        {:error, :write_failed}
     end
-  end
-
-  @doc """
-  Schedules the next backup.
-  """
-  def schedule_backup(pid) do
-    Process.send_after(pid, :backup, @backup_interval)
   end
 end

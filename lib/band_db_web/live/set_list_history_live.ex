@@ -12,7 +12,10 @@ defmodule BandDbWeb.SetListHistoryLive do
     end
 
     set_lists = SetListServer.list_set_lists()
-    songs = SongServer.list_songs()
+    songs = case Process.whereis(BandDb.Songs.SongServer) do
+      nil -> []
+      _ -> SongServer.list_songs()
+    end
     expanded_sets = %{}
 
     {:ok, assign(socket, set_lists: set_lists, expanded_sets: expanded_sets, songs: songs)}
@@ -33,9 +36,18 @@ defmodule BandDbWeb.SetListHistoryLive do
   end
 
   @impl true
+  def handle_info({:set_list_updated, _}, socket) do
+    set_lists = SetListServer.list_set_lists()
+    {:noreply, assign(socket, set_lists: set_lists)}
+  end
+
+  @impl true
   def handle_info(:update, socket) do
     set_lists = SetListServer.list_set_lists()
-    songs = SongServer.list_songs()
+    songs = case Process.whereis(BandDb.Songs.SongServer) do
+      nil -> []
+      _ -> SongServer.list_songs()
+    end
     {:noreply, assign(socket, set_lists: set_lists, songs: songs)}
   end
 
