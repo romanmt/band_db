@@ -19,7 +19,21 @@ defmodule BandDbWeb.AdminLive.UsersLive do
   end
 
   def handle_event("generate_invite", _params, socket) do
-    base_url = BandDbWeb.Endpoint.url()
+    # Use the PHX_HOST environment variable if available (for production),
+    # otherwise fall back to the development endpoint URL
+    base_url =
+      case System.get_env("PHX_HOST") do
+        nil ->
+          # Development mode
+          BandDbWeb.Endpoint.url()
+        host ->
+          # Production mode
+          "https://#{host}"
+      end
+
+    # For custom domain
+    base_url = if host_is_fly_domain?(base_url), do: "https://band-boss.com", else: base_url
+
     {_token, url, expires_at} = Accounts.generate_invitation_link(base_url)
     {:noreply, assign(socket, invitation_link: url, invitation_expires_at: expires_at)}
   end
@@ -30,6 +44,11 @@ defmodule BandDbWeb.AdminLive.UsersLive do
 
   defp list_users do
     Accounts.list_users()
+  end
+
+  # Check if the host is the Fly.io domain (which we want to replace with our custom domain)
+  defp host_is_fly_domain?(url) do
+    String.contains?(url, "band-db.fly.dev")
   end
 
   def render(assigns) do

@@ -10,7 +10,7 @@ kill_signal = 'SIGTERM'
 [build]
 
 [env]
-  PHX_HOST = 'band-db.fly.dev'
+  PHX_HOST = 'band-boss.com'
   PORT = '8080'
 
 [deploy]
