@@ -1,0 +1,3 @@
+# Helper function to safely get song title regardless of format
+defp get_song_title(song) when is_map(song), do: song.title
+defp get_song_title(song) when is_binary(song), do: song

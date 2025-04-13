@@ -55,12 +55,12 @@
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-2">
-                          <span class="font-medium text-gray-900 truncate"><%= song %></span>
+                          <span class="font-medium text-gray-900 truncate"><%= get_song_title(song) %></span>
                           <%= if band_name = get_band_name(song, @songs) do %>
                             <span class="text-sm text-gray-500">by <%= band_name %></span>
                           <% end %>
                         </div>
-                        <%= if tuning = get_tuning(song, @songs) do %>
+                        <%= if tuning = (is_map(song) && song.tuning) || get_tuning(song, @songs) do %>
                           <span class={"px-2 py-0.5 text-xs rounded-full #{tuning_color(tuning)}"}>
                             <%= display_tuning(tuning) %>
                           </span>
@@ -109,12 +109,12 @@
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center justify-between">
                       <div class="flex items-center space-x-2">
-                        <span class="font-medium text-gray-900"><%= song %></span>
+                        <span class="font-medium text-gray-900"><%= get_song_title(song) %></span>
                         <%= if band_name = get_band_name(song, @songs) do %>
                           <span class="text-sm text-gray-600">- <%= band_name %></span>
                         <% end %>
                       </div>
-                      <%= if tuning = get_tuning(song, @songs) do %>
+                      <%= if tuning = (is_map(song) && song.tuning) || get_tuning(song, @songs) do %>
                         <span class="text-sm text-gray-600">
                           <%= display_tuning(tuning) %>
                         </span>

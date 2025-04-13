@@ -68,14 +68,30 @@ defmodule BandDbWeb.SetListHistoryLive do
   defp display_tuning(tuning) when is_atom(tuning), do: String.capitalize(to_string(tuning))
   defp display_tuning(_), do: "Unknown"
 
-  defp get_band_name(song_title, songs) do
+  defp get_band_name(song, songs) when is_map(song) do
+    get_band_name(song.title, songs)
+  end
+
+  defp get_band_name(song_title, songs) when is_binary(song_title) do
     case Enum.find(songs, &(&1.title == song_title)) do
       nil -> nil
       song -> song.band_name
     end
   end
 
-  defp get_tuning(song_title, songs) do
+  # Helper function to safely get song title regardless of format
+  defp get_song_title(song) when is_map(song), do: song.title
+  defp get_song_title(song) when is_binary(song), do: song
+
+  defp get_tuning(song, songs) when is_map(song) do
+    # First try to get tuning directly from the song
+    case song.tuning do
+      nil -> get_tuning(song.title, songs)
+      tuning -> tuning
+    end
+  end
+
+  defp get_tuning(song_title, songs) when is_binary(song_title) do
     case Enum.find(songs, &(&1.title == song_title)) do
       nil -> nil
       song -> song.tuning

@@ -266,22 +266,11 @@ defmodule BandDbWeb.SetListEditorLive do
 
     # Create proper Set structs for each set
     sets = Enum.map(new_set_list.sets, fn set ->
-      # Convert song maps to string titles for database storage
-      songs = Enum.map(set.songs, fn song ->
-        case song do
-          %{title: title} -> title
-          title when is_binary(title) -> title
-          _ -> nil
-        end
-      end)
-      # Remove any nil values
-      songs = Enum.filter(songs, &(&1 != nil))
-
       %Set{
         name: set.name,
         duration: set.duration,
         break_duration: set.break_duration,
-        songs: songs
+        songs: set.songs
       }
     end)
 
