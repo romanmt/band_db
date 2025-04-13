@@ -44,6 +44,21 @@ defmodule BandDbWeb.SetListEditorLive do
   @impl true
   def handle_event("add_set", _params, socket) do
     if socket.assigns.num_sets < 3 do
+      # First, ensure the previous set has a break duration
+      new_sets = if socket.assigns.num_sets > 0 do
+        # Update the last set to have a default break duration of 15 minutes if not already set
+        List.update_at(socket.assigns.new_set_list.sets, socket.assigns.num_sets - 1, fn set ->
+          if set.break_duration == nil do
+            %{set | break_duration: 900}  # 15 minutes = 900 seconds
+          else
+            set
+          end
+        end)
+      else
+        socket.assigns.new_set_list.sets
+      end
+
+      # Then add the new set
       new_set = %Set{
         name: "Set #{socket.assigns.num_sets + 1}",
         songs: [],
@@ -52,8 +67,12 @@ defmodule BandDbWeb.SetListEditorLive do
         set_order: socket.assigns.num_sets + 1
       }
 
-      new_sets = socket.assigns.new_set_list.sets ++ [new_set]
-      new_set_list = %{socket.assigns.new_set_list | sets: new_sets}
+      new_sets = new_sets ++ [new_set]
+      total_duration = recalculate_total_duration(new_sets)
+      new_set_list = %{socket.assigns.new_set_list |
+        sets: new_sets,
+        total_duration: total_duration
+      }
 
       {:noreply, assign(socket,
         new_set_list: new_set_list,
@@ -68,7 +87,11 @@ defmodule BandDbWeb.SetListEditorLive do
   def handle_event("remove_set", _params, socket) do
     if socket.assigns.num_sets > 1 do
       new_sets = List.delete_at(socket.assigns.new_set_list.sets, -1)
-      new_set_list = %{socket.assigns.new_set_list | sets: new_sets}
+      total_duration = recalculate_total_duration(new_sets)
+      new_set_list = %{socket.assigns.new_set_list |
+        sets: new_sets,
+        total_duration: total_duration
+      }
 
       {:noreply, assign(socket,
         new_set_list: new_set_list,
@@ -77,32 +100,6 @@ defmodule BandDbWeb.SetListEditorLive do
     else
       {:noreply, socket}
     end
-  end
-
-  @impl true
-  def handle_event("toggle_break_duration", %{"set-index" => set_index}, socket) do
-    set_index = String.to_integer(set_index)
-    new_sets = List.update_at(socket.assigns.new_set_list.sets, set_index, fn set ->
-      %{set | break_duration: if(set.break_duration, do: nil, else: 0)}
-    end)
-
-    new_set_list = %{socket.assigns.new_set_list | sets: new_sets}
-
-    {:noreply, assign(socket, new_set_list: new_set_list)}
-  end
-
-  @impl true
-  def handle_event("update_break_duration", %{"set-index" => set_index, "duration" => duration}, socket) do
-    set_index = String.to_integer(set_index)
-    duration = String.to_integer(duration)
-
-    new_sets = List.update_at(socket.assigns.new_set_list.sets, set_index, fn set ->
-      %{set | break_duration: duration}
-    end)
-
-    new_set_list = %{socket.assigns.new_set_list | sets: new_sets}
-
-    {:noreply, assign(socket, new_set_list: new_set_list)}
   end
 
   @impl true
@@ -136,8 +133,14 @@ defmodule BandDbWeb.SetListEditorLive do
         }
       end)
 
+      # Calculate total duration including breaks
+      total_duration = recalculate_total_duration(updated_sets)
+
       {:noreply, assign(socket,
-        new_set_list: %{socket.assigns.new_set_list | sets: updated_sets},
+        new_set_list: %{socket.assigns.new_set_list |
+          sets: updated_sets,
+          total_duration: total_duration
+        },
         songs: socket.assigns.songs |> Enum.filter(&(&1.uuid != song_uuid))
       )}
     else
@@ -169,11 +172,7 @@ defmodule BandDbWeb.SetListEditorLive do
     end)
 
     # Calculate total duration including breaks
-    total_duration = Enum.reduce(new_sets, 0, fn set, acc ->
-      set_duration = (set.duration || 0)
-      break_duration = (set.break_duration || 0)
-      acc + set_duration + break_duration
-    end)
+    total_duration = recalculate_total_duration(new_sets)
 
     new_set_list = %{socket.assigns.new_set_list |
       sets: new_sets,
@@ -196,7 +195,11 @@ defmodule BandDbWeb.SetListEditorLive do
         %{set | songs: songs}
       end)
 
-      new_set_list = %{socket.assigns.new_set_list | sets: new_sets}
+      total_duration = recalculate_total_duration(new_sets)
+      new_set_list = %{socket.assigns.new_set_list |
+        sets: new_sets,
+        total_duration: total_duration
+      }
 
       {:noreply, assign(socket, new_set_list: new_set_list)}
     else
@@ -220,7 +223,11 @@ defmodule BandDbWeb.SetListEditorLive do
       end
     end)
 
-    new_set_list = %{socket.assigns.new_set_list | sets: new_sets}
+    total_duration = recalculate_total_duration(new_sets)
+    new_set_list = %{socket.assigns.new_set_list |
+      sets: new_sets,
+      total_duration: total_duration
+    }
 
     {:noreply, assign(socket, new_set_list: new_set_list)}
   end
@@ -244,7 +251,11 @@ defmodule BandDbWeb.SetListEditorLive do
       %{set | songs: songs}
     end)
 
-    new_set_list = %{socket.assigns.new_set_list | sets: new_sets}
+    total_duration = recalculate_total_duration(new_sets)
+    new_set_list = %{socket.assigns.new_set_list |
+      sets: new_sets,
+      total_duration: total_duration
+    }
 
     {:noreply, assign(socket, new_set_list: new_set_list)}
   end
@@ -394,5 +405,32 @@ defmodule BandDbWeb.SetListEditorLive do
       "#{Phoenix.Naming.humanize(field)} #{Enum.join(errors, ", ")}"
     end)
     |> Enum.join(". ")
+  end
+
+  defp recalculate_total_duration(sets) do
+    Enum.reduce(sets, 0, fn set, acc ->
+      set_duration = (set.duration || 0)
+      break_duration = (set.break_duration || 0)
+      acc + set_duration + break_duration
+    end)
+  end
+
+  @impl true
+  def handle_event("update_break_duration", %{"set-index" => set_index, "duration" => duration}, socket) do
+    set_index = String.to_integer(set_index)
+    # Convert minutes to seconds (user enters minutes, we store seconds)
+    duration_seconds = String.to_integer(duration) * 60
+
+    new_sets = List.update_at(socket.assigns.new_set_list.sets, set_index, fn set ->
+      %{set | break_duration: duration_seconds}
+    end)
+
+    total_duration = recalculate_total_duration(new_sets)
+    new_set_list = %{socket.assigns.new_set_list |
+      sets: new_sets,
+      total_duration: total_duration
+    }
+
+    {:noreply, assign(socket, new_set_list: new_set_list)}
   end
 end

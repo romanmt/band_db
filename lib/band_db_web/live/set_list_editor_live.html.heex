@@ -12,7 +12,12 @@
 <!-- Set Configuration -->
 <div class="max-w-7xl mx-auto mb-8">
   <div class="bg-white shadow rounded-lg p-6">
-    <h2 class="text-xl font-semibold mb-4">Set Configuration</h2>
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-semibold">Set Configuration</h2>
+      <div class="text-gray-700 font-medium">
+        Total Duration: <span class="text-indigo-600"><%= format_duration(@new_set_list.total_duration) %></span>
+      </div>
+    </div>
     <div class="space-y-4">
       <div class="flex items-center space-x-4">
         <label class="text-sm font-medium text-gray-700">Number of Sets:</label>
@@ -35,12 +40,8 @@
               <div class="flex items-center space-x-4">
                 <label class="text-sm font-medium text-gray-700">Break Duration:</label>
                 <div class="flex items-center space-x-2">
-                  <button phx-click="toggle_break_duration" phx-value-set-index={index} class="p-1 text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded">
-                    <.icon name={if set.break_duration, do: "hero-minus", else: "hero-plus"} class="h-5 w-5" />
-                  </button>
-                  <%= if set.break_duration do %>
-                    <input type="number" name="duration" value={set.break_duration} min="0" step="30" phx-change="update_break_duration" phx-value-set-index={index} class="w-20 text-gray-900 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                  <% end %>
+                  <input type="number" name="duration" value={div(set.break_duration || 900, 60)} min="0" step="5" phx-change="update_break_duration" phx-value-set-index={index} class="w-20 text-gray-900 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                  <span class="text-xs text-gray-500">minutes</span>
                 </div>
               </div>
             <% end %>
@@ -88,7 +89,7 @@
               <div class="flex justify-between items-center mb-4">
                 <h4 class="text-lg font-bold">Set <%= index + 1 %> Songs</h4>
                 <div class="text-sm text-gray-600">
-                  Duration: <%= format_duration(set.duration) %>
+                  Set Duration: <%= format_duration(set.duration) %>
                 </div>
               </div>
               <div id={"sortable-songs-#{index}"} class="space-y-2 sortable-songs" phx-hook="SortableSongs" data-set-index={index}>
