@@ -91,42 +91,30 @@
                   Duration: <%= format_duration(set.duration) %>
                 </div>
               </div>
-              <div class="space-y-2">
-                <%= for {song_title, song_index} <- Enum.with_index(set.songs) do %>
-                  <div class="flex items-center p-2 bg-gray-50 rounded-lg">
-                    <div class="flex-shrink-0 mr-2">
-                      <.icon name="hero-musical-note" class="h-4 w-4 text-gray-400" />
+              <div id={"sortable-songs-#{index}"} class="space-y-2 sortable-songs" phx-hook="SortableSongs" data-set-index={index}>
+                <%= for {song, song_index} <- Enum.with_index(set.songs) do %>
+                  <div class="flex items-center p-2 bg-gray-50 rounded-lg" data-song-id={song_index}>
+                    <div class="flex-shrink-0 mr-2 drag-handle cursor-move">
+                      <.icon name="hero-bars-3" class="h-4 w-4 text-gray-400" />
                     </div>
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-2">
-                          <span class="font-medium text-gray-900 truncate"><%= song_title %></span>
-                          <%= if band_name = get_band_name(song_title, @songs) do %>
+                          <span class="font-medium text-gray-900 truncate"><%= get_song_title(song) %></span>
+                          <%= if band_name = get_band_name(song, @songs) do %>
                             <span class="text-sm text-gray-500">by <%= band_name %></span>
                           <% end %>
                         </div>
                         <div class="flex items-center space-x-2">
-                          <%= if tuning = get_tuning(song_title, @songs) do %>
+                          <%= if tuning = get_tuning(song, @songs) do %>
                             <span class={"px-2 py-0.5 text-xs rounded-full #{tuning_color(tuning)}"}>
                               <%= display_tuning(tuning) %>
                             </span>
                           <% end %>
-                          <div class="flex items-center space-x-1">
-                            <button phx-click="move_up" phx-value-song-id={song_title} phx-value-set-index={index} phx-value-song-index={song_index}
-                                    disabled={song_index == 0}
-                                    class={"p-1 rounded #{if song_index == 0, do: "text-gray-300 cursor-not-allowed", else: "text-gray-600 hover:text-gray-900"} focus:outline-none focus:ring-2 focus:ring-gray-500"}>
-                              <.icon name="hero-arrow-up" class="h-4 w-4" />
-                            </button>
-                            <button phx-click="move_down" phx-value-song-id={song_title} phx-value-set-index={index} phx-value-song-index={song_index}
-                                    disabled={song_index == length(set.songs) - 1}
-                                    class={"p-1 rounded #{if song_index == length(set.songs) - 1, do: "text-gray-300 cursor-not-allowed", else: "text-gray-600 hover:text-gray-900"} focus:outline-none focus:ring-2 focus:ring-gray-500"}>
-                              <.icon name="hero-arrow-down" class="h-4 w-4" />
-                            </button>
-                            <button phx-click="remove_from_set" phx-value-song-id={song_title} phx-value-set-index={index}
-                                    class="p-1 text-red-600 hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 rounded">
-                              <.icon name="hero-trash" class="h-4 w-4" />
-                            </button>
-                          </div>
+                          <button phx-click="remove_from_set" phx-value-song-id={song_index} phx-value-set-index={index}
+                                  class="p-1 text-red-600 hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 rounded">
+                            <.icon name="hero-trash" class="h-4 w-4" />
+                          </button>
                         </div>
                       </div>
                     </div>

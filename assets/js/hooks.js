@@ -1,4 +1,5 @@
 let Hooks = {}
+import Sortable from "sortablejs"
 
 Hooks.RehearsalHistory = {
   mounted() {
@@ -62,6 +63,34 @@ Hooks.SetListHistory = {
         document.getElementById('set-list-history').style.display = 'block';
         document.querySelector('#setlist-print-container').classList.add('hidden');
       }, 100);
+    });
+  }
+}
+
+Hooks.SortableSongs = {
+  mounted() {
+    const hook = this;
+    
+    new Sortable(this.el, {
+      animation: 150,
+      handle: ".drag-handle",
+      ghostClass: "sortable-ghost",
+      dragClass: "sortable-drag",
+      onEnd: function(evt) {
+        const songId = evt.item.dataset.songId;
+        const newIndex = evt.newIndex;
+        const oldIndex = evt.oldIndex;
+        const setIndex = hook.el.dataset.setIndex;
+        
+        if (newIndex !== oldIndex) {
+          hook.pushEvent("reorder_song", {
+            song_id: songId.toString(),
+            old_index: oldIndex.toString(),
+            new_index: newIndex.toString(),
+            set_index: setIndex.toString()
+          });
+        }
+      }
     });
   }
 }

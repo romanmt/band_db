@@ -122,10 +122,16 @@ defmodule BandDbWeb.SetListEditorLive do
       # Extract the song duration for later use
       song_duration = song.duration || 0
 
+      # Store song info as a map with title and tuning
+      song_info = %{
+        title: song.title,
+        tuning: song.tuning
+      }
+
       updated_sets = List.update_at(socket.assigns.new_set_list.sets, set_index, fn set ->
-        # Add only the song title, not the entire struct
+        # Add song info map instead of just the title
         %{set |
-          songs: [song.title | set.songs],
+          songs: [song_info | set.songs],
           duration: (set.duration || 0) + song_duration
         }
       end)
@@ -142,13 +148,21 @@ defmodule BandDbWeb.SetListEditorLive do
   @impl true
   def handle_event("remove_from_set", %{"song-id" => song_id, "set-index" => set_index}, socket) do
     set_index = String.to_integer(set_index)
+    song_id = String.to_integer(song_id)
 
     # Find the song's duration from the full song list
-    song = Enum.find(SongServer.list_songs(), &(&1.title == song_id))
+    # Get the song title from the set first
+    set = Enum.at(socket.assigns.new_set_list.sets, set_index)
+    song_info = Enum.at(set.songs, song_id)
+    song_title = if is_map(song_info), do: song_info.title, else: song_info
+
+    # Find the full song data to get duration
+    song = Enum.find(SongServer.list_songs(), &(&1.title == song_title))
     song_duration = if song, do: song.duration || 0, else: 0
 
     new_sets = List.update_at(socket.assigns.new_set_list.sets, set_index, fn set ->
-      new_songs = List.delete(set.songs, song_id)
+      # Remove song at the given index
+      new_songs = List.delete_at(set.songs, song_id)
       # Subtract the song's duration from the set's duration
       new_duration = (set.duration || 0) - song_duration
       %{set | songs: new_songs, duration: new_duration}
@@ -204,6 +218,30 @@ defmodule BandDbWeb.SetListEditorLive do
       else
         set
       end
+    end)
+
+    new_set_list = %{socket.assigns.new_set_list | sets: new_sets}
+
+    {:noreply, assign(socket, new_set_list: new_set_list)}
+  end
+
+  @impl true
+  def handle_event("reorder_song", %{"song_id" => song_id_str, "old_index" => old_index_str,
+                                      "new_index" => new_index_str, "set_index" => set_index_str}, socket) do
+    # Convert string values to integers
+    _song_id = if is_binary(song_id_str), do: String.to_integer(song_id_str), else: song_id_str
+    old_index = if is_binary(old_index_str), do: String.to_integer(old_index_str), else: old_index_str
+    new_index = if is_binary(new_index_str), do: String.to_integer(new_index_str), else: new_index_str
+    set_index = if is_binary(set_index_str), do: String.to_integer(set_index_str), else: set_index_str
+
+    # Update the song order in the set
+    new_sets = List.update_at(socket.assigns.new_set_list.sets, set_index, fn set ->
+      songs = set.songs
+      # Remove the song from its old position
+      {song, songs} = List.pop_at(songs, old_index)
+      # Insert the song at its new position
+      songs = List.insert_at(songs, new_index, song)
+      %{set | songs: songs}
     end)
 
     new_set_list = %{socket.assigns.new_set_list | sets: new_sets}
@@ -272,7 +310,11 @@ defmodule BandDbWeb.SetListEditorLive do
 
     # Get all songs that are currently in any set
     used_song_titles = socket.assigns.new_set_list.sets
-    |> Enum.flat_map(& &1.songs)
+    |> Enum.flat_map(fn set ->
+      Enum.map(set.songs, fn song ->
+        if is_map(song), do: song.title, else: song
+      end)
+    end)
     |> MapSet.new()
 
     # Filter out songs that are already in sets
@@ -305,14 +347,37 @@ defmodule BandDbWeb.SetListEditorLive do
   defp display_tuning(tuning) when is_atom(tuning), do: String.capitalize(to_string(tuning))
   defp display_tuning(_), do: "Unknown"
 
-  defp get_band_name(song_title, songs) do
+  defp get_song_title(song) do
+    cond do
+      is_map(song) and Map.has_key?(song, :title) -> song.title
+      is_binary(song) -> song
+      true -> nil
+    end
+  end
+
+  defp get_song_tuning(song) do
+    cond do
+      is_map(song) and Map.has_key?(song, :tuning) -> song.tuning
+      true -> nil
+    end
+  end
+
+  defp get_band_name(song, songs) do
+    song_title = get_song_title(song)
     case Enum.find(songs, &(&1.title == song_title)) do
       nil -> nil
       song -> song.band_name
     end
   end
 
-  defp get_tuning(song_title, songs) do
+  defp get_tuning(song, songs) do
+    # First try to get tuning directly from the song data
+    tuning = get_song_tuning(song)
+    if tuning, do: tuning, else: do_get_tuning(song, songs)
+  end
+
+  defp do_get_tuning(song, songs) do
+    song_title = get_song_title(song)
     case Enum.find(songs, &(&1.title == song_title)) do
       nil -> nil
       song -> song.tuning
