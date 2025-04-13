@@ -1,9 +1,8 @@
 defmodule BandDbWeb.SetListEditorLive do
   use BandDbWeb, :live_view
   import BandDbWeb.Components.PageHeader
-
-  alias BandDb.{SetLists.SetListServer, Songs.SongServer, SetLists.SetList, SetLists.Set}
-  alias Phoenix.LiveView.JS
+  alias BandDb.Songs.SongServer
+  alias BandDb.SetLists.{SetListServer, SetList, Set}
 
   @impl true
   def mount(_params, _session, socket) do
@@ -171,7 +170,7 @@ defmodule BandDbWeb.SetListEditorLive do
   end
 
   @impl true
-  def handle_event("move_up", %{"song-id" => song_id, "set-index" => set_index, "song-index" => song_index}, socket) do
+  def handle_event("move_up", %{"song-id" => _song_id, "set-index" => set_index, "song-index" => song_index}, socket) do
     set_index = String.to_integer(set_index)
     song_index = String.to_integer(song_index)
 
@@ -192,7 +191,7 @@ defmodule BandDbWeb.SetListEditorLive do
   end
 
   @impl true
-  def handle_event("move_down", %{"song-id" => song_id, "set-index" => set_index, "song-index" => song_index}, socket) do
+  def handle_event("move_down", %{"song-id" => _song_id, "set-index" => set_index, "song-index" => song_index}, socket) do
     set_index = String.to_integer(set_index)
     song_index = String.to_integer(song_index)
 
@@ -292,12 +291,6 @@ defmodule BandDbWeb.SetListEditorLive do
     "#{minutes}:#{String.pad_leading("#{remaining_seconds}", 2, "0")}"
   end
   defp format_duration(_), do: "0:00"
-
-  defp status_color(:ready), do: "bg-green-100 text-green-800"
-  defp status_color(:performed), do: "bg-blue-100 text-blue-800"
-  defp status_color(:not_ready), do: "bg-red-100 text-red-800"
-  defp status_color(:needs_learning), do: "bg-yellow-100 text-yellow-800"
-  defp status_color(_), do: "bg-gray-100 text-gray-800"
 
   defp tuning_color(:standard), do: "bg-indigo-100 text-indigo-800"
   defp tuning_color(:drop_d), do: "bg-blue-100 text-blue-800"

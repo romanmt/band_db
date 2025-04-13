@@ -405,7 +405,7 @@ defmodule BandDb.Accounts do
 
     case Repo.get_by(InvitationToken, token: token) do
       nil ->
-        {:ok, invitation_token} =
+        {:ok, _invitation_token} =
           %InvitationToken{}
           |> InvitationToken.changeset(%{
             token: token,
@@ -415,6 +415,7 @@ defmodule BandDb.Accounts do
           |> Repo.insert()
 
         {token, expires_at}
+
       _invitation_token -> generate_invitation_token(created_by_id)  # Recursively try again if token exists
     end
   end

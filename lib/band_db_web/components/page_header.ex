@@ -1,6 +1,5 @@
 defmodule BandDbWeb.Components.PageHeader do
   use Phoenix.Component
-  import BandDbWeb.CoreComponents
 
   @doc """
   Renders a page header with a title and optional action buttons.

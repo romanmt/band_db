@@ -57,7 +57,7 @@ defmodule BandDb.Accounts.IExHelpers do
 
   """
   def generate_invite_link(base_url \\ "http://localhost:4000") do
-    {_token, url} = Accounts.generate_invitation_link(base_url)
+    {_token, url, _expires_at} = Accounts.generate_invitation_link(base_url)
     url
   end
 end

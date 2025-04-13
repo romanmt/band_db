@@ -1,6 +1,5 @@
 defmodule BandDbWeb.Components.SongForm do
   use Phoenix.Component
-  import BandDbWeb.CoreComponents
 
   attr :title, :string, required: true, doc: "The title of the form"
   attr :song, :map, required: true, doc: "The song data to edit"
@@ -104,31 +103,5 @@ defmodule BandDbWeb.Components.SongForm do
       </div>
     </div>
     """
-  end
-
-  defp format_duration(nil), do: ""
-  defp format_duration(seconds) when is_integer(seconds) do
-    minutes = div(seconds, 60)
-    remaining_seconds = rem(seconds, 60)
-    :io_lib.format("~2..0B:~2..0B", [minutes, remaining_seconds])
-  end
-
-  defp status_options do
-    [
-      {"Suggested", :suggested},
-      {"Needs Learning", :needs_learning},
-      {"Needs Rehearsing", :needs_rehearsing},
-      {"Ready", :ready},
-      {"Performed", :performed}
-    ]
-  end
-
-  defp tuning_options do
-    [
-      {"Standard", :standard},
-      {"Drop D", :drop_d},
-      {"E flat", :e_flat},
-      {"Drop C#", :drop_c_sharp}
-    ]
   end
 end

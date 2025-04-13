@@ -1,7 +1,6 @@
 defmodule BandDbWeb.AdminLive.UsersLive do
   use BandDbWeb, :live_view
   alias BandDb.Accounts
-  alias BandDb.Accounts.User
 
   def mount(_params, _session, socket) do
     {:ok, assign(socket, users: list_users(), invitation_link: nil, invitation_expires_at: nil)}
