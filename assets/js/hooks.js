@@ -1,5 +1,6 @@
 let Hooks = {}
-import Sortable from "sortablejs"
+// Use the global Sortable object instead of importing it
+// import Sortable from "sortablejs"
 
 Hooks.RehearsalHistory = {
   mounted() {
@@ -71,6 +72,7 @@ Hooks.SortableSongs = {
   mounted() {
     const hook = this;
     
+    // Use the global Sortable object
     new Sortable(this.el, {
       animation: 150,
       handle: ".drag-handle",
