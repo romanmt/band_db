@@ -207,12 +207,30 @@ defmodule BandDb.SetLists.SetListServer do
   end
 
   defp format_changeset_errors(changeset) do
-    Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
-      Enum.reduce(opts, msg, fn {key, value}, acc ->
-        String.replace(acc, "%{#{key}}", to_string(value))
+    changeset
+    |> errors_on()
+    |> Map.to_list()
+    |> Enum.map_join(", ", fn {key, errors} ->
+      errors_text = errors |> Enum.join(", ")
+      "#{key} #{errors_text}"
+    end)
+  end
+
+  # Implementation borrowed from Phoenix framework's test helpers
+  # This completely avoids the String.Chars protocol issue
+  defp errors_on(changeset) do
+    Ecto.Changeset.traverse_errors(changeset, fn {message, opts} ->
+      Regex.replace(~r"%{(\w+)}", message, fn _, key ->
+        opts
+        |> Keyword.get(String.to_existing_atom(key), key)
+        |> stringify_value()
       end)
     end)
-    |> Enum.map(fn {k, v} -> "#{k} #{v}" end)
-    |> Enum.join(", ")
   end
+
+  defp stringify_value(value) when is_tuple(value), do: inspect(value)
+  defp stringify_value(value) when is_atom(value), do: Atom.to_string(value)
+  defp stringify_value(value) when is_list(value), do: inspect(value)
+  defp stringify_value(value) when is_map(value), do: inspect(value)
+  defp stringify_value(value), do: to_string(value)
 end
