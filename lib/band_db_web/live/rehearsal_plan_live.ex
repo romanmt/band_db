@@ -54,11 +54,12 @@ defmodule BandDbWeb.RehearsalPlanLive do
   @impl true
   def handle_event("update_form", params, socket) do
     # Extract parameters, default to existing values if not present
-    scheduled_date = case params do
-      %{"scheduled_date" => date} when date != "" ->
-        Date.from_iso8601!(date)
+    # Date param is for both the plan date and scheduled date now
+    date = case params do
+      %{"date" => d} when is_binary(d) and d != "" ->
+        Date.from_iso8601!(d)
       _ ->
-        socket.assigns.scheduled_date
+        socket.assigns.date
     end
 
     start_time = case params do
@@ -77,17 +78,9 @@ defmodule BandDbWeb.RehearsalPlanLive do
 
     location = Map.get(params, "location", socket.assigns.location)
 
-    # Date param is for the plan date, not the scheduled date
-    date = case params do
-      %{"date" => d} when is_binary(d) and d != "" ->
-        Date.from_iso8601!(d)
-      _ ->
-        socket.assigns.date
-    end
-
     {:noreply, assign(socket,
       date: date,
-      scheduled_date: scheduled_date,
+      scheduled_date: date,  # Use the same date for both
       start_time: start_time,
       end_time: end_time,
       location: location
@@ -97,6 +90,9 @@ defmodule BandDbWeb.RehearsalPlanLive do
   @impl true
   def handle_event("accept_plan", params, socket) do
     date = Date.from_iso8601!(params["date"])
+
+    # Ensure scheduled_date is the same as date since we're using a single field
+    socket = assign(socket, scheduled_date: date)
 
     # Save the rehearsal plan
     case RehearsalServer.save_plan(

@@ -154,10 +154,10 @@
               <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Save Rehearsal Plan</h3>
               <.form for={%{}} phx-submit="accept_plan" phx-change="update_form">
                 <div class="mb-4">
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Plan Date</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
                   <input type="date" name="date" value={@date} required
                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
-                  <p class="mt-1 text-sm text-gray-500">This is the date the plan was created for, not when the rehearsal is scheduled.</p>
+                  <p class="mt-1 text-sm text-gray-500">This is both the plan date and the scheduled rehearsal date.</p>
                 </div>
 
                 <%= if @has_calendar do %>
@@ -170,12 +170,6 @@
                     
                     <%= if @should_schedule do %>
                       <div class="mt-4 space-y-4">
-                        <div>
-                          <label for="scheduled_date" class="block text-sm font-medium text-gray-700">Rehearsal Date</label>
-                          <input type="date" id="scheduled_date" name="scheduled_date" value={@scheduled_date} 
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
-                        </div>
-                        
                         <div class="grid grid-cols-2 gap-4">
                           <div>
                             <label for="start_time" class="block text-sm font-medium text-gray-700">Start Time</label>
