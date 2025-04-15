@@ -224,6 +224,19 @@ defmodule BandDb.Calendar do
           }
         }
 
+        # Add source URL if provided (for linking back to the app)
+        source_url = Map.get(event_params, :source_url)
+        source_title = Map.get(event_params, :source_title)
+
+        event = if source_url do
+          Map.put(event, "source", %{
+            "url" => source_url,
+            "title" => source_title || "View in BandDb"
+          })
+        else
+          event
+        end
+
         # Add start time
         event = case {Map.get(event_params, :date), Map.get(event_params, :start_time)} do
           {date, nil} when not is_nil(date) ->

@@ -105,7 +105,10 @@ defmodule BandDbWeb.RehearsalPlanLive do
       socket.assigns.rehearsal_plan.set,
       socket.assigns.total_duration
     ) do
-      {:ok, plan_id} ->
+      {:ok, plan} ->
+        # Use plan date for deep linking - it's unique and stable
+        date_str = Date.to_iso8601(date)
+
         # If scheduling is enabled and connected to Google Calendar, create calendar event
         if socket.assigns.should_schedule && socket.assigns.has_calendar do
           user = socket.assigns.current_user
@@ -113,15 +116,27 @@ defmodule BandDbWeb.RehearsalPlanLive do
 
           if google_auth && google_auth.calendar_id do
             # Create calendar event
+            app_url = BandDbWeb.Endpoint.url()
+            plan_url = "#{app_url}/rehearsal/plan/#{date_str}"
+
+            # Use plain text for better compatibility
+            display_date = Calendar.strftime(date, "%B %d, %Y")
+            description = """
+            Rehearsal plan includes #{length(socket.assigns.rehearsal_plan.rehearsal)} songs to rehearse and a #{length(socket.assigns.rehearsal_plan.set)} song set.
+
+            """
+
             event_params = %{
               title: "Band Rehearsal - #{Date.to_string(socket.assigns.scheduled_date)}",
-              description: "Rehearsal plan includes #{length(socket.assigns.rehearsal_plan.rehearsal)} songs to rehearse and a #{length(socket.assigns.rehearsal_plan.set)} song set",
+              description: description,
               location: socket.assigns.location,
               date: socket.assigns.scheduled_date,
               start_time: socket.assigns.start_time,
               end_time: socket.assigns.end_time,
               event_type: "rehearsal",
-              rehearsal_plan_id: to_string(plan_id.id || "")
+              rehearsal_plan_id: to_string(date_str),
+              source_url: plan_url,
+              source_title: "View Complete Rehearsal Plan in BandDb"
             }
 
             # Log the params we're sending

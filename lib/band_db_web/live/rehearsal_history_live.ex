@@ -3,6 +3,7 @@ defmodule BandDbWeb.RehearsalHistoryLive do
   import BandDbWeb.Components.PageHeader
   alias BandDb.Rehearsals.RehearsalServer
   alias BandDb.Songs.SongServer
+  alias BandDbWeb.Components.RehearsalPlanComponent
 
   on_mount {BandDbWeb.UserAuth, :ensure_authenticated}
 
