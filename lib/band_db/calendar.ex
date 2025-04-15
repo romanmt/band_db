@@ -163,7 +163,9 @@ defmodule BandDb.Calendar do
             start_time: get_start_time(event),
             end_time: get_end_time(event),
             location: event.location,
-            html_link: event.html_link
+            html_link: event.html_link,
+            event_type: event.event_type,
+            rehearsal_plan_id: event.rehearsal_plan_id
           }
         end)
 

@@ -201,7 +201,9 @@ defmodule BandDb.Calendar.GoogleAPI do
             start: event["start"],
             end: event["end"],
             location: event["location"],
-            html_link: event["htmlLink"]
+            html_link: event["htmlLink"],
+            event_type: get_in(event, ["extendedProperties", "private", "eventType"]),
+            rehearsal_plan_id: get_in(event, ["extendedProperties", "private", "rehearsalPlanId"])
           }
         end)
         {:ok, events}
