@@ -3,6 +3,8 @@ defmodule BandDbWeb.SetListEditorLive do
   import BandDbWeb.Components.PageHeader
   alias BandDb.Songs.SongServer
   alias BandDb.SetLists.{SetListServer, SetList, Set}
+  alias BandDb.Calendar
+  require Logger
 
   @impl true
   def mount(_params, _session, socket) do
@@ -37,7 +39,14 @@ defmodule BandDbWeb.SetListEditorLive do
       selected_song: nil,
       show_break_duration: false,
       break_duration: 0,
-      show_save_modal: false
+      show_save_modal: false,
+      date: Date.utc_today(),
+      should_schedule: false,
+      start_time: ~T[19:00:00],
+      end_time: ~T[22:00:00],
+      location: "",
+      has_calendar: BandDb.Calendar.get_google_auth(socket.assigns.current_user) != nil,
+      show_calendar: false
     )}
   end
 
@@ -263,6 +272,7 @@ defmodule BandDbWeb.SetListEditorLive do
   @impl true
   def handle_event("save_set_list", _params, socket) do
     new_set_list = socket.assigns.new_set_list
+    date = socket.assigns.date
 
     # Create proper Set structs for each set
     sets = Enum.map(new_set_list.sets, fn set ->
@@ -276,10 +286,85 @@ defmodule BandDbWeb.SetListEditorLive do
 
     case SetListServer.add_set_list(new_set_list.name, sets) do
       :ok ->
-        {:noreply,
-         socket
-         |> put_flash(:info, "Set list saved successfully!")
-         |> push_navigate(to: ~p"/set-list")}
+        # If scheduling is enabled and connected to Google Calendar, create calendar event
+        if socket.assigns.should_schedule && socket.assigns.has_calendar do
+          user = socket.assigns.current_user
+          google_auth = BandDb.Calendar.get_google_auth(user)
+
+          if google_auth && google_auth.calendar_id do
+            # Create calendar event
+            app_url = BandDbWeb.Endpoint.url()
+            set_list_url = "#{app_url}/set-list"
+
+            # Format song list for description
+            song_list = new_set_list.sets
+            |> Enum.flat_map(fn set ->
+              songs = Enum.map(set.songs, fn song ->
+                if is_map(song), do: song.title, else: song
+              end)
+              ["#{set.name}:"] ++ songs ++ [""]
+            end)
+            |> Enum.join("\n")
+
+            # Use plain text for better compatibility
+            description = """
+            #{new_set_list.name} set list includes #{Enum.count(new_set_list.sets)} sets with a total of #{Enum.sum(Enum.map(new_set_list.sets, fn set -> length(set.songs) end))} songs.
+
+            #{song_list}
+            """
+
+            event_params = %{
+              title: "Show: #{new_set_list.name}",
+              description: description,
+              location: socket.assigns.location,
+              date: socket.assigns.date,
+              start_time: socket.assigns.start_time,
+              end_time: socket.assigns.end_time,
+              event_type: "show",
+              set_list_name: new_set_list.name,
+              source_url: set_list_url,
+              source_title: "View Set List in BandDb"
+            }
+
+            # Log the params we're sending
+            Logger.debug("Creating calendar event with params: #{inspect(event_params)}")
+
+            case BandDb.Calendar.create_event(user, google_auth.calendar_id, event_params) do
+              {:ok, event_id} ->
+                # Update set list with event info (using a map with key as set list name)
+                SetListServer.update_set_list(new_set_list.name, %{
+                  sets: sets,
+                  date: socket.assigns.date,
+                  start_time: socket.assigns.start_time,
+                  end_time: socket.assigns.end_time,
+                  location: socket.assigns.location,
+                  calendar_event_id: event_id
+                })
+
+                {:noreply,
+                  socket
+                  |> put_flash(:info, "Set list saved and added to calendar")
+                  |> push_navigate(to: ~p"/set-list")}
+
+              {:error, reason} ->
+                # Set list saved but calendar event failed
+                {:noreply,
+                  socket
+                  |> put_flash(:error, "Set list saved but calendar event failed: #{reason}")
+                  |> push_navigate(to: ~p"/set-list")}
+            end
+          else
+            {:noreply,
+              socket
+              |> put_flash(:info, "Set list saved successfully!")
+              |> push_navigate(to: ~p"/set-list")}
+          end
+        else
+          {:noreply,
+            socket
+            |> put_flash(:info, "Set list saved successfully!")
+            |> push_navigate(to: ~p"/set-list")}
+        end
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply,
@@ -316,6 +401,45 @@ defmodule BandDbWeb.SetListEditorLive do
   end
 
   @impl true
+  def handle_event("toggle_scheduling", _, socket) do
+    {:noreply, assign(socket, should_schedule: !socket.assigns.should_schedule)}
+  end
+
+  @impl true
+  def handle_event("update_form", params, socket) do
+    # Extract date from params, default to existing value if not present
+    date = case params do
+      %{"date" => d} when is_binary(d) and d != "" ->
+        Date.from_iso8601!(d)
+      _ ->
+        socket.assigns.date
+    end
+
+    start_time = case params do
+      %{"start_time" => time} when time != "" ->
+        Time.from_iso8601!(time)
+      _ ->
+        socket.assigns.start_time
+    end
+
+    end_time = case params do
+      %{"end_time" => time} when time != "" ->
+        Time.from_iso8601!(time)
+      _ ->
+        socket.assigns.end_time
+    end
+
+    location = Map.get(params, "location", socket.assigns.location)
+
+    {:noreply, assign(socket,
+      date: date,
+      start_time: start_time,
+      end_time: end_time,
+      location: location
+    )}
+  end
+
+  @impl true
   def handle_info(:update, socket) do
     set_lists = SetListServer.list_set_lists()
 
@@ -336,6 +460,11 @@ defmodule BandDbWeb.SetListEditorLive do
     end)
 
     {:noreply, assign(socket, set_lists: set_lists, songs: songs)}
+  end
+
+  @impl true
+  def handle_info({:sets_updated, sets}, socket) do
+    # ... existing code ...
   end
 
   defp format_duration(seconds) when is_integer(seconds) do
@@ -432,5 +561,102 @@ defmodule BandDbWeb.SetListEditorLive do
     }
 
     {:noreply, assign(socket, new_set_list: new_set_list)}
+  end
+
+  @impl true
+  def handle_event("toggle_calendar_event", _params, socket) do
+    {:noreply, socket |> assign(:show_calendar, !socket.assigns.show_calendar)}
+  end
+
+  @impl true
+  def handle_event("update_title", %{"title" => title}, socket) do
+    {:noreply, assign(socket, :title, title)}
+  end
+
+  @impl true
+  def handle_event("add_to_calendar", _params, socket) do
+    user = socket.assigns.current_user
+    set_list = socket.assigns.new_set_list
+
+    # Check if user has Google Calendar connected
+    case BandDb.Calendar.get_google_auth(user) do
+      nil ->
+        Logger.error("User doesn't have Google Calendar connected")
+        {:noreply, socket |> put_flash(:error, "You need to connect your Google Calendar first")}
+
+      auth ->
+        # Check if calendar_id exists
+        if is_nil(auth.calendar_id) do
+          Logger.error("No calendar_id found in auth record: #{inspect(auth)}")
+          {:noreply, socket |> put_flash(:error, "No calendar has been set up. Please go to Settings and set up your band calendar first.")}
+        else
+          # Format the date and times for Google Calendar
+          {:ok, date} = Date.from_iso8601(socket.assigns.date)
+          {:ok, start_time} = Time.from_iso8601(socket.assigns.start_time <> ":00")
+          {:ok, end_time} = Time.from_iso8601(socket.assigns.end_time <> ":00")
+
+          # Create datetime for start and end
+          start_dt = DateTime.new!(date, start_time, "Etc/UTC")
+          end_dt = DateTime.new!(date, end_time, "Etc/UTC")
+
+          # Prepare title
+          title = if socket.assigns[:title] && socket.assigns.title != "", do: socket.assigns.title, else: set_list.name
+
+          # Generate a description with the songs
+          description = generate_calendar_description(set_list)
+
+          # Add the event to Google Calendar
+          event_params = %{
+            "summary" => title,
+            "description" => description,
+            "location" => socket.assigns.location,
+            "start" => %{
+              "dateTime" => DateTime.to_iso8601(start_dt),
+              "timeZone" => "UTC"
+            },
+            "end" => %{
+              "dateTime" => DateTime.to_iso8601(end_dt),
+              "timeZone" => "UTC"
+            }
+          }
+
+          # Only add extended properties if we have a valid set list ID
+          if set_list.id do
+            event_params = Map.put(event_params, "extendedProperties", %{
+              "private" => %{
+                "eventType" => "set_list",
+                "setListId" => Integer.to_string(set_list.id)
+              }
+            })
+          end
+
+          # Log the event params and calendar ID
+          Logger.debug("Calendar ID: #{auth.calendar_id}")
+          Logger.debug("Event params: #{inspect(event_params)}")
+
+          case BandDb.Calendar.create_event(user, event_params) do
+            {:ok, _event} ->
+              {:noreply, socket
+                |> assign(:show_calendar, false)
+                |> put_flash(:info, "Event added to calendar successfully.")}
+
+            {:error, reason} ->
+              Logger.error("Failed to add event to calendar: #{inspect(reason)}")
+              {:noreply, socket |> put_flash(:error, "Failed to add event to calendar.")}
+          end
+        end
+    end
+  end
+
+  defp generate_calendar_description(set_list) do
+    sets_descriptions = Enum.map_join(set_list.sets, "\n\n", fn set ->
+      songs = Enum.map_join(set.songs, "\n", fn song ->
+        "- #{get_song_title(song)}"
+      end)
+
+      "#{set.name}:\n#{songs}"
+    end)
+
+    "Set List: #{set_list.name}\n\nTotal Duration: #{format_duration(set_list.total_duration)}\n\n#{sets_descriptions}"
   end
 end

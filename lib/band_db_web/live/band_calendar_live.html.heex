@@ -56,7 +56,13 @@
             <div class="mt-1 text-xs">
               <%= for event <- events_for_date(day.date, @events_by_date) do %>
                 <div 
-                  class="bg-blue-500 text-white p-1 rounded mb-1 truncate cursor-pointer hover:bg-blue-600"
+                  class={
+                    cond do
+                      event.event_type == "rehearsal" -> "bg-blue-500 text-white p-1 rounded mb-1 truncate cursor-pointer hover:bg-blue-600"
+                      event.event_type == "show" -> "bg-purple-500 text-white p-1 rounded mb-1 truncate cursor-pointer hover:bg-purple-600" 
+                      true -> "bg-gray-500 text-white p-1 rounded mb-1 truncate cursor-pointer hover:bg-gray-600"
+                    end
+                  }
                   phx-click="show_event"
                   phx-value-id={event.id}
                 >
@@ -118,33 +124,31 @@
           </div>
         <% end %>
         
-        <div class="mt-6 flex flex-col sm:flex-row sm:justify-between gap-4">
-          <div class="flex flex-col sm:flex-row gap-4">
-            <a 
-              href={@selected_event.html_link} 
-              target="_blank" 
-              class="text-blue-500 hover:text-blue-700 inline-flex items-center"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-              View in Google Calendar
-            </a>
-            
-            <%= if @selected_event.event_type == "rehearsal" && @selected_event.rehearsal_plan_id do %>
-              <.link 
-                navigate={~p"/rehearsal/plan/#{@selected_event.rehearsal_plan_id}"}
-                class="text-indigo-500 hover:text-indigo-700 inline-flex items-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                View Rehearsal Plan
-              </.link>
-            <% end %>
-          </div>
+        <div class="mt-6 flex flex-col gap-3">
+          <a 
+            href={@selected_event.html_link} 
+            target="_blank" 
+            class="text-blue-500 hover:text-blue-700 inline-flex items-center py-2 px-4 border border-blue-300 rounded"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+            View in Google Calendar
+          </a>
           
-          <div class="flex justify-end gap-2">
+          <%= if @selected_event.event_type == "rehearsal" && @selected_event.rehearsal_plan_id do %>
+            <.link 
+              navigate={~p"/rehearsal/plan/#{@selected_event.rehearsal_plan_id}"}
+              class="text-indigo-500 hover:text-indigo-700 inline-flex items-center py-2 px-4 border border-indigo-300 rounded"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              View Rehearsal Plan
+            </.link>
+          <% end %>
+          
+          <div class="flex flex-col gap-2 mt-2">
             <button 
               phx-click="delete_event"
               phx-value-id={@selected_event.id}

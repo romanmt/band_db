@@ -1,7 +1,7 @@
 defmodule BandDb.Repo.Migrations.CreateGoogleAuths do
   use Ecto.Migration
 
-  def change do
+  def up do
     create table(:google_auths) do
       add :refresh_token, :text
       add :access_token, :text
@@ -13,5 +13,10 @@ defmodule BandDb.Repo.Migrations.CreateGoogleAuths do
     end
 
     create index(:google_auths, [:user_id])
+  end
+
+  def down do
+    drop index(:google_auths, [:user_id])
+    drop table(:google_auths)
   end
 end

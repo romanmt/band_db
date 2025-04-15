@@ -196,6 +196,39 @@ defmodule BandDb.Calendar do
   end
 
   @doc """
+  Creates a new event directly from a parameter map.
+  This is a simplified version to use with set lists and rehearsal plans.
+
+  Returns {:ok, event_id} or {:error, reason}
+  """
+  def create_event(%User{} = user, event_params) do
+    case get_google_auth(user) do
+      nil ->
+        {:error, :not_connected}
+
+      auth ->
+        case get_access_token(user) do
+          {:ok, access_token} ->
+            # Get the calendar ID from the auth record
+            calendar_id = auth.calendar_id
+
+            # Log the calendar ID and event params
+            require Logger
+            Logger.debug("Using calendar_id: #{calendar_id}")
+            Logger.debug("Create event with params: #{inspect(event_params)}")
+
+            # Create the event
+            case GoogleAPI.create_event(access_token, calendar_id, event_params) do
+              {:ok, event_id} -> {:ok, event_id}
+              {:error, reason} -> {:error, reason}
+            end
+
+          {:error, reason} -> {:error, reason}
+        end
+    end
+  end
+
+  @doc """
   Creates a new event in the specified calendar.
 
   Event params should include:

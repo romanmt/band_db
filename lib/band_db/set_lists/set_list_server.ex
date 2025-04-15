@@ -44,8 +44,8 @@ defmodule BandDb.SetLists.SetListServer do
   @doc """
   Updates a set list.
   """
-  def update_set_list(server \\ __MODULE__, name, sets) do
-    GenServer.call(server, {:update_set_list, name, sets})
+  def update_set_list(server \\ __MODULE__, name, params) do
+    GenServer.call(server, {:update_set_list, name, params})
   end
 
   @doc """
@@ -123,31 +123,53 @@ defmodule BandDb.SetLists.SetListServer do
   end
 
   @impl true
-  def handle_call({:update_set_list, name, sets}, _from, state) do
-    # Handle both single set and list of sets
-    sets = if is_list(sets), do: sets, else: [sets]
-
+  def handle_call({:update_set_list, name, params}, _from, state) do
     case Map.get(state.set_lists, name) do
       nil ->
         {:reply, {:error, "Set list not found"}, state}
-      _existing ->
+      existing ->
+        # Extract sets from params
+        sets = cond do
+          # If params has a sets field, use that
+          is_map(params) && (Map.has_key?(params, :sets) || Map.has_key?(params, "sets")) ->
+            safe_get(params, :sets) || safe_get(params, "sets")
+          # If it's already a list, assume it's the sets directly
+          is_list(params) -> params
+          # Otherwise treat the entire params as a single set
+          true -> [params]
+        end
+
         # Calculate total duration
         total_duration = calculate_total_duration(sets)
 
-        # Create the updated set list in memory
+        # Create the updated set list in memory, preserving existing fields
         updated_set_list = %{
           name: name,
           sets: Enum.with_index(sets, 1) |> Enum.map(fn {set, index} ->
             %{
-              name: set.name || "Set #{index}",
-              duration: set.duration || 0,
-              break_duration: set.break_duration || 0,
-              songs: set.songs || [],
+              name: safe_get(set, :name) || "Set #{index}",
+              duration: safe_get(set, :duration) || 0,
+              break_duration: safe_get(set, :break_duration) || 0,
+              songs: safe_get(set, :songs) || [],
               set_order: index
             }
           end),
           total_duration: total_duration
         }
+
+        # Add calendar fields if provided
+        updated_set_list = if is_map(params) do
+          calendar_fields = [:date, :location, :start_time, :end_time, :calendar_event_id]
+
+          Enum.reduce(calendar_fields, updated_set_list, fn field, acc ->
+            case Map.get(params, field) do
+              nil -> acc
+              value -> Map.put(acc, field, value)
+            end
+          end)
+        else
+          updated_set_list
+        end
 
         # Update the in-memory state
         new_state = %{state | set_lists: Map.put(state.set_lists, name, updated_set_list)}
@@ -177,11 +199,84 @@ defmodule BandDb.SetLists.SetListServer do
 
   # Helper functions for state management and persistence
 
-  defp calculate_total_duration(sets) do
+  # Calculate total duration for a list of sets
+  defp calculate_total_duration(sets) when is_list(sets) do
     Enum.reduce(sets, 0, fn set, total ->
-      total + (set.duration || 0) + (set.break_duration || 0)
+      set_duration = cond do
+        # If it's a struct with duration accessible
+        is_struct(set) && Map.has_key?(set, :duration) ->
+          duration = Map.get(set, :duration) || 0
+          break_duration = Map.get(set, :break_duration) || 0
+          duration + break_duration
+
+        # For regular maps with duration key (atom or string)
+        is_map(set) && (Map.has_key?(set, :duration) || Map.has_key?(set, "duration")) ->
+          duration = Map.get(set, :duration) || Map.get(set, "duration") || 0
+          break_duration = Map.get(set, :break_duration) || Map.get(set, "break_duration") || 0
+          duration + break_duration
+
+        # For maps with songs (calculate from songs if needed)
+        is_map(set) && (Map.has_key?(set, :songs) || Map.has_key?(set, "songs")) ->
+          songs = Map.get(set, :songs) || Map.get(set, "songs") || []
+          songs_duration = calculate_songs_duration(songs)
+          songs_duration + (Map.get(set, :break_duration) || Map.get(set, "break_duration") || 0)
+
+        # If none of the above matched, return 0
+        true -> 0
+      end
+
+      total + set_duration
     end)
   end
+
+  # Calculate total duration for a map or struct with different structures
+  defp calculate_total_duration(data) when is_map(data) do
+    cond do
+      # Handle map with sets field (atom key)
+      Map.has_key?(data, :sets) ->
+        sets = Map.get(data, :sets)
+        if is_list(sets), do: calculate_total_duration(sets), else: 0
+
+      # Handle map with sets field (string key)
+      Map.has_key?(data, "sets") ->
+        sets = Map.get(data, "sets")
+        if is_list(sets), do: calculate_total_duration(sets), else: 0
+
+      # Handle structs or maps with direct duration
+      (is_struct(data) || is_map(data)) && (Map.has_key?(data, :duration) || Map.has_key?(data, "duration")) ->
+        duration = Map.get(data, :duration) || Map.get(data, "duration") || 0
+        break_duration = Map.get(data, :break_duration) || Map.get(data, "break_duration") || 0
+        duration + break_duration
+
+      # Handle maps with songs only
+      (Map.has_key?(data, :songs) || Map.has_key?(data, "songs")) ->
+        songs = Map.get(data, :songs) || Map.get(data, "songs") || []
+        calculate_songs_duration(songs)
+
+      # Default case
+      true -> 0
+    end
+  end
+
+  # Helper to calculate duration from songs if needed
+  defp calculate_songs_duration(songs) when is_list(songs) do
+    songs
+    |> Enum.map(fn song ->
+      cond do
+        is_map(song) && (Map.has_key?(song, :duration) || Map.has_key?(song, "duration")) ->
+          Map.get(song, :duration) || Map.get(song, "duration") || 0
+        true -> 0
+      end
+    end)
+    |> Enum.sum()
+  end
+  defp calculate_songs_duration(_), do: 0
+
+  # Calculate the total duration of a set list or any structure with duration info
+  defp calculate_total_duration(nil), do: 0
+
+  # Default case for any other type
+  defp calculate_total_duration(_), do: 0
 
   # Load set lists from storage (database) for recovery
   defp load_set_lists_from_storage do
@@ -208,7 +303,12 @@ defmodule BandDb.SetLists.SetListServer do
               set_order: set.set_order
             }
           end) |> Enum.sort_by(& &1.set_order),
-          total_duration: sl.total_duration
+          total_duration: sl.total_duration,
+          date: sl.date,
+          location: sl.location,
+          start_time: sl.start_time,
+          end_time: sl.end_time,
+          calendar_event_id: sl.calendar_event_id
         }
       }
     end)
@@ -245,9 +345,21 @@ defmodule BandDb.SetLists.SetListServer do
         # Find the existing set list
         db_set_list = Repo.get_by(SetList, name: name)
 
-        # Update the set list
+        # Update the set list with total_duration and any calendar fields
+        calendar_fields = [
+          total_duration: set_list.total_duration,
+          date: Map.get(set_list, :date),
+          location: Map.get(set_list, :location),
+          start_time: Map.get(set_list, :start_time),
+          end_time: Map.get(set_list, :end_time),
+          calendar_event_id: Map.get(set_list, :calendar_event_id)
+        ]
+
+        # Filter out nil values
+        calendar_fields = Enum.filter(calendar_fields, fn {_, v} -> v != nil end)
+
         db_set_list
-        |> SetList.changeset(%{total_duration: set_list.total_duration})
+        |> SetList.changeset(Map.new(calendar_fields))
         |> Repo.update!()
 
         # Delete all existing sets and create new ones
@@ -275,12 +387,23 @@ defmodule BandDb.SetLists.SetListServer do
       Enum.each(MapSet.to_list(to_create), fn name ->
         set_list = Map.get(set_lists, name)
 
+        # Create the set list with total_duration and any calendar fields
+        calendar_fields = [
+          name: name,
+          total_duration: set_list.total_duration,
+          date: Map.get(set_list, :date),
+          location: Map.get(set_list, :location),
+          start_time: Map.get(set_list, :start_time),
+          end_time: Map.get(set_list, :end_time),
+          calendar_event_id: Map.get(set_list, :calendar_event_id)
+        ]
+
+        # Filter out nil values
+        calendar_fields = Enum.filter(calendar_fields, fn {_, v} -> v != nil end)
+
         # Create the set list
         db_set_list = %SetList{}
-        |> SetList.changeset(%{
-          name: name,
-          total_duration: set_list.total_duration
-        })
+        |> SetList.changeset(Map.new(calendar_fields))
         |> Repo.insert!()
 
         # Create the sets
@@ -340,4 +463,47 @@ defmodule BandDb.SetLists.SetListServer do
   defp stringify_value(value) when is_list(value), do: inspect(value)
   defp stringify_value(value) when is_map(value), do: inspect(value)
   defp stringify_value(value), do: to_string(value)
+
+  # Helper function to safely get a value from a map or struct
+  defp safe_get(data, key, default \\ nil) do
+    cond do
+      # If it's nil, return the default
+      is_nil(data) ->
+        default
+
+      # For Elixir structs (using Map.get for structs that implement Access)
+      is_struct(data) ->
+        if Map.has_key?(data, key) do
+          Map.get(data, key)
+        else
+          # Just return default if the key doesn't exist in the struct
+          default
+        end
+
+      # For plain maps with atom keys
+      is_map(data) && is_atom(key) && Map.has_key?(data, key) ->
+        Map.get(data, key)
+
+      # For plain maps with string keys when using atom lookup
+      is_map(data) && is_atom(key) && Map.has_key?(data, to_string(key)) ->
+        Map.get(data, to_string(key))
+
+      # For plain maps with atom keys when using string lookup
+      is_map(data) && is_binary(key) && has_atom_key?(data, key) ->
+        Map.get(data, String.to_atom(key))
+
+      # Default case
+      true -> default
+    end
+  end
+
+  # Helper to safely check if a map has an atom key from a string
+  defp has_atom_key?(map, string_key) do
+    try do
+      atom_key = String.to_existing_atom(string_key)
+      Map.has_key?(map, atom_key)
+    rescue
+      _ -> false
+    end
+  end
 end

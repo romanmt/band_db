@@ -8,6 +8,11 @@ defmodule BandDb.SetLists.SetList do
   schema "set_lists" do
     field :name, :string
     field :total_duration, :integer
+    field :date, :date
+    field :location, :string
+    field :start_time, :time
+    field :end_time, :time
+    field :calendar_event_id, :string
     has_many :sets, BandDb.SetLists.Set
 
     timestamps()
@@ -18,7 +23,7 @@ defmodule BandDb.SetLists.SetList do
   """
   def changeset(set_list, attrs) do
     set_list
-    |> cast(attrs, [:name, :total_duration])
+    |> cast(attrs, [:name, :total_duration, :date, :location, :start_time, :end_time, :calendar_event_id])
     |> validate_required([:name])
     |> unique_constraint(:name)
   end

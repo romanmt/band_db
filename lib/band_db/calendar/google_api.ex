@@ -159,15 +159,49 @@ defmodule BandDb.Calendar.GoogleAPI do
       {"Accept", "application/json"}
     ]
 
-    case HTTPoison.post("#{@calendar_api_url}/calendars/#{calendar_id}/events", Jason.encode!(event), headers) do
-      {:ok, %{status_code: 200, body: body}} ->
-        {:ok, Jason.decode!(body)["id"]}
+    # Ensure we're not sending any nil values in extended properties
+    cleaned_event = if Map.has_key?(event, "extendedProperties") do
+      private_props = get_in(event, ["extendedProperties", "private"]) || %{}
 
-      {:ok, %{status_code: status_code, body: body}} ->
-        {:error, "Failed to create event: HTTP #{status_code} - #{body}"}
+      # Filter out nil values
+      clean_private = private_props
+                      |> Enum.filter(fn {_, v} -> v != nil end)
+                      |> Enum.into(%{})
 
-      {:error, %{reason: reason}} ->
-        {:error, "Network error: #{reason}"}
+      put_in(event, ["extendedProperties", "private"], clean_private)
+    else
+      event
+    end
+
+    # Ensure required fields are present
+    required_fields = ["summary", "start", "end"]
+    missing_fields = Enum.filter(required_fields, fn field ->
+      !Map.has_key?(cleaned_event, field) || cleaned_event[field] == nil
+    end)
+
+    if length(missing_fields) > 0 do
+      require Logger
+      Logger.error("Missing required fields for calendar event: #{inspect(missing_fields)}")
+      {:error, "Missing required fields: #{Enum.join(missing_fields, ", ")}"}
+    else
+      # Convert to JSON, log and send
+      json_body = Jason.encode!(cleaned_event)
+      require Logger
+      Logger.debug("Sending event to Google Calendar API: #{json_body}")
+      Logger.debug("URL: #{@calendar_api_url}/calendars/#{calendar_id}/events")
+
+      case HTTPoison.post("#{@calendar_api_url}/calendars/#{calendar_id}/events", json_body, headers) do
+        {:ok, %{status_code: status_code, body: body}} when status_code in 200..299 ->
+          {:ok, Jason.decode!(body)["id"]}
+
+        {:ok, %{status_code: status_code, body: body}} ->
+          Logger.error("Google Calendar API error: HTTP #{status_code} - #{body}")
+          {:error, "Failed to create event: HTTP #{status_code} - #{body}"}
+
+        {:error, %{reason: reason}} ->
+          Logger.error("Network error when creating calendar event: #{reason}")
+          {:error, "Network error: #{reason}"}
+      end
     end
   end
 
