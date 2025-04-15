@@ -11,6 +11,12 @@ config :band_db,
   ecto_repos: [BandDb.Repo],
   generators: [timestamp_type: :utc_datetime]
 
+# Google Calendar API configuration
+config :band_db, :google_api,
+  client_id: System.get_env("GOOGLE_CLIENT_ID"),
+  client_secret: System.get_env("GOOGLE_CLIENT_SECRET"),
+  redirect_uri: System.get_env("GOOGLE_REDIRECT_URI", "http://localhost:4000/auth/google/callback")
+
 # Configures the endpoint
 config :band_db, BandDbWeb.Endpoint,
   url: [host: "localhost"],
@@ -20,7 +26,7 @@ config :band_db, BandDbWeb.Endpoint,
     layout: false
   ],
   pubsub_server: BandDb.PubSub,
-  live_view: [signing_salt: "fBQP/907"]
+  live_view: [signing_salt: "e6JNh8VH"]
 
 # Configures the mailer
 #
@@ -36,14 +42,14 @@ config :esbuild,
   version: "0.17.11",
   band_db: [
     args:
-      ~w(js/app.js --bundle --target=es2017 --outdir=../priv/static/assets --external:/fonts/* --external:/images/* --external:sortablejs),
+      ~w(js/app.js --bundle --target=es2017 --outdir=../priv/static/assets --external:/fonts/* --external:/images/*),
     cd: Path.expand("../assets", __DIR__),
     env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
   ]
 
 # Configure tailwind (the version is required)
 config :tailwind,
-  version: "3.4.3",
+  version: "3.3.2",
   band_db: [
     args: ~w(
       --config=tailwind.config.js

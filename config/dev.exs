@@ -1,5 +1,10 @@
 import Config
 
+# Load environment variables from .env.exs in development
+if File.exists?(".env.exs") do
+  Code.eval_file(".env.exs")
+end
+
 # For development, we disable any cache and enable
 # debugging and code reloading.
 #

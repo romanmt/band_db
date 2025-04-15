@@ -27,6 +27,7 @@ defmodule BandDbWeb.Router do
 
     live_session :admin, on_mount: [{BandDbWeb.UserAuth, :ensure_authenticated}] do
       live "/users", AdminLive.UsersLive, :index
+      live "/calendar", AdminCalendarLive, :index
     end
   end
 
@@ -66,6 +67,15 @@ defmodule BandDbWeb.Router do
     end
 
     post "/users/log_in", UserSessionController, :create
+  end
+
+  # Google OAuth routes
+  scope "/auth", BandDbWeb do
+    pipe_through [:browser, :require_authenticated_user]
+
+    get "/google", GoogleAuthController, :authenticate
+    get "/google/callback", GoogleAuthController, :callback
+    get "/google/disconnect", GoogleAuthController, :disconnect
   end
 
   scope "/", BandDbWeb do

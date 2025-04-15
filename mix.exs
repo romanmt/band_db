@@ -61,7 +61,8 @@ defmodule BandDb.MixProject do
       {:dns_cluster, "~> 0.1.1"},
       {:bandit, "~> 1.5"},
       {:ecto_sql, "~> 3.10"},
-      {:postgrex, ">= 0.0.0"}
+      {:postgrex, ">= 0.0.0"},
+      {:httpoison, "~> 2.0"}
     ]
   end
 
