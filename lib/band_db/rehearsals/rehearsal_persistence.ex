@@ -69,25 +69,28 @@ defmodule BandDb.Rehearsals.RehearsalPersistence do
           end
         end) |> Enum.reject(&is_nil/1)
 
+        # Create a map with all the plan attributes, including calendar info
+        plan_attrs = %{
+          date: plan.date,
+          duration: plan.duration,
+          rehearsal_songs: rehearsal_song_uuids,
+          set_songs: set_song_uuids,
+          scheduled_date: Map.get(plan, :scheduled_date),
+          start_time: Map.get(plan, :start_time),
+          end_time: Map.get(plan, :end_time),
+          location: Map.get(plan, :location),
+          calendar_event_id: Map.get(plan, :calendar_event_id)
+        }
+
         if MapSet.member?(existing_dates, plan.date) do
           # Find existing plan and update it
           existing = Enum.find(existing_plans, & &1.date == plan.date)
-          RehearsalPlan.changeset(existing, %{
-            date: plan.date,
-            duration: plan.duration,
-            rehearsal_songs: rehearsal_song_uuids,
-            set_songs: set_song_uuids
-          })
+          RehearsalPlan.changeset(existing, plan_attrs)
           |> Repo.update!()
         else
           # Insert new plan
           %RehearsalPlan{}
-          |> RehearsalPlan.changeset(%{
-            date: plan.date,
-            duration: plan.duration,
-            rehearsal_songs: rehearsal_song_uuids,
-            set_songs: set_song_uuids
-          })
+          |> RehearsalPlan.changeset(plan_attrs)
           |> Repo.insert!()
         end
       end)
