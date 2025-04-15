@@ -170,4 +170,47 @@ defmodule BandDb.Calendar.GoogleAPI do
         {:error, "Network error: #{reason}"}
     end
   end
+
+  @doc """
+  Lists events from a calendar between specified dates.
+  Returns {:ok, events} or {:error, reason}
+  """
+  def list_events(access_token, calendar_id, start_date, end_date) do
+    headers = [
+      {"Authorization", "Bearer #{access_token}"},
+      {"Accept", "application/json"}
+    ]
+
+    query_params = URI.encode_query(%{
+      "timeMin" => "#{start_date}T00:00:00Z",
+      "timeMax" => "#{end_date}T23:59:59Z",
+      "singleEvents" => "true",
+      "orderBy" => "startTime"
+    })
+
+    url = "#{@calendar_api_url}/calendars/#{URI.encode(calendar_id)}/events?#{query_params}"
+
+    case HTTPoison.get(url, headers) do
+      {:ok, %{status_code: 200, body: body}} ->
+        events = Jason.decode!(body)["items"]
+        |> Enum.map(fn event ->
+          %{
+            id: event["id"],
+            summary: event["summary"],
+            description: event["description"],
+            start: event["start"],
+            end: event["end"],
+            location: event["location"],
+            html_link: event["htmlLink"]
+          }
+        end)
+        {:ok, events}
+
+      {:ok, %{status_code: status_code, body: body}} ->
+        {:error, "Failed to list events: HTTP #{status_code} - #{body}"}
+
+      {:error, %{reason: reason}} ->
+        {:error, "Network error: #{reason}"}
+    end
+  end
 end

@@ -132,4 +132,158 @@ defmodule BandDb.Calendar do
       {:error, reason} -> {:error, reason}
     end
   end
+
+  @doc """
+  Lists events for a calendar within a date range.
+  Returns {:ok, events} or {:error, reason}
+  """
+  def list_events(access_token, calendar_id, start_date, end_date) do
+    # Format dates as required by Google Calendar API
+    start_date_str = Date.to_iso8601(start_date)
+    end_date_str = Date.to_iso8601(end_date)
+
+    # Call the GoogleAPI module to fetch the events
+    case GoogleAPI.list_events(access_token, calendar_id, start_date_str, end_date_str) do
+      {:ok, google_events} ->
+        # Transform Google events into the format expected by the calendar live view
+        events = Enum.map(google_events, fn event ->
+          # Extract the date from the event start datetime
+          date = case event.start do
+            %{"date" => date_str} -> Date.from_iso8601!(date_str)
+            %{"dateTime" => datetime_str} ->
+              {:ok, datetime, _} = DateTime.from_iso8601(datetime_str)
+              DateTime.to_date(datetime)
+          end
+
+          %{
+            id: event.id,
+            title: event.summary,
+            description: event.description,
+            date: date,
+            start_time: get_start_time(event),
+            end_time: get_end_time(event),
+            location: event.location,
+            html_link: event.html_link
+          }
+        end)
+
+        {:ok, events}
+
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  # Helper function to extract start time from Google event
+  defp get_start_time(event) do
+    case event.start do
+      %{"dateTime" => datetime_str} ->
+        {:ok, datetime, _} = DateTime.from_iso8601(datetime_str)
+        datetime
+      _ -> nil
+    end
+  end
+
+  # Helper function to extract end time from Google event
+  defp get_end_time(event) do
+    case event.end do
+      %{"dateTime" => datetime_str} ->
+        {:ok, datetime, _} = DateTime.from_iso8601(datetime_str)
+        datetime
+      _ -> nil
+    end
+  end
+
+  @doc """
+  Creates a new event in the specified calendar.
+
+  Event params should include:
+  - title (required)
+  - date (required) - a Date struct
+  - start_time (optional) - a Time struct
+  - end_time (optional) - a Time struct
+  - description (optional)
+  - location (optional)
+
+  Returns {:ok, event_id} or {:error, reason}
+  """
+  def create_event(%User{} = user, calendar_id, event_params) do
+    case get_access_token(user) do
+      {:ok, access_token} ->
+        # Convert the event params to Google Calendar format
+        event = %{
+          "summary" => Map.get(event_params, :title),
+          "description" => Map.get(event_params, :description),
+          "location" => Map.get(event_params, :location)
+        }
+
+        # Add start time
+        event = case {Map.get(event_params, :date), Map.get(event_params, :start_time)} do
+          {date, nil} when not is_nil(date) ->
+            # All-day event
+            date_str = Date.to_iso8601(date)
+            Map.put(event, "start", %{"date" => date_str})
+          {date, time} when not is_nil(date) and not is_nil(time) ->
+            # Event with specific time
+            datetime = %DateTime{
+              year: date.year,
+              month: date.month,
+              day: date.day,
+              hour: time.hour,
+              minute: time.minute,
+              second: 0,
+              microsecond: {0, 0},
+              time_zone: "Etc/UTC",
+              zone_abbr: "UTC",
+              utc_offset: 0,
+              std_offset: 0
+            }
+            datetime_str = DateTime.to_iso8601(datetime)
+            Map.put(event, "start", %{"dateTime" => datetime_str, "timeZone" => "UTC"})
+          _ ->
+            # No date provided, this is an error
+            event
+        end
+
+        # Add end time
+        event = case {Map.get(event_params, :date), Map.get(event_params, :end_time)} do
+          {date, nil} when not is_nil(date) ->
+            # All-day event - ends the next day
+            next_day = Date.add(date, 1)
+            date_str = Date.to_iso8601(next_day)
+            Map.put(event, "end", %{"date" => date_str})
+          {date, time} when not is_nil(date) and not is_nil(time) ->
+            # Event with specific time
+            datetime = %DateTime{
+              year: date.year,
+              month: date.month,
+              day: date.day,
+              hour: time.hour,
+              minute: time.minute,
+              second: 0,
+              microsecond: {0, 0},
+              time_zone: "Etc/UTC",
+              zone_abbr: "UTC",
+              utc_offset: 0,
+              std_offset: 0
+            }
+            datetime_str = DateTime.to_iso8601(datetime)
+            Map.put(event, "end", %{"dateTime" => datetime_str, "timeZone" => "UTC"})
+          _ ->
+            # If no end time but we have start time, use start time + 1 hour
+            case event do
+              %{"start" => %{"dateTime" => start_datetime_str}} ->
+                {:ok, start_datetime, _} = DateTime.from_iso8601(start_datetime_str)
+                end_datetime = DateTime.add(start_datetime, 3600, :second)
+                end_datetime_str = DateTime.to_iso8601(end_datetime)
+                Map.put(event, "end", %{"dateTime" => end_datetime_str, "timeZone" => "UTC"})
+              _ ->
+                event
+            end
+        end
+
+        GoogleAPI.create_event(access_token, calendar_id, event)
+
+      {:error, reason} -> {:error, reason}
+    end
+  end
 end
