@@ -39,6 +39,12 @@
             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
               <%= format_duration(plan.duration) %>
             </span>
+            <%= if plan.calendar_event_id do %>
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                <.icon name="hero-calendar" class="h-3 w-3 mr-1" />
+                Scheduled
+              </span>
+            <% end %>
             <button
               phx-click="print_plan"
               phx-value-id={plan.date}
@@ -52,6 +58,33 @@
         <%= if plan.expanded do %>
           <div class="border-t border-gray-200 px-4 py-5 sm:px-6">
             <div class="space-y-6">
+              <%= if plan.calendar_event_id do %>
+                <div class="bg-blue-50 rounded-md p-4 border border-blue-100">
+                  <h2 class="text-lg font-semibold text-blue-800 flex items-center">
+                    <.icon name="hero-calendar" class="h-5 w-5 mr-2" />
+                    Scheduled Rehearsal
+                  </h2>
+                  <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <div class="text-sm text-gray-500">Date</div>
+                      <div class="text-gray-900"><%= Date.to_string(plan.scheduled_date) %></div>
+                    </div>
+                    <div>
+                      <div class="text-sm text-gray-500">Time</div>
+                      <div class="text-gray-900">
+                        <%= Time.to_string(plan.start_time) %> - <%= Time.to_string(plan.end_time) %>
+                      </div>
+                    </div>
+                    <%= if plan.location && plan.location != "" do %>
+                      <div class="md:col-span-2">
+                        <div class="text-sm text-gray-500">Location</div>
+                        <div class="text-gray-900"><%= plan.location %></div>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+              
               <%= if Map.get(plan, :notes, "") != "" do %>
                 <div>
                   <h2 class="text-lg font-semibold text-gray-900">Notes</h2>

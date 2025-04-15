@@ -3,6 +3,7 @@ defmodule BandDbWeb.RehearsalPlanLive do
   import BandDbWeb.Components.PageHeader
   alias BandDb.Songs.SongServer
   alias BandDb.Rehearsals.RehearsalServer
+  require Logger
 
   on_mount {BandDbWeb.UserAuth, :ensure_authenticated}
 
@@ -25,7 +26,13 @@ defmodule BandDbWeb.RehearsalPlanLive do
       rehearsal_plan: rehearsal_plan,
       total_duration: calculate_total_duration(rehearsal_plan),
       show_date_modal: false,
-      date: Date.utc_today()
+      date: Date.utc_today(),
+      should_schedule: false,
+      scheduled_date: Date.utc_today(),
+      start_time: ~T[19:00:00],
+      end_time: ~T[21:00:00],
+      location: "",
+      has_calendar: BandDb.Calendar.get_google_auth(socket.assigns.current_user) != nil
     )}
   end
 
@@ -40,19 +47,135 @@ defmodule BandDbWeb.RehearsalPlanLive do
   end
 
   @impl true
-  def handle_event("accept_plan", %{"date" => date}, socket) do
-    date = Date.from_iso8601!(date)
-    RehearsalServer.save_plan(
+  def handle_event("toggle_scheduling", _, socket) do
+    {:noreply, assign(socket, should_schedule: !socket.assigns.should_schedule)}
+  end
+
+  @impl true
+  def handle_event("update_form", params, socket) do
+    # Extract parameters, default to existing values if not present
+    scheduled_date = case params do
+      %{"scheduled_date" => date} when date != "" ->
+        Date.from_iso8601!(date)
+      _ ->
+        socket.assigns.scheduled_date
+    end
+
+    start_time = case params do
+      %{"start_time" => time} when time != "" ->
+        Time.from_iso8601!(time)
+      _ ->
+        socket.assigns.start_time
+    end
+
+    end_time = case params do
+      %{"end_time" => time} when time != "" ->
+        Time.from_iso8601!(time)
+      _ ->
+        socket.assigns.end_time
+    end
+
+    location = Map.get(params, "location", socket.assigns.location)
+
+    # Date param is for the plan date, not the scheduled date
+    date = case params do
+      %{"date" => d} when is_binary(d) and d != "" ->
+        Date.from_iso8601!(d)
+      _ ->
+        socket.assigns.date
+    end
+
+    {:noreply, assign(socket,
+      date: date,
+      scheduled_date: scheduled_date,
+      start_time: start_time,
+      end_time: end_time,
+      location: location
+    )}
+  end
+
+  @impl true
+  def handle_event("accept_plan", params, socket) do
+    date = Date.from_iso8601!(params["date"])
+
+    # Save the rehearsal plan
+    case RehearsalServer.save_plan(
       date,
       socket.assigns.rehearsal_plan.rehearsal,
       socket.assigns.rehearsal_plan.set,
       socket.assigns.total_duration
-    )
+    ) do
+      {:ok, plan_id} ->
+        # If scheduling is enabled and connected to Google Calendar, create calendar event
+        if socket.assigns.should_schedule && socket.assigns.has_calendar do
+          user = socket.assigns.current_user
+          google_auth = BandDb.Calendar.get_google_auth(user)
 
-    {:noreply,
-      socket
-      |> put_flash(:info, "Rehearsal plan saved for #{Date.to_string(date)}")
-      |> push_navigate(to: ~p"/rehearsal/history")}
+          if google_auth && google_auth.calendar_id do
+            # Create calendar event
+            event_params = %{
+              title: "Band Rehearsal - #{Date.to_string(socket.assigns.scheduled_date)}",
+              description: "Rehearsal plan includes #{length(socket.assigns.rehearsal_plan.rehearsal)} songs to rehearse and a #{length(socket.assigns.rehearsal_plan.set)} song set",
+              location: socket.assigns.location,
+              date: socket.assigns.scheduled_date,
+              start_time: socket.assigns.start_time,
+              end_time: socket.assigns.end_time,
+              event_type: "rehearsal",
+              rehearsal_plan_id: to_string(plan_id.id || "")
+            }
+
+            # Log the params we're sending
+            Logger.debug("Creating calendar event with params: #{inspect(event_params)}")
+            Logger.debug("Date: #{inspect(socket.assigns.scheduled_date)}, Start: #{inspect(socket.assigns.start_time)}, End: #{inspect(socket.assigns.end_time)}")
+
+            case BandDb.Calendar.create_event(user, google_auth.calendar_id, event_params) do
+              {:ok, event_id} ->
+                # Update rehearsal plan with event info
+                RehearsalServer.update_plan_calendar_info(date, %{
+                  scheduled_date: socket.assigns.scheduled_date,
+                  start_time: socket.assigns.start_time,
+                  end_time: socket.assigns.end_time,
+                  location: socket.assigns.location,
+                  calendar_event_id: event_id
+                })
+
+                {:noreply,
+                  socket
+                  |> put_flash(:info, "Rehearsal plan saved and added to calendar")
+                  |> push_navigate(to: ~p"/rehearsal/history")}
+
+              {:error, reason} ->
+                # Plan saved but calendar event failed
+                {:noreply,
+                  socket
+                  |> put_flash(:error, "Rehearsal plan saved but calendar event failed: #{reason}")
+                  |> push_navigate(to: ~p"/rehearsal/history")}
+            end
+          else
+            {:noreply,
+              socket
+              |> put_flash(:info, "Rehearsal plan saved for #{Date.to_string(date)}")
+              |> push_navigate(to: ~p"/rehearsal/history")}
+          end
+        else
+          {:noreply,
+            socket
+            |> put_flash(:info, "Rehearsal plan saved for #{Date.to_string(date)}")
+            |> push_navigate(to: ~p"/rehearsal/history")}
+        end
+
+      {:error, :plan_already_exists} ->
+        {:noreply,
+          socket
+          |> put_flash(:error, "A rehearsal plan already exists for #{Date.to_string(date)}")
+          |> push_navigate(to: ~p"/rehearsal/history")}
+
+      {:error, reason} ->
+        {:noreply,
+          socket
+          |> put_flash(:error, "Failed to save rehearsal plan: #{inspect(reason)}")
+          |> push_navigate(to: ~p"/rehearsal/history")}
+    end
   end
 
   @impl true

@@ -26,6 +26,10 @@ defmodule BandDb.Rehearsals.RehearsalServer do
     GenServer.call(__MODULE__, {:update_plan, date, attrs})
   end
 
+  def update_plan_calendar_info(date, calendar_info) do
+    GenServer.call(__MODULE__, {:update_plan_calendar_info, date, calendar_info})
+  end
+
   def delete_plan(date) do
     GenServer.call(__MODULE__, {:delete_plan, date})
   end
@@ -154,6 +158,22 @@ defmodule BandDb.Rehearsals.RehearsalServer do
       index ->
         old_plan = Enum.at(state.plans, index)
         updated_plan = struct(RehearsalPlan, Map.merge(Map.from_struct(old_plan), attrs))
+
+        updated_plans = List.update_at(state.plans, index, fn _ -> updated_plan end)
+        new_state = %{state | plans: updated_plans}
+
+        {:reply, {:ok, updated_plan}, new_state}
+    end
+  end
+
+  @impl true
+  def handle_call({:update_plan_calendar_info, date, calendar_info}, _from, state) do
+    case Enum.find_index(state.plans, fn plan -> plan.date == date end) do
+      nil ->
+        {:reply, {:error, :not_found}, state}
+      index ->
+        old_plan = Enum.at(state.plans, index)
+        updated_plan = struct(RehearsalPlan, Map.merge(Map.from_struct(old_plan), calendar_info))
 
         updated_plans = List.update_at(state.plans, index, fn _ -> updated_plan end)
         new_state = %{state | plans: updated_plans}

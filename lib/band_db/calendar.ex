@@ -203,6 +203,8 @@ defmodule BandDb.Calendar do
   - end_time (optional) - a Time struct
   - description (optional)
   - location (optional)
+  - event_type (optional) - "general", "rehearsal", "performance"
+  - rehearsal_plan_id (optional) - to link to a rehearsal plan
 
   Returns {:ok, event_id} or {:error, reason}
   """
@@ -213,7 +215,13 @@ defmodule BandDb.Calendar do
         event = %{
           "summary" => Map.get(event_params, :title),
           "description" => Map.get(event_params, :description),
-          "location" => Map.get(event_params, :location)
+          "location" => Map.get(event_params, :location),
+          "extendedProperties" => %{
+            "private" => %{
+              "eventType" => Map.get(event_params, :event_type, "general"),
+              "rehearsalPlanId" => Map.get(event_params, :rehearsal_plan_id)
+            }
+          }
         }
 
         # Add start time
@@ -277,9 +285,31 @@ defmodule BandDb.Calendar do
                 end_datetime_str = DateTime.to_iso8601(end_datetime)
                 Map.put(event, "end", %{"dateTime" => end_datetime_str, "timeZone" => "UTC"})
               _ ->
-                event
+                # Ensure we always have an end time
+                # If we get here, we don't have start or end time
+                # Use current date + default times as a fallback
+                now = DateTime.utc_now()
+                default_end = %DateTime{
+                  year: now.year,
+                  month: now.month,
+                  day: now.day,
+                  hour: 21,
+                  minute: 0,
+                  second: 0,
+                  microsecond: {0, 0},
+                  time_zone: "Etc/UTC",
+                  zone_abbr: "UTC",
+                  utc_offset: 0,
+                  std_offset: 0
+                }
+                datetime_str = DateTime.to_iso8601(default_end)
+                Map.put(event, "end", %{"dateTime" => datetime_str, "timeZone" => "UTC"})
             end
         end
+
+        # Log the event being sent to Google API
+        require Logger
+        Logger.debug("Creating Google Calendar event: #{inspect(event)}")
 
         GoogleAPI.create_event(access_token, calendar_id, event)
 
