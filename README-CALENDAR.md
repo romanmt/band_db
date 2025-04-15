@@ -19,14 +19,23 @@ This feature allows band admins to connect to Google Calendar and manage rehears
    GOOGLE_CLIENT_SECRET=your-client-secret-here
    GOOGLE_REDIRECT_URI=http://localhost:4000/auth/google/callback
    ```
-3. Source the environment variables:
-   ```
-   source .env
+3. Create a `.env.exs` file with the same credentials for Phoenix to load:
+   ```elixir
+   # This file loads environment variables directly for development
+   System.put_env("GOOGLE_CLIENT_ID", "your-client-id-here")
+   System.put_env("GOOGLE_CLIENT_SECRET", "your-client-secret-here")
+   System.put_env("GOOGLE_REDIRECT_URI", "http://localhost:4000/auth/google/callback")
    ```
 4. Start the Phoenix server:
    ```
    mix phx.server
    ```
+
+### Security Note
+
+The `.env` and `.env.exs` files contain sensitive credentials and should never be committed to version control. They are automatically excluded by the `.gitignore` file. Always keep your Google API credentials secure and never share them publicly.
+
+For production deployment, use environment variables or a secure secrets management system rather than files.
 
 ### Usage
 

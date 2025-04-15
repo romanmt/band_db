@@ -27,3 +27,8 @@ priv/*.dets
 /assets/node_modules/
 /assets/package-lock.json
 /assets/package.json
+
+# Environment files
+.env
+.env.*
+!.env.example
