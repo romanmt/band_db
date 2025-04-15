@@ -286,4 +286,16 @@ defmodule BandDb.Calendar do
       {:error, reason} -> {:error, reason}
     end
   end
+
+  @doc """
+  Deletes an event from the specified calendar.
+  Returns :ok or {:error, reason}
+  """
+  def delete_event(%User{} = user, calendar_id, event_id) do
+    case get_access_token(user) do
+      {:ok, access_token} ->
+        GoogleAPI.delete_event(access_token, calendar_id, event_id)
+      {:error, reason} -> {:error, reason}
+    end
+  end
 end

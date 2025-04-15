@@ -128,6 +128,25 @@ defmodule BandDbWeb.BandCalendarLive do
   end
 
   @impl true
+  def handle_event("delete_event", %{"id" => event_id}, socket) do
+    user = socket.assigns.current_user
+    google_auth = Calendar.get_google_auth(user)
+    calendar_id = google_auth.calendar_id
+
+    case Calendar.delete_event(user, calendar_id, event_id) do
+      :ok ->
+        # Refresh calendar data
+        socket = update_calendar(socket, socket.assigns.current_date)
+
+        {:noreply, assign(socket, show_event_modal: false)}
+
+      {:error, reason} ->
+        # Show error but keep modal open
+        {:noreply, put_flash(socket, :error, "Failed to delete event: #{reason}")}
+    end
+  end
+
+  @impl true
   def handle_event("new_event", %{"date" => date_str}, socket) do
     date = Date.from_iso8601!(date_str)
 

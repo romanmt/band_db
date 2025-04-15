@@ -213,4 +213,28 @@ defmodule BandDb.Calendar.GoogleAPI do
         {:error, "Network error: #{reason}"}
     end
   end
+
+  @doc """
+  Deletes an event from the specified calendar.
+  Returns :ok or {:error, reason}
+  """
+  def delete_event(access_token, calendar_id, event_id) do
+    headers = [
+      {"Authorization", "Bearer #{access_token}"},
+      {"Accept", "application/json"}
+    ]
+
+    url = "#{@calendar_api_url}/calendars/#{URI.encode(calendar_id)}/events/#{URI.encode(event_id)}"
+
+    case HTTPoison.delete(url, headers) do
+      {:ok, %{status_code: status_code}} when status_code in [200, 204] ->
+        :ok
+
+      {:ok, %{status_code: status_code, body: body}} ->
+        {:error, "Failed to delete event: HTTP #{status_code} - #{body}"}
+
+      {:error, %{reason: reason}} ->
+        {:error, "Network error: #{reason}"}
+    end
+  end
 end
