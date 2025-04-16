@@ -360,4 +360,54 @@ defmodule BandDb.Calendar do
       {:error, reason} -> {:error, reason}
     end
   end
+
+  @doc """
+  Shares a calendar with a user by email.
+
+  Role can be:
+  - "reader" - See all event details
+  - "writer" - Make changes to events
+  - "owner" - Make changes to events and manage sharing
+
+  Returns :ok or {:error, reason}
+  """
+  def share_calendar_with_user(%User{} = user, calendar_id, email, role \\ "reader") do
+    case get_access_token(user) do
+      {:ok, access_token} ->
+        GoogleAPI.share_calendar(access_token, calendar_id, email, role)
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc """
+  Lists all users with whom the calendar is shared.
+  Returns {:ok, shares} or {:error, reason}
+  """
+  def list_calendar_shares(%User{} = user, calendar_id) do
+    case get_access_token(user) do
+      {:ok, access_token} ->
+        GoogleAPI.list_calendar_shares(access_token, calendar_id)
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc """
+  Removes a user's access to the calendar.
+  Returns :ok or {:error, reason}
+  """
+  def remove_calendar_share(%User{} = user, calendar_id, rule_id) do
+    case get_access_token(user) do
+      {:ok, access_token} ->
+        GoogleAPI.remove_calendar_share(access_token, calendar_id, rule_id)
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc """
+  Generates a shareable link for the calendar.
+  Returns {:ok, link} or {:error, reason}
+  """
+  def get_shareable_link(calendar_id) do
+    GoogleAPI.get_shareable_link(calendar_id)
+  end
 end

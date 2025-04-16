@@ -18,6 +18,9 @@ defmodule BandDbWeb.BandCalendarLive do
     # Check if user has a band calendar configured
     has_calendar = connected && has_band_calendar?(current_user)
 
+    # Get calendars list if connected
+    calendars = if connected, do: get_calendars(current_user), else: []
+
     if connected && has_calendar do
       # Only fetch calendar data if we have a valid connection and calendar
       current_date = Date.utc_today()
@@ -45,7 +48,10 @@ defmodule BandDbWeb.BandCalendarLive do
          },
          form_error: nil,
          connected: connected,
-         has_calendar: has_calendar
+         has_calendar: has_calendar,
+         calendars: calendars,
+         band_name: "",
+         google_auth: Calendar.get_google_auth(current_user)
        )}
     else
       # If not connected or no calendar, just set basic assigns
@@ -54,7 +60,10 @@ defmodule BandDbWeb.BandCalendarLive do
          connected: connected,
          has_calendar: has_calendar,
          show_event_modal: false,
-         show_event_form: false
+         show_event_form: false,
+         calendars: calendars,
+         band_name: "",
+         google_auth: Calendar.get_google_auth(current_user)
        )}
     end
   end
@@ -191,7 +200,7 @@ defmodule BandDbWeb.BandCalendarLive do
   end
 
   @impl true
-  def handle_event("toggle_all_day", params, socket) do
+  def handle_event("toggle_all_day", _params, socket) do
     # Toggle the current value
     current_all_day = socket.assigns.event_form.all_day
     event_form = Map.put(socket.assigns.event_form, :all_day, !current_all_day)
@@ -200,16 +209,13 @@ defmodule BandDbWeb.BandCalendarLive do
 
   @impl true
   def handle_event("form_change", %{"event" => event_params}, socket) do
-    event_form = %{
-      title: event_params["title"] || "",
-      description: event_params["description"] || "",
-      location: event_params["location"] || "",
-      all_day: event_params["all_day"] == "true",
-      start_time: event_params["start_time"] || socket.assigns.event_form.start_time,
-      end_time: event_params["end_time"] || socket.assigns.event_form.end_time
-    }
+    # Update the form data in the socket
+    event_form = socket.assigns.event_form
+      |> Map.put(:title, event_params["title"] || "")
+      |> Map.put(:description, event_params["description"] || "")
+      |> Map.put(:location, event_params["location"] || "")
 
-    {:noreply, assign(socket, event_form: event_form)}
+    {:noreply, assign(socket, event_form: event_form, form_error: nil)}
   end
 
   @impl true
@@ -397,5 +403,13 @@ defmodule BandDbWeb.BandCalendarLive do
   defp has_band_calendar?(user) do
     google_auth = Calendar.get_google_auth(user)
     google_auth != nil && google_auth.calendar_id != nil
+  end
+
+  # Get the list of calendars for the user
+  defp get_calendars(user) do
+    case Calendar.list_calendars(user) do
+      {:ok, calendars} -> calendars
+      {:error, _} -> []
+    end
   end
 end

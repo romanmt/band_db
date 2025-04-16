@@ -1,4 +1,5 @@
-<.page_header title="Band Calendar" subtitle="View and manage your band's rehearsals and performances" />
+<.page_header title="Band Calendar" subtitle="View and manage your band's rehearsals and performances">
+</.page_header>
 
 <div class="max-w-4xl mx-auto px-4">
   <%= if !@connected do %>
@@ -72,15 +73,15 @@
         <h2 class="text-2xl font-bold text-gray-900 mb-4">One More Step Needed</h2>
         
         <p class="text-gray-600 mb-8 max-w-md mx-auto">
-          Your Google account is connected, but you need to create or select a band calendar to start using this feature.
+          Your Google account is connected, but you need to create a band calendar to start using this feature.
         </p>
         
-        <.link navigate={~p"/admin/calendar"} class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+        <button phx-click="show_settings_modal" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
           Create Band Calendar
-        </.link>
+        </button>
       </div>
     <% else %>
       <!-- Regular calendar view for connected users with calendar -->

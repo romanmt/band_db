@@ -318,4 +318,110 @@ defmodule BandDb.Calendar.GoogleAPI do
       set_list_name: set_list_name
     }
   end
+
+  @doc """
+  Shares a calendar with a user by setting access permissions.
+
+  Permission role can be one of:
+  - "reader" - See all event details
+  - "writer" - Make changes to events
+  - "owner" - Make changes to events and manage sharing
+
+  Returns :ok or {:error, reason}
+  """
+  def share_calendar(access_token, calendar_id, email, role \\ "reader") do
+    headers = [
+      {"Authorization", "Bearer #{access_token}"},
+      {"Content-Type", "application/json"},
+      {"Accept", "application/json"}
+    ]
+
+    body = Jason.encode!(%{
+      "role" => role,
+      "scope" => %{
+        "type" => "user",
+        "value" => email
+      }
+    })
+
+    url = "#{@calendar_api_url}/calendars/#{URI.encode(calendar_id)}/acl"
+
+    case HTTPoison.post(url, body, headers) do
+      {:ok, %{status_code: status_code}} when status_code in 200..299 ->
+        :ok
+
+      {:ok, %{status_code: status_code, body: body}} ->
+        {:error, "Failed to share calendar: HTTP #{status_code} - #{body}"}
+
+      {:error, %{reason: reason}} ->
+        {:error, "Network error: #{reason}"}
+    end
+  end
+
+  @doc """
+  Lists all access control entries for a calendar.
+  Returns {:ok, acl_list} or {:error, reason}
+  """
+  def list_calendar_shares(access_token, calendar_id) do
+    headers = [
+      {"Authorization", "Bearer #{access_token}"},
+      {"Accept", "application/json"}
+    ]
+
+    url = "#{@calendar_api_url}/calendars/#{URI.encode(calendar_id)}/acl"
+
+    case HTTPoison.get(url, headers) do
+      {:ok, %{status_code: 200, body: body}} ->
+        shares = Jason.decode!(body)["items"]
+        |> Enum.map(fn share ->
+          scope = share["scope"]
+          %{
+            id: share["id"],
+            role: share["role"],
+            scope_type: scope["type"],
+            email: if(scope["type"] == "user", do: scope["value"], else: nil)
+          }
+        end)
+        {:ok, shares}
+
+      {:ok, %{status_code: status_code, body: body}} ->
+        {:error, "Failed to list calendar shares: HTTP #{status_code} - #{body}"}
+
+      {:error, %{reason: reason}} ->
+        {:error, "Network error: #{reason}"}
+    end
+  end
+
+  @doc """
+  Removes access for a user from a calendar.
+  Returns :ok or {:error, reason}
+  """
+  def remove_calendar_share(access_token, calendar_id, rule_id) do
+    headers = [
+      {"Authorization", "Bearer #{access_token}"},
+      {"Accept", "application/json"}
+    ]
+
+    url = "#{@calendar_api_url}/calendars/#{URI.encode(calendar_id)}/acl/#{URI.encode(rule_id)}"
+
+    case HTTPoison.delete(url, headers) do
+      {:ok, %{status_code: status_code}} when status_code in [200, 204] ->
+        :ok
+
+      {:ok, %{status_code: status_code, body: body}} ->
+        {:error, "Failed to remove calendar share: HTTP #{status_code} - #{body}"}
+
+      {:error, %{reason: reason}} ->
+        {:error, "Network error: #{reason}"}
+    end
+  end
+
+  @doc """
+  Generates a shareable link for a calendar.
+  Returns {:ok, link} or {:error, reason}
+  """
+  def get_shareable_link(calendar_id) do
+    link = "https://calendar.google.com/calendar/embed?src=#{URI.encode(calendar_id)}"
+    {:ok, link}
+  end
 end

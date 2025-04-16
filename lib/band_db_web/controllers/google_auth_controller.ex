@@ -39,12 +39,12 @@ defmodule BandDbWeb.GoogleAuthController do
               {:ok, _auth} ->
                 conn
                 |> put_flash(:info, "Google Calendar connected successfully!")
-                |> redirect(to: ~p"/admin/calendar")
+                |> redirect(to: ~p"/calendar")
 
               {:error, _changeset} ->
                 conn
                 |> put_flash(:error, "Failed to save Google authorization.")
-                |> redirect(to: ~p"/admin/calendar")
+                |> redirect(to: ~p"/calendar")
             end
 
           auth ->
@@ -53,19 +53,19 @@ defmodule BandDbWeb.GoogleAuthController do
               {:ok, _auth} ->
                 conn
                 |> put_flash(:info, "Google Calendar re-connected successfully!")
-                |> redirect(to: ~p"/admin/calendar")
+                |> redirect(to: ~p"/calendar")
 
               {:error, _changeset} ->
                 conn
                 |> put_flash(:error, "Failed to update Google authorization.")
-                |> redirect(to: ~p"/admin/calendar")
+                |> redirect(to: ~p"/calendar")
             end
         end
 
       {:error, reason} ->
         conn
         |> put_flash(:error, "Failed to connect to Google: #{reason}")
-        |> redirect(to: ~p"/admin/calendar")
+        |> redirect(to: ~p"/calendar")
     end
   end
 
@@ -79,19 +79,19 @@ defmodule BandDbWeb.GoogleAuthController do
       nil ->
         conn
         |> put_flash(:info, "No Google Calendar connection found.")
-        |> redirect(to: ~p"/admin/calendar")
+        |> redirect(to: ~p"/calendar")
 
       auth ->
         case Calendar.delete_google_auth(auth) do
           {:ok, _} ->
             conn
             |> put_flash(:info, "Google Calendar disconnected successfully.")
-            |> redirect(to: ~p"/admin/calendar")
+            |> redirect(to: ~p"/calendar")
 
           {:error, _changeset} ->
             conn
             |> put_flash(:error, "Failed to disconnect Google Calendar.")
-            |> redirect(to: ~p"/admin/calendar")
+            |> redirect(to: ~p"/calendar")
         end
     end
   end
