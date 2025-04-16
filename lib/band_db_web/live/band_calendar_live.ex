@@ -1,85 +1,62 @@
 defmodule BandDbWeb.BandCalendarLive do
   use BandDbWeb, :live_view
   import BandDbWeb.Components.PageHeader
+  alias BandDb.Accounts
   alias BandDb.Calendar
+  alias BandDb.Calendar.GoogleApi
 
   on_mount {BandDbWeb.UserAuth, :ensure_authenticated}
 
   @impl true
   def mount(_params, _session, socket) do
-    current_date = Date.utc_today()
-    user = socket.assigns.current_user
+    # Use the current_user that was already assigned by the on_mount callback
+    current_user = socket.assigns.current_user
 
-    # Get Google auth status
-    google_auth = Calendar.get_google_auth(user)
-    connected = google_auth != nil
-    has_calendar = connected && google_auth.calendar_id != nil
+    # Check Google Calendar connection status
+    connected = has_valid_google_auth?(current_user)
 
-    # Generate calendar data for the current month
-    first_day = Date.beginning_of_month(current_date)
-    last_day = Date.end_of_month(current_date)
-    days_in_month = Date.days_in_month(current_date)
+    # Check if user has a band calendar configured
+    has_calendar = connected && has_band_calendar?(current_user)
 
-    # Generate the days of the month
-    days = for day <- 1..days_in_month do
-      Date.new!(current_date.year, current_date.month, day)
-    end
+    if connected && has_calendar do
+      # Only fetch calendar data if we have a valid connection and calendar
+      current_date = Date.utc_today()
+      {:ok, events} = fetch_events(current_user, current_date)
+      events_by_date = group_events_by_date(events)
 
-    # Get the starting weekday (1 = Monday, 7 = Sunday)
-    first_day_weekday = Date.day_of_week(first_day)
-
-    # Add padding days at the beginning (for days from the previous month)
-    padding_start = for i <- 1..(first_day_weekday - 1) do
-      Date.add(first_day, -i)
-    end
-
-    # Add padding days at the end (for days from the next month)
-    last_day_weekday = Date.day_of_week(last_day)
-    days_to_add = 7 - last_day_weekday
-    padding_end = for i <- 1..days_to_add do
-      Date.add(last_day, i)
-    end
-
-    # Combine all days
-    all_days = padding_start ++ days ++ padding_end
-
-    # Group days into weeks
-    weeks = Enum.chunk_every(all_days, 7)
-
-    # Get events if connected to Google Calendar
-    events = if has_calendar do
-      fetch_calendar_events(user, google_auth.calendar_id, first_day, Date.add(last_day, days_to_add))
+      {:ok,
+       assign(socket,
+         current_date: current_date,
+         month_name: month_name(current_date.month),
+         year: current_date.year,
+         events: events,
+         events_by_date: events_by_date,
+         show_event_modal: false,
+         selected_event: nil,
+         show_event_form: false,
+         selected_date: nil,
+         event_form: %{
+           title: "",
+           all_day: false,
+           start_time: "",
+           end_time: "",
+           location: "",
+           description: ""
+         },
+         form_error: nil,
+         connected: connected,
+         has_calendar: has_calendar
+       )}
     else
-      []
+      # If not connected or no calendar, just set basic assigns
+      {:ok,
+       assign(socket,
+         connected: connected,
+         has_calendar: has_calendar,
+         show_event_modal: false,
+         show_event_form: false
+       )}
     end
-
-    # Group events by date
-    events_by_date = Enum.group_by(events, & &1.date)
-
-    socket = assign(socket,
-      current_date: current_date,
-      weeks: weeks,
-      has_calendar: has_calendar,
-      connected: connected,
-      month_name: month_name(current_date.month),
-      events: events,
-      events_by_date: events_by_date,
-      selected_event: nil,
-      show_event_modal: false,
-      show_event_form: false,
-      selected_date: nil,
-      event_form: %{
-        title: "",
-        description: "",
-        location: "",
-        all_day: true,
-        start_time: ~T[09:00:00],
-        end_time: ~T[10:00:00]
-      },
-      form_error: nil
-    )
-
-    {:ok, socket}
   end
 
   @impl true
@@ -382,5 +359,43 @@ defmodule BandDbWeb.BandCalendarLive do
 
     # Combine all days
     padding_start ++ month_days ++ padding_end
+  end
+
+  # Helper function to fetch events for a user and date
+  defp fetch_events(user, date) do
+    # Get the first and last day of the month
+    first_day = Date.beginning_of_month(date)
+    last_day = Date.end_of_month(date)
+
+    # Fetch events for the month
+    google_auth = Calendar.get_google_auth(user)
+    if google_auth && google_auth.calendar_id do
+      calendar_id = google_auth.calendar_id
+      case Calendar.get_access_token(user) do
+        {:ok, access_token} ->
+          Calendar.list_events(access_token, calendar_id, first_day, last_day)
+        {:error, _reason} ->
+          {:ok, []} # Return empty list on error
+      end
+    else
+      {:ok, []} # Return empty list if no calendar
+    end
+  end
+
+  # Helper function to group events by date
+  defp group_events_by_date(events) do
+    Enum.group_by(events, & &1.date)
+  end
+
+  # Helper function to check if a user has valid Google Auth
+  defp has_valid_google_auth?(user) do
+    google_auth = Calendar.get_google_auth(user)
+    google_auth != nil && !Calendar.is_expired?(google_auth)
+  end
+
+  # Helper function to check if a user has a band calendar
+  defp has_band_calendar?(user) do
+    google_auth = Calendar.get_google_auth(user)
+    google_auth != nil && google_auth.calendar_id != nil
   end
 end

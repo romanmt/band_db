@@ -130,7 +130,7 @@ defmodule BandDbWeb.RehearsalPlanLive do
               start_time: socket.assigns.start_time,
               end_time: socket.assigns.end_time,
               event_type: "rehearsal",
-              rehearsal_plan_id: to_string(date_str),
+              rehearsal_plan_id: date_str,
               source_url: plan_url,
               source_title: "View Complete Rehearsal Plan in BandDb"
             }
