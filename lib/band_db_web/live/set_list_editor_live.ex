@@ -292,9 +292,9 @@ defmodule BandDbWeb.SetListEditorLive do
           google_auth = BandDb.Calendar.get_google_auth(user)
 
           if google_auth && google_auth.calendar_id do
-            # Create calendar event
+            # Create calendar event with deep link to this specific set list
             app_url = BandDbWeb.Endpoint.url()
-            set_list_url = "#{app_url}/set-list"
+            set_list_url = "#{app_url}/set-list/#{URI.encode(new_set_list.name)}"
 
             # Format song list for description
             song_list = new_set_list.sets
@@ -313,11 +313,15 @@ defmodule BandDbWeb.SetListEditorLive do
             #{song_list}
             """
 
+            # Format date if needed
+            date_str = socket.assigns.date
+            {:ok, date} = if is_binary(date_str), do: Date.from_iso8601(date_str), else: {:ok, date_str}
+
             event_params = %{
               title: "Show: #{new_set_list.name}",
               description: description,
               location: socket.assigns.location,
-              date: socket.assigns.date,
+              date: date,
               start_time: socket.assigns.start_time,
               end_time: socket.assigns.end_time,
               event_type: "show",
@@ -326,8 +330,9 @@ defmodule BandDbWeb.SetListEditorLive do
               source_title: "View Set List in BandDb"
             }
 
-            # Log the params we're sending
-            Logger.debug("Creating calendar event with params: #{inspect(event_params)}")
+            # Log the calendar ID and event params
+            Logger.debug("Using calendar_id: #{google_auth.calendar_id}")
+            Logger.debug("Create event with params: #{inspect(event_params)}")
 
             case BandDb.Calendar.create_event(user, google_auth.calendar_id, event_params) do
               {:ok, event_id} ->
@@ -590,51 +595,44 @@ defmodule BandDbWeb.SetListEditorLive do
           Logger.error("No calendar_id found in auth record: #{inspect(auth)}")
           {:noreply, socket |> put_flash(:error, "No calendar has been set up. Please go to Settings and set up your band calendar first.")}
         else
-          # Format the date and times for Google Calendar
-          {:ok, date} = Date.from_iso8601(socket.assigns.date)
-          {:ok, start_time} = Time.from_iso8601(socket.assigns.start_time <> ":00")
-          {:ok, end_time} = Time.from_iso8601(socket.assigns.end_time <> ":00")
+          # Format the date for Google Calendar
+          date_str = socket.assigns.date
+          {:ok, date} = if is_binary(date_str), do: Date.from_iso8601(date_str), else: {:ok, date_str}
 
-          # Create datetime for start and end
-          start_dt = DateTime.new!(date, start_time, "Etc/UTC")
-          end_dt = DateTime.new!(date, end_time, "Etc/UTC")
+          # Prepare times
+          start_time = socket.assigns.start_time
+          end_time = socket.assigns.end_time
 
           # Prepare title
-          title = if socket.assigns[:title] && socket.assigns.title != "", do: socket.assigns.title, else: set_list.name
+          title = if socket.assigns[:title] && socket.assigns.title != "", do: socket.assigns.title, else: "Show: #{set_list.name}"
 
           # Generate a description with the songs
           description = generate_calendar_description(set_list)
 
+          # Create deep link URL to the specific set list
+          app_url = BandDbWeb.Endpoint.url()
+          set_list_url = "#{app_url}/set-list/#{URI.encode(set_list.name)}"
+
           # Add the event to Google Calendar
           event_params = %{
-            "summary" => title,
-            "description" => description,
-            "location" => socket.assigns.location,
-            "start" => %{
-              "dateTime" => DateTime.to_iso8601(start_dt),
-              "timeZone" => "UTC"
-            },
-            "end" => %{
-              "dateTime" => DateTime.to_iso8601(end_dt),
-              "timeZone" => "UTC"
-            }
+            title: title,
+            description: description,
+            location: socket.assigns.location,
+            date: date,
+            start_time: start_time,
+            end_time: end_time,
+            event_type: "show",
+            set_list_name: set_list.name,
+            source_url: set_list_url,
+            source_title: "View Set List in BandDb"
           }
 
-          # Only add extended properties if we have a valid set list ID
-          if set_list.id do
-            event_params = Map.put(event_params, "extendedProperties", %{
-              "private" => %{
-                "eventType" => "set_list",
-                "setListId" => Integer.to_string(set_list.id)
-              }
-            })
-          end
+          # Log the calendar ID and event params
+          Logger.debug("Using calendar_id: #{auth.calendar_id}")
+          Logger.debug("Create event with params: #{inspect(event_params)}")
+          Logger.debug("Event includes set_list_name: #{event_params.set_list_name}")
 
-          # Log the event params and calendar ID
-          Logger.debug("Calendar ID: #{auth.calendar_id}")
-          Logger.debug("Event params: #{inspect(event_params)}")
-
-          case BandDb.Calendar.create_event(user, event_params) do
+          case BandDb.Calendar.create_event(user, auth.calendar_id, event_params) do
             {:ok, _event} ->
               {:noreply, socket
                 |> assign(:show_calendar, false)

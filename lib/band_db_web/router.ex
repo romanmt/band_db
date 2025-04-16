@@ -92,6 +92,7 @@ defmodule BandDbWeb.Router do
       live "/set-list", SetListHistoryLive
       live "/set-list/new", SetListEditorLive
       live "/set-list/history", SetListHistoryLive
+      live "/set-list/:name", SetListViewLive
       live "/calendar", BandCalendarLive, :index
       live "/calendar/:year/:month", BandCalendarLive, :show
       live "/users/settings", UserSettingsLive, :edit

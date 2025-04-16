@@ -147,51 +147,26 @@ defmodule BandDb.Calendar do
       {:ok, google_events} ->
         # Transform Google events into the format expected by the calendar live view
         events = Enum.map(google_events, fn event ->
-          # Extract the date from the event start datetime
-          date = case event.start do
-            %{"date" => date_str} -> Date.from_iso8601!(date_str)
-            %{"dateTime" => datetime_str} ->
-              {:ok, datetime, _} = DateTime.from_iso8601(datetime_str)
-              DateTime.to_date(datetime)
-          end
-
+          # The events we get from GoogleAPI already have the date and start_time/end_time
+          # fields properly formatted, so we can just use them directly
           %{
             id: event.id,
-            title: event.summary,
+            title: event.title,
             description: event.description,
-            date: date,
-            start_time: get_start_time(event),
-            end_time: get_end_time(event),
+            date: event.date,
+            start_time: event.start_time,
+            end_time: event.end_time,
             location: event.location,
             html_link: event.html_link,
             event_type: event.event_type,
-            rehearsal_plan_id: event.rehearsal_plan_id
+            rehearsal_plan_id: event.rehearsal_plan_id,
+            set_list_name: event.set_list_name
           }
         end)
 
         {:ok, events}
 
       {:error, reason} -> {:error, reason}
-    end
-  end
-
-  # Helper function to extract start time from Google event
-  defp get_start_time(event) do
-    case event.start do
-      %{"dateTime" => datetime_str} ->
-        {:ok, datetime, _} = DateTime.from_iso8601(datetime_str)
-        datetime
-      _ -> nil
-    end
-  end
-
-  # Helper function to extract end time from Google event
-  defp get_end_time(event) do
-    case event.end do
-      %{"dateTime" => datetime_str} ->
-        {:ok, datetime, _} = DateTime.from_iso8601(datetime_str)
-        datetime
-      _ -> nil
     end
   end
 
@@ -240,12 +215,17 @@ defmodule BandDb.Calendar do
   - location (optional)
   - event_type (optional) - "general", "rehearsal", "performance"
   - rehearsal_plan_id (optional) - to link to a rehearsal plan
+  - set_list_name (optional) - to link to a set list
 
   Returns {:ok, event_id} or {:error, reason}
   """
   def create_event(%User{} = user, calendar_id, event_params) do
     case get_access_token(user) do
       {:ok, access_token} ->
+        # Log the incoming event params
+        require Logger
+        Logger.debug("Creating event with params: #{inspect(event_params)}")
+
         # Convert the event params to Google Calendar format
         event = %{
           "summary" => Map.get(event_params, :title),
@@ -254,10 +234,14 @@ defmodule BandDb.Calendar do
           "extendedProperties" => %{
             "private" => %{
               "eventType" => Map.get(event_params, :event_type, "general"),
-              "rehearsalPlanId" => Map.get(event_params, :rehearsal_plan_id)
+              "rehearsalPlanId" => Map.get(event_params, :rehearsal_plan_id),
+              "setListName" => Map.get(event_params, :set_list_name)
             }
           }
         }
+
+        # Log the extended properties
+        Logger.debug("Extended properties: #{inspect(get_in(event, ["extendedProperties", "private"]))}")
 
         # Add source URL if provided (for linking back to the app)
         source_url = Map.get(event_params, :source_url)

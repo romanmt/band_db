@@ -159,6 +159,10 @@ defmodule BandDb.Calendar.GoogleAPI do
       {"Accept", "application/json"}
     ]
 
+    # Log original event for debugging
+    require Logger
+    Logger.debug("Original event data: #{inspect(event)}")
+
     # Ensure we're not sending any nil values in extended properties
     cleaned_event = if Map.has_key?(event, "extendedProperties") do
       private_props = get_in(event, ["extendedProperties", "private"]) || %{}
@@ -167,6 +171,9 @@ defmodule BandDb.Calendar.GoogleAPI do
       clean_private = private_props
                       |> Enum.filter(fn {_, v} -> v != nil end)
                       |> Enum.into(%{})
+
+      # Log clean private props for debugging
+      Logger.debug("Clean private properties: #{inspect(clean_private)}")
 
       put_in(event, ["extendedProperties", "private"], clean_private)
     else
@@ -228,17 +235,7 @@ defmodule BandDb.Calendar.GoogleAPI do
       {:ok, %{status_code: 200, body: body}} ->
         events = Jason.decode!(body)["items"]
         |> Enum.map(fn event ->
-          %{
-            id: event["id"],
-            summary: event["summary"],
-            description: event["description"],
-            start: event["start"],
-            end: event["end"],
-            location: event["location"],
-            html_link: event["htmlLink"],
-            event_type: get_in(event, ["extendedProperties", "private", "eventType"]),
-            rehearsal_plan_id: get_in(event, ["extendedProperties", "private", "rehearsalPlanId"])
-          }
+          map_event(event)
         end)
         {:ok, events}
 
@@ -272,5 +269,53 @@ defmodule BandDb.Calendar.GoogleAPI do
       {:error, %{reason: reason}} ->
         {:error, "Network error: #{reason}"}
     end
+  end
+
+  # Map Google event to our internal format
+  defp map_event(event) do
+    # Extract date info
+    start_datetime = get_in(event, ["start", "dateTime"])
+    start_date = get_in(event, ["start", "date"])
+    end_datetime = get_in(event, ["end", "dateTime"])
+    end_date = get_in(event, ["end", "date"])
+
+    # Extract extended properties if available
+    extended_properties = get_in(event, ["extendedProperties", "private"]) || %{}
+    event_type = Map.get(extended_properties, "eventType")
+    rehearsal_plan_id = Map.get(extended_properties, "rehearsalPlanId")
+    set_list_name = Map.get(extended_properties, "setListName")
+
+    # Log extended properties for debugging
+    require Logger
+    Logger.debug("Extended properties for event #{event["id"]}: #{inspect(extended_properties)}")
+    Logger.debug("Event type: #{event_type}, rehearsal_plan_id: #{rehearsal_plan_id}, set_list_name: #{set_list_name}")
+
+    # Determine if this is an all-day event
+    is_all_day = start_date != nil && end_date != nil
+
+    # Parse dates
+    {date, start_time, end_time} = if is_all_day do
+      {Date.from_iso8601!(start_date), nil, nil}
+    else
+      {:ok, datetime, _} = DateTime.from_iso8601(start_datetime)
+      {:ok, end_dt, _} = DateTime.from_iso8601(end_datetime)
+      {DateTime.to_date(datetime), datetime, end_dt}
+    end
+
+    # Build our event structure
+    %{
+      id: event["id"],
+      title: event["summary"],
+      description: event["description"],
+      location: event["location"],
+      date: date,
+      start_time: start_time,
+      end_time: end_time,
+      is_all_day: is_all_day,
+      html_link: event["htmlLink"],
+      event_type: event_type,
+      rehearsal_plan_id: rehearsal_plan_id,
+      set_list_name: set_list_name
+    }
   end
 end
