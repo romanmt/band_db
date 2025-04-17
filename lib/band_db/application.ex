@@ -4,6 +4,7 @@ defmodule BandDb.Application do
   @moduledoc false
 
   use Application
+  require Logger
 
   @impl true
   def start(_type, _args) do
@@ -28,6 +29,9 @@ defmodule BandDb.Application do
       BandDb.Rehearsals.RehearsalServer
     ]
 
+    # Explicitly initialize tzdata
+    initialize_tzdata()
+
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: BandDb.Supervisor]
@@ -40,5 +44,31 @@ defmodule BandDb.Application do
   def config_change(changed, _new, removed) do
     BandDbWeb.Endpoint.config_change(changed, removed)
     :ok
+  end
+
+  # Initialize tzdata explicitly to ensure it's properly loaded
+  defp initialize_tzdata do
+    case Application.ensure_all_started(:tzdata) do
+      {:ok, _} ->
+        # Test that the timezone database is working
+        case DateTime.now("America/New_York") do
+          {:ok, dt} ->
+            Logger.info("Timezone database initialized successfully: #{DateTime.to_string(dt)}")
+            :ok
+          {:error, reason} ->
+            Logger.error("Timezone database initialization error: #{inspect(reason)}")
+            # Try to force a reload by stopping and restarting tzdata
+            try do
+              :ok = Application.stop(:tzdata)
+              :ok = Application.ensure_all_started(:tzdata)
+              Logger.info("Tzdata restarted successfully")
+            rescue
+              e ->
+                Logger.error("Failed to restart tzdata: #{inspect(e)}")
+            end
+        end
+      {:error, reason} ->
+        Logger.error("Failed to start tzdata: #{inspect(reason)}")
+    end
   end
 end

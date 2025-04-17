@@ -76,12 +76,12 @@
           Your Google account is connected, but you need to create a band calendar to start using this feature.
         </p>
         
-        <button phx-click="show_settings_modal" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+        <.link navigate={~p"/users/settings?tab=calendar"} class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
           Create Band Calendar
-        </button>
+        </.link>
       </div>
     <% else %>
       <!-- Regular calendar view for connected users with calendar -->
@@ -187,9 +187,9 @@
           <div>
             <div class="text-sm text-gray-500">Time</div>
             <div>
-              <%= @selected_event.start_time |> DateTime.to_time() |> Time.to_string() %> - 
+              <%= format_time_12h(@selected_event.start_time) %> - 
               <%= if @selected_event.end_time do %>
-                <%= @selected_event.end_time |> DateTime.to_time() |> Time.to_string() %>
+                <%= format_time_12h(@selected_event.end_time) %>
               <% end %>
             </div>
           </div>

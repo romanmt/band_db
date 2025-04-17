@@ -279,6 +279,14 @@ defmodule BandDb.Calendar.GoogleAPI do
     end_datetime = get_in(event, ["end", "dateTime"])
     end_date = get_in(event, ["end", "date"])
 
+    # Extract time zone information if available
+    start_timezone = get_in(event, ["start", "timeZone"])
+    end_timezone = get_in(event, ["end", "timeZone"])
+
+    # Log incoming datetime values for debugging
+    require Logger
+    Logger.debug("Mapping event #{event["id"]}: start_datetime=#{start_datetime}, end_datetime=#{end_datetime}, timezones: #{start_timezone}/#{end_timezone}")
+
     # Extract extended properties if available
     extended_properties = get_in(event, ["extendedProperties", "private"]) || %{}
     event_type = Map.get(extended_properties, "eventType")
@@ -286,7 +294,6 @@ defmodule BandDb.Calendar.GoogleAPI do
     set_list_name = Map.get(extended_properties, "setListName")
 
     # Log extended properties for debugging
-    require Logger
     Logger.debug("Extended properties for event #{event["id"]}: #{inspect(extended_properties)}")
     Logger.debug("Event type: #{event_type}, rehearsal_plan_id: #{rehearsal_plan_id}, set_list_name: #{set_list_name}")
 
@@ -295,11 +302,68 @@ defmodule BandDb.Calendar.GoogleAPI do
 
     # Parse dates
     {date, start_time, end_time} = if is_all_day do
-      {Date.from_iso8601!(start_date), nil, nil}
+      # Safely parse date
+      case Date.from_iso8601(start_date) do
+        {:ok, parsed_date} -> {parsed_date, nil, nil}
+        {:error, reason} ->
+          Logger.error("Error parsing date #{start_date}: #{inspect(reason)}")
+          {Date.utc_today(), nil, nil}
+      end
     else
-      {:ok, datetime, _} = DateTime.from_iso8601(start_datetime)
-      {:ok, end_dt, _} = DateTime.from_iso8601(end_datetime)
-      {DateTime.to_date(datetime), datetime, end_dt}
+      # Safely parse the ISO 8601 datetime strings
+      start_dt = case DateTime.from_iso8601(start_datetime) do
+        {:ok, dt, _} ->
+          # Fix for Google Calendar UTC times
+          # We need to manually convert from UTC to local time
+          if String.ends_with?(start_datetime, "Z") && (start_timezone == "America/New_York") do
+            # For EDT (UTC-4), subtract 4 hours from the UTC time
+            local_hour = dt.hour - 4
+
+            # Handle day changes if needed
+            if local_hour < 0 do
+              # If hour becomes negative, adjust to previous day
+              prev_day = Date.add(dt, -1)
+              %DateTime{dt | year: prev_day.year, month: prev_day.month, day: prev_day.day, hour: local_hour + 24}
+            else
+              %DateTime{dt | hour: local_hour}
+            end
+          else
+            dt
+          end
+        {:error, reason} ->
+          Logger.error("Error parsing start datetime #{start_datetime}: #{inspect(reason)}")
+          DateTime.utc_now()
+      end
+
+      end_dt = case DateTime.from_iso8601(end_datetime) do
+        {:ok, dt, _} ->
+          # Same conversion for end time
+          if String.ends_with?(end_datetime, "Z") && (end_timezone == "America/New_York") do
+            # For EDT (UTC-4), subtract 4 hours from the UTC time
+            local_hour = dt.hour - 4
+
+            # Handle day changes if needed
+            if local_hour < 0 do
+              # If hour becomes negative, adjust to previous day
+              prev_day = Date.add(dt, -1)
+              %DateTime{dt | year: prev_day.year, month: prev_day.month, day: prev_day.day, hour: local_hour + 24}
+            else
+              %DateTime{dt | hour: local_hour}
+            end
+          else
+            dt
+          end
+        {:error, reason} ->
+          Logger.error("Error parsing end datetime #{end_datetime}: #{inspect(reason)}")
+          # Default to 1 hour after start
+          DateTime.add(start_dt, 3600, :second)
+      end
+
+      # Log the converted times for debugging
+      Logger.debug("Converted times: start=#{DateTime.to_string(start_dt)}, end=#{DateTime.to_string(end_dt)}")
+
+      # Use the Date from the start DateTime
+      {DateTime.to_date(start_dt), start_dt, end_dt}
     end
 
     # Build our event structure

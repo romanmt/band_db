@@ -23,8 +23,8 @@ defmodule BandDb.MixProject do
     ]
   end
 
-  defp extra_applications(:dev), do: [:logger, :observer, :wx, :runtime_tools]
-  defp extra_applications(_), do: [:logger, :runtime_tools]
+  defp extra_applications(:dev), do: [:logger, :observer, :wx, :runtime_tools, :tzdata]
+  defp extra_applications(_), do: [:logger, :runtime_tools, :tzdata]
 
   # Specifies which paths to compile per environment.
   defp elixirc_paths(:test), do: ["lib", "test/support"]
@@ -62,7 +62,11 @@ defmodule BandDb.MixProject do
       {:bandit, "~> 1.5"},
       {:ecto_sql, "~> 3.10"},
       {:postgrex, ">= 0.0.0"},
-      {:httpoison, "~> 2.0"}
+      {:httpoison, "~> 2.0"},
+      {:tzdata, "~> 1.1"},
+      {:google_api_calendar, "~> 0.16.0"},
+      {:goth, "~> 1.3.0"},
+      {:plug_cowboy, "~> 2.5"}
     ]
   end
 

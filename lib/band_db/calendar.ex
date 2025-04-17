@@ -264,21 +264,20 @@ defmodule BandDb.Calendar do
             Map.put(event, "start", %{"date" => date_str})
           {date, time} when not is_nil(date) and not is_nil(time) ->
             # Event with specific time
-            datetime = %DateTime{
-              year: date.year,
-              month: date.month,
-              day: date.day,
-              hour: time.hour,
-              minute: time.minute,
-              second: 0,
-              microsecond: {0, 0},
-              time_zone: "Etc/UTC",
-              zone_abbr: "UTC",
-              utc_offset: 0,
-              std_offset: 0
-            }
-            datetime_str = DateTime.to_iso8601(datetime)
-            Map.put(event, "start", %{"dateTime" => datetime_str, "timeZone" => "UTC"})
+            # Create a naive datetime from the local time input
+            naive_dt = NaiveDateTime.new!(
+              date.year, date.month, date.day,
+              time.hour, time.minute, 0
+            )
+
+            # Create a datetime in the America/New_York timezone
+            timezone = "America/New_York"
+            {:ok, ny_datetime} = convert_to_timezone(naive_dt, timezone)
+
+            # Format for Google Calendar API - need to use the time in the designated timezone
+            # We're sending the actual local time, not UTC, and explicitly telling Google it's in NY timezone
+            datetime_str = ny_datetime |> DateTime.to_iso8601()
+            Map.put(event, "start", %{"dateTime" => datetime_str, "timeZone" => timezone})
           _ ->
             # No date provided, this is an error
             event
@@ -293,21 +292,20 @@ defmodule BandDb.Calendar do
             Map.put(event, "end", %{"date" => date_str})
           {date, time} when not is_nil(date) and not is_nil(time) ->
             # Event with specific time
-            datetime = %DateTime{
-              year: date.year,
-              month: date.month,
-              day: date.day,
-              hour: time.hour,
-              minute: time.minute,
-              second: 0,
-              microsecond: {0, 0},
-              time_zone: "Etc/UTC",
-              zone_abbr: "UTC",
-              utc_offset: 0,
-              std_offset: 0
-            }
-            datetime_str = DateTime.to_iso8601(datetime)
-            Map.put(event, "end", %{"dateTime" => datetime_str, "timeZone" => "UTC"})
+            # Create a naive datetime from the local time input
+            naive_dt = NaiveDateTime.new!(
+              date.year, date.month, date.day,
+              time.hour, time.minute, 0
+            )
+
+            # Create a datetime in the America/New_York timezone
+            timezone = "America/New_York"
+            {:ok, ny_datetime} = convert_to_timezone(naive_dt, timezone)
+
+            # Format for Google Calendar API - need to use the time in the designated timezone
+            # We're sending the actual local time, not UTC, and explicitly telling Google it's in NY timezone
+            datetime_str = ny_datetime |> DateTime.to_iso8601()
+            Map.put(event, "end", %{"dateTime" => datetime_str, "timeZone" => timezone})
           _ ->
             # If no end time but we have start time, use start time + 1 hour
             case event do
@@ -315,27 +313,28 @@ defmodule BandDb.Calendar do
                 {:ok, start_datetime, _} = DateTime.from_iso8601(start_datetime_str)
                 end_datetime = DateTime.add(start_datetime, 3600, :second)
                 end_datetime_str = DateTime.to_iso8601(end_datetime)
-                Map.put(event, "end", %{"dateTime" => end_datetime_str, "timeZone" => "UTC"})
+                timezone = "America/New_York"
+                Map.put(event, "end", %{"dateTime" => end_datetime_str, "timeZone" => timezone})
               _ ->
                 # Ensure we always have an end time
                 # If we get here, we don't have start or end time
                 # Use current date + default times as a fallback
+                timezone = "America/New_York"
                 now = DateTime.utc_now()
-                default_end = %DateTime{
-                  year: now.year,
-                  month: now.month,
-                  day: now.day,
-                  hour: 21,
-                  minute: 0,
-                  second: 0,
-                  microsecond: {0, 0},
-                  time_zone: "Etc/UTC",
-                  zone_abbr: "UTC",
-                  utc_offset: 0,
-                  std_offset: 0
-                }
-                datetime_str = DateTime.to_iso8601(default_end)
-                Map.put(event, "end", %{"dateTime" => datetime_str, "timeZone" => "UTC"})
+
+                # Create a naive datetime for 9 PM today
+                naive_dt = NaiveDateTime.new!(
+                  now.year, now.month, now.day,
+                  21, 0, 0
+                )
+
+                # Create a datetime in the specified timezone
+                timezone = "America/New_York"
+                {:ok, ny_datetime} = convert_to_timezone(naive_dt, timezone)
+
+                # Format for Google Calendar API
+                datetime_str = ny_datetime |> DateTime.to_iso8601()
+                Map.put(event, "end", %{"dateTime" => datetime_str, "timeZone" => timezone})
             end
         end
 
@@ -409,5 +408,66 @@ defmodule BandDb.Calendar do
   """
   def get_shareable_link(calendar_id) do
     GoogleAPI.get_shareable_link(calendar_id)
+  end
+
+  @doc """
+  Private helper function to ensure tzdata is initialized before using timezone functions
+  Returns :ok if successful, or {:error, reason} if tzdata cannot be initialized
+  """
+  defp ensure_tzdata do
+    try do
+      # Force tzdata to be loaded
+      :ok = Application.ensure_all_started(:tzdata)
+
+      # Explicitly check if the timezone database is working
+      case DateTime.now("America/New_York") do
+        {:ok, _} ->
+          # Timezone database is working correctly
+          :ok
+        {:error, reason} ->
+          require Logger
+          Logger.error("Timezone database error after loading tzdata: #{inspect(reason)}")
+          # Try forcing a reload by stopping and restarting tzdata
+          try do
+            :ok = Application.stop(:tzdata)
+            :ok = Application.ensure_all_started(:tzdata)
+            :ok
+          rescue
+            e ->
+              Logger.error("Failed to restart tzdata: #{inspect(e)}")
+              {:error, :tzdata_reload_failed}
+          end
+      end
+    rescue
+      e ->
+        require Logger
+        Logger.error("Exception ensuring tzdata is started: #{inspect(e)}")
+        {:error, :tzdata_start_failed}
+    end
+  end
+
+  @doc """
+  Convert a naive datetime to a datetime with timezone information.
+  Falls back to UTC if the timezone database is not available or an error occurs.
+  """
+  def convert_to_timezone(naive_dt, timezone \\ "America/New_York") do
+    # Try to ensure tzdata is available
+    tzdata_result = ensure_tzdata()
+
+    # Make conversion attempt
+    case DateTime.from_naive(naive_dt, timezone) do
+      {:ok, datetime} ->
+        {:ok, datetime}
+      {:error, :utc_only_time_zone_database} ->
+        require Logger
+        Logger.error("Timezone database not configured properly. Tzdata check result: #{inspect(tzdata_result)}")
+        # Fall back to UTC time
+        {:ok, DateTime.from_naive!(naive_dt, "Etc/UTC")}
+      {:error, reason} ->
+        require Logger
+        Logger.error("Error creating datetime: #{inspect(reason)}")
+        # Fall back to UTC time
+        {:ok, DateTime.from_naive!(naive_dt, "Etc/UTC")}
+    end
   end
 end

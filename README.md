@@ -61,6 +61,42 @@ Ready to run in production? Please [check our deployment guides](https://hexdocs
 13. Write unit tests for business logic
 14. Don't make unncessary changes without asking
 
+# Date and Time Handling Rules
+
+1. **Data Types**:
+   - Use Elixir's built-in `Date`, `Time`, and `DateTime` structs for all date and time operations
+   - Avoid working with string representations of dates/times except at API boundaries
+
+2. **Time Zone Handling**:
+   - All `DateTime` structs should include explicit time zone information
+   - Use "America/New_York" as the default time zone for all events
+   - Keep the original timezone information when working with external services
+   - Create datetimes in their intended timezone rather than converting between timezones
+   - Always include explicit timezone information when sending data to external services
+   - For data received from external services, preserve the timezone information provided
+
+3. **Data Exchange Formats**:
+   - Use ISO 8601 format with timezone information (e.g., `2023-06-15T18:30:00-04:00`) for all date/time serialization
+   - When reading from external APIs, validate and parse timestamps using `DateTime.from_iso8601/1`
+   - When sending to external APIs, include explicit timezone information using `DateTime.to_iso8601/1`
+   - Log both the original and formatted timestamps during integration debugging
+
+4. **Event Modeling**:
+   - Support both all-day events (date only) and time-specific events
+   - For all-day events, store only the `date` field
+   - For time-specific events, store `date`, `start_time`, and `end_time` with timezone information
+   - All-day events should end on the following day in Google Calendar (end date = start date + 1)
+
+5. **External Calendar Integration**:
+   - Store event type and related IDs in calendar event extended properties
+   - Include appropriate metadata for different event types (rehearsal, show, etc.)
+   - Log all date/time transformations when debugging calendar integration issues
+
+6. **Error Handling**:
+   - Use safe parsing functions (e.g., `Date.from_iso8601!/1`) only when input is validated
+   - Handle timezone conversion errors gracefully
+   - Provide reasonable defaults when date/time information is incomplete
+
 # Architectural Strategy
 
 ## Separation of Concerns

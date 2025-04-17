@@ -171,31 +171,48 @@ defmodule BandDbWeb.BandCalendarLive do
       if event_params["all_day"] == "true" do
         event_data
       else
-        start_time = Time.from_iso8601!(event_params["start_time"])
-        end_time = Time.from_iso8601!(event_params["end_time"])
-        event_data
-        |> Map.put(:start_time, start_time)
-        |> Map.put(:end_time, end_time)
+        try do
+          # Ensure time strings are properly formatted with seconds
+          start_time_str = ensure_time_has_seconds(event_params["start_time"])
+          end_time_str = ensure_time_has_seconds(event_params["end_time"])
+
+          start_time = Time.from_iso8601!(start_time_str)
+          end_time = Time.from_iso8601!(end_time_str)
+          event_data
+          |> Map.put(:start_time, start_time)
+          |> Map.put(:end_time, end_time)
+        rescue
+          e in ArgumentError ->
+            require Logger
+            Logger.error("Time parsing error: #{inspect(e)}, start_time=#{inspect(event_params["start_time"])}, end_time=#{inspect(event_params["end_time"])}")
+            {:error, "Invalid time format. Please use HH:MM format."}
+        end
       end
 
-    # Validate form
-    if event_data.title == "" do
-      {:noreply, assign(socket, form_error: "Title is required")}
-    else
-      user = socket.assigns.current_user
-      google_auth = Calendar.get_google_auth(user)
-      calendar_id = google_auth.calendar_id
+    # Handle errors or continue with validation
+    case event_data do
+      {:error, reason} ->
+        {:noreply, assign(socket, form_error: reason)}
+      _ ->
+        # Validate form
+        if event_data.title == "" do
+          {:noreply, assign(socket, form_error: "Title is required")}
+        else
+          user = socket.assigns.current_user
+          google_auth = Calendar.get_google_auth(user)
+          calendar_id = google_auth.calendar_id
 
-      case Calendar.create_event(user, calendar_id, event_data) do
-        {:ok, _event_id} ->
-          # Refresh calendar data
-          socket = update_calendar(socket, socket.assigns.current_date)
+          case Calendar.create_event(user, calendar_id, event_data) do
+            {:ok, _event_id} ->
+              # Refresh calendar data
+              socket = update_calendar(socket, socket.assigns.current_date)
 
-          {:noreply, assign(socket, show_event_form: false, form_error: nil)}
+              {:noreply, assign(socket, show_event_form: false, form_error: nil)}
 
-        {:error, reason} ->
-          {:noreply, assign(socket, form_error: "Failed to create event: #{reason}")}
-      end
+            {:error, reason} ->
+              {:noreply, assign(socket, form_error: "Failed to create event: #{reason}")}
+          end
+        end
     end
   end
 
@@ -411,5 +428,53 @@ defmodule BandDbWeb.BandCalendarLive do
       {:ok, calendars} -> calendars
       {:error, _} -> []
     end
+  end
+
+  # Helper function to ensure time strings are properly formatted with seconds
+  defp ensure_time_has_seconds(time_str) when is_binary(time_str) do
+    if Regex.match?(~r/^\d{1,2}:\d{2}$/, time_str) do
+      # Format is HH:MM, add seconds
+      time_str <> ":00"
+    else
+      # Either already has seconds or is in an unexpected format
+      time_str
+    end
+  end
+  defp ensure_time_has_seconds(nil), do: nil
+
+  # Helper function to format time in 12-hour format
+  defp format_time_12h(nil), do: ""
+  defp format_time_12h(%DateTime{} = datetime) do
+    # When dealing with DateTimes, respect the timezone info
+    hour = datetime.hour
+    minute = datetime.minute
+
+    period = if hour >= 12, do: "PM", else: "AM"
+
+    # Convert 24-hour format to 12-hour format
+    display_hour = cond do
+      hour == 0 -> 12  # Midnight (0:00) should display as 12 AM
+      hour > 12 -> hour - 12
+      true -> hour
+    end
+
+    # Format the time with leading zeros for minutes
+    "#{display_hour}:#{:io_lib.format("~2..0B", [minute])} #{period}"
+  end
+  defp format_time_12h(%Time{} = time) do
+    hour = time.hour
+    minute = time.minute
+
+    period = if hour >= 12, do: "PM", else: "AM"
+
+    # Convert 24-hour format to 12-hour format
+    display_hour = cond do
+      hour == 0 -> 12  # Midnight (0:00) should display as 12 AM
+      hour > 12 -> hour - 12
+      true -> hour
+    end
+
+    # Format the time with leading zeros for minutes
+    "#{display_hour}:#{:io_lib.format("~2..0B", [minute])} #{period}"
   end
 end
