@@ -8,9 +8,14 @@ defmodule BandDb.AccountsFixtures do
   def valid_user_password, do: "hello world!"
 
   def valid_user_attributes(attrs \\ %{}) do
+    # Generate a valid invitation token for testing
+    {token, expires_at} = BandDb.Accounts.generate_invitation_token()
+
     Enum.into(attrs, %{
       email: unique_user_email(),
-      password: valid_user_password()
+      password: valid_user_password(),
+      invitation_token: token,
+      invitation_token_expires_at: expires_at
     })
   end
 

@@ -9,32 +9,32 @@ defmodule BandDb.Songs.SongServer do
     GenServer.start_link(__MODULE__, [], name: name)
   end
 
-  def add_song(title, status, band_name, duration \\ nil, notes \\ nil, tuning \\ :standard, youtube_link \\ nil) do
-    GenServer.call(__MODULE__, {:add_song, title, status, band_name, duration, notes, tuning, youtube_link})
+  def add_song(title, status, band_name, duration \\ nil, notes \\ nil, tuning \\ :standard, youtube_link \\ nil, server \\ __MODULE__) do
+    GenServer.call(server, {:add_song, title, status, band_name, duration, notes, tuning, youtube_link})
   end
 
-  def list_songs do
-    GenServer.call(__MODULE__, :list_songs)
+  def list_songs(server \\ __MODULE__) do
+    GenServer.call(server, :list_songs)
   end
 
-  def get_song(title) do
-    GenServer.call(__MODULE__, {:get_song, title})
+  def get_song(title, server \\ __MODULE__) do
+    GenServer.call(server, {:get_song, title})
   end
 
-  def update_song_status(title, new_status) do
-    GenServer.call(__MODULE__, {:update_status, title, new_status})
+  def update_song_status(title, new_status, server \\ __MODULE__) do
+    GenServer.call(server, {:update_status, title, new_status})
   end
 
-  def update_song_tuning(title, new_tuning) do
-    GenServer.call(__MODULE__, {:update_tuning, title, new_tuning})
+  def update_song_tuning(title, new_tuning, server \\ __MODULE__) do
+    GenServer.call(server, {:update_tuning, title, new_tuning})
   end
 
-  def update_song(title, attrs) do
-    GenServer.call(__MODULE__, {:update_song, title, attrs})
+  def update_song(title, attrs, server \\ __MODULE__) do
+    GenServer.call(server, {:update_song, title, attrs})
   end
 
-  def bulk_import_songs(song_text) do
-    GenServer.call(__MODULE__, {:bulk_import_songs, song_text})
+  def bulk_import_songs(song_text, server \\ __MODULE__) do
+    GenServer.call(server, {:bulk_import_songs, song_text})
   end
 
   # Server Callbacks

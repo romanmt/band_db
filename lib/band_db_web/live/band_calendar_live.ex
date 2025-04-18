@@ -1,9 +1,7 @@
 defmodule BandDbWeb.BandCalendarLive do
   use BandDbWeb, :live_view
   import BandDbWeb.Components.PageHeader
-  alias BandDb.Accounts
   alias BandDb.Calendar
-  alias BandDb.Calendar.GoogleApi
 
   on_mount {BandDbWeb.UserAuth, :ensure_authenticated}
 

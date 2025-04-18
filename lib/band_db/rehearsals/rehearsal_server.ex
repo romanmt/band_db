@@ -5,33 +5,39 @@ defmodule BandDb.Rehearsals.RehearsalServer do
 
   # Client API
 
-  def start_link(opts \\ []) do
+  def start_link(opts \\ [])
+
+  def start_link(name) when is_atom(name) do
+    GenServer.start_link(__MODULE__, [], name: name)
+  end
+
+  def start_link(opts) when is_list(opts) do
     name = Keyword.get(opts, :name, __MODULE__)
     GenServer.start_link(__MODULE__, [], name: name)
   end
 
-  def save_plan(date, rehearsal_songs, set_songs, duration) do
-    GenServer.call(__MODULE__, {:save_plan, date, rehearsal_songs, set_songs, duration})
+  def save_plan(date, rehearsal_songs, set_songs, duration, server \\ __MODULE__) do
+    GenServer.call(server, {:save_plan, date, rehearsal_songs, set_songs, duration})
   end
 
-  def list_plans do
-    GenServer.call(__MODULE__, :list_plans)
+  def list_plans(server \\ __MODULE__) do
+    GenServer.call(server, :list_plans)
   end
 
-  def get_plan(date) do
-    GenServer.call(__MODULE__, {:get_plan, date})
+  def get_plan(date, server \\ __MODULE__) do
+    GenServer.call(server, {:get_plan, date})
   end
 
-  def update_plan(date, attrs) do
-    GenServer.call(__MODULE__, {:update_plan, date, attrs})
+  def update_plan(date, attrs, server \\ __MODULE__) do
+    GenServer.call(server, {:update_plan, date, attrs})
   end
 
-  def update_plan_calendar_info(date, calendar_info) do
-    GenServer.call(__MODULE__, {:update_plan_calendar_info, date, calendar_info})
+  def update_plan_calendar_info(date, calendar_info, server \\ __MODULE__) do
+    GenServer.call(server, {:update_plan_calendar_info, date, calendar_info})
   end
 
-  def delete_plan(date) do
-    GenServer.call(__MODULE__, {:delete_plan, date})
+  def delete_plan(date, server \\ __MODULE__) do
+    GenServer.call(server, {:delete_plan, date})
   end
 
   # Server Callbacks
@@ -91,14 +97,14 @@ defmodule BandDb.Rehearsals.RehearsalServer do
                             |> Enum.filter(&(&1.uuid in song_uuids))
                             |> Enum.reduce(%{}, fn song, acc -> Map.put(acc, song.uuid, song) end)
 
-            # Map UUIDs to song objects
+            # Map UUIDs to song objects or keep the UUID if song is not found
             rehearsal_song_objects = Enum.map(rehearsal_songs, fn uuid ->
-              Map.get(songs_by_uuid, uuid)
-            end) |> Enum.reject(&is_nil/1)
+              Map.get(songs_by_uuid, uuid) || uuid
+            end)
 
             set_song_objects = Enum.map(set_songs, fn uuid ->
-              Map.get(songs_by_uuid, uuid)
-            end) |> Enum.reject(&is_nil/1)
+              Map.get(songs_by_uuid, uuid) || uuid
+            end)
 
             %{plan | rehearsal_songs: rehearsal_song_objects, set_songs: set_song_objects}
           else
@@ -129,14 +135,14 @@ defmodule BandDb.Rehearsals.RehearsalServer do
                               |> Enum.filter(&(&1.uuid in song_uuids))
                               |> Enum.reduce(%{}, fn song, acc -> Map.put(acc, song.uuid, song) end)
 
-              # Map UUIDs to song objects
+              # Map UUIDs to song objects or keep the UUID if the song is not found
               rehearsal_song_objects = Enum.map(rehearsal_songs, fn uuid ->
-                Map.get(songs_by_uuid, uuid)
-              end) |> Enum.reject(&is_nil/1)
+                Map.get(songs_by_uuid, uuid) || uuid
+              end)
 
               set_song_objects = Enum.map(set_songs, fn uuid ->
-                Map.get(songs_by_uuid, uuid)
-              end) |> Enum.reject(&is_nil/1)
+                Map.get(songs_by_uuid, uuid) || uuid
+              end)
 
               %{plan | rehearsal_songs: rehearsal_song_objects, set_songs: set_song_objects}
             else

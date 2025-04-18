@@ -4,6 +4,7 @@ defmodule BandDbWeb.UserSettingsLive do
   alias BandDb.Accounts
   alias BandDb.Calendar
 
+  @impl true
   def render(assigns) do
     ~H"""
     <.header class="text-center">
@@ -234,6 +235,7 @@ defmodule BandDbWeb.UserSettingsLive do
     """
   end
 
+  @impl true
   def mount(%{"token" => token}, _session, socket) do
     socket =
       case Accounts.update_user_email(socket.assigns.current_user, token) do
@@ -299,6 +301,7 @@ defmodule BandDbWeb.UserSettingsLive do
     {:noreply, assign(socket, active_tab: active_tab)}
   end
 
+  @impl true
   def handle_event("validate_email", params, socket) do
     %{"current_password" => password, "user" => user_params} = params
 

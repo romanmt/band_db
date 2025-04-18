@@ -16,9 +16,11 @@ defmodule BandDb.Application do
       # Start the PubSub system
       {Phoenix.PubSub, name: BandDb.PubSub},
       # Start the Finch HTTP client for sending emails
-      {Finch, name: BandDb.Finch},
+      {Finch, name: BandDb.Finch, pools: %{default: [protocols: [:http1]]}},
       # Start the Ecto repository
       BandDb.Repo,
+      # Start a Task.Supervisor for managing async operations
+      {Task.Supervisor, name: BandDb.TaskSupervisor},
       # Start the Endpoint (http/https)
       BandDbWeb.Endpoint,
       # Start the Song Server

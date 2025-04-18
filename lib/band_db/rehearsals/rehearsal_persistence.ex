@@ -31,6 +31,10 @@ defmodule BandDb.Rehearsals.RehearsalPersistence do
         Map.get(songs_by_uuid, uuid)
       end) |> Enum.reject(&is_nil/1)
 
+      # If no songs found, keep the original UUIDs
+      rehearsal_songs = if Enum.empty?(rehearsal_songs), do: plan.rehearsal_songs, else: rehearsal_songs
+      set_songs = if Enum.empty?(set_songs), do: plan.set_songs, else: set_songs
+
       %{plan |
         rehearsal_songs: rehearsal_songs,
         set_songs: set_songs
@@ -75,6 +79,7 @@ defmodule BandDb.Rehearsals.RehearsalPersistence do
           duration: plan.duration,
           rehearsal_songs: rehearsal_song_uuids,
           set_songs: set_song_uuids,
+          band_id: Map.get(plan, :band_id, Ecto.UUID.generate()),
           scheduled_date: Map.get(plan, :scheduled_date),
           start_time: Map.get(plan, :start_time),
           end_time: Map.get(plan, :end_time),

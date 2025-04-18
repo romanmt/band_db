@@ -17,7 +17,7 @@ defmodule BandDbWeb.RehearsalPlanViewLive do
         {:ok,
           socket
           |> put_flash(:error, "Rehearsal plan not found")
-          |> push_redirect(to: ~p"/rehearsal/history")}
+          |> push_navigate(to: ~p"/rehearsal/history")}
 
       plan ->
         {:ok, assign(socket, plan: plan, plan_id: id)}

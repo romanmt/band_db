@@ -16,6 +16,7 @@
 12. Prefer immutable data structures and pure functions where possible
 13. Write unit tests for business logic
 14. Don't make unncessary changes without asking
+15. Fix all compiler warnings before committing code - warnings often indicate potential bugs or code issues
 
 # Deployment
 

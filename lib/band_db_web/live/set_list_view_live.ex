@@ -24,7 +24,7 @@ defmodule BandDbWeb.SetListViewLive do
         {:ok,
           socket
           |> put_flash(:error, "Set list not found")
-          |> push_redirect(to: ~p"/set-list/history")}
+          |> push_navigate(to: ~p"/set-list/history")}
 
       set_list ->
         Logger.info("Found set list: #{set_list.name}")

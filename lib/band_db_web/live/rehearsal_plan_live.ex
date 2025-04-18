@@ -101,7 +101,7 @@ defmodule BandDbWeb.RehearsalPlanLive do
       socket.assigns.rehearsal_plan.set,
       socket.assigns.total_duration
     ) do
-      {:ok, plan} ->
+      {:ok, _plan} ->
         # Use plan date for deep linking - it's unique and stable
         date_str = Date.to_iso8601(date)
 
@@ -116,7 +116,6 @@ defmodule BandDbWeb.RehearsalPlanLive do
             plan_url = "#{app_url}/rehearsal/plan/#{date_str}"
 
             # Use plain text for better compatibility
-            display_date = Calendar.strftime(date, "%B %d, %Y")
             description = """
             Rehearsal plan includes #{length(socket.assigns.rehearsal_plan.rehearsal)} songs to rehearse and a #{length(socket.assigns.rehearsal_plan.set)} song set.
 

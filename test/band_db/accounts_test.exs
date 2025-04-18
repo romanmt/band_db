@@ -97,7 +97,8 @@ defmodule BandDb.AccountsTest do
   describe "change_user_registration/2" do
     test "returns a changeset" do
       assert %Ecto.Changeset{} = changeset = Accounts.change_user_registration(%User{})
-      assert changeset.required == [:password, :email]
+      required_fields = [:password, :email, :invitation_token]
+      assert Enum.all?(required_fields, &(&1 in changeset.required))
     end
 
     test "allows fields to be set" do

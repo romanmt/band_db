@@ -3,7 +3,6 @@ defmodule BandDbWeb.SetListEditorLive do
   import BandDbWeb.Components.PageHeader
   alias BandDb.Songs.SongServer
   alias BandDb.SetLists.{SetListServer, SetList, Set}
-  alias BandDb.Calendar
   require Logger
 
   @impl true
@@ -117,6 +116,11 @@ defmodule BandDbWeb.SetListEditorLive do
       show_song_selector: true,
       selected_set_index: String.to_integer(set_index)
     )}
+  end
+
+  @impl true
+  def handle_event("hide_song_selector", _, socket) do
+    {:noreply, assign(socket, show_song_selector: false)}
   end
 
   @impl true
@@ -272,7 +276,7 @@ defmodule BandDbWeb.SetListEditorLive do
   @impl true
   def handle_event("save_set_list", _params, socket) do
     new_set_list = socket.assigns.new_set_list
-    date = socket.assigns.date
+    _date = socket.assigns.date  # Variable not used, prefix with underscore
 
     # Create proper Set structs for each set
     sets = Enum.map(new_set_list.sets, fn set ->
@@ -420,6 +424,9 @@ defmodule BandDbWeb.SetListEditorLive do
         socket.assigns.date
     end
 
+    # Remove or prefix the unused variable with underscore
+    _date = socket.assigns.date
+
     start_time = case params do
       %{"start_time" => time} when time != "" ->
         Time.from_iso8601!(time)
@@ -442,130 +449,6 @@ defmodule BandDbWeb.SetListEditorLive do
       end_time: end_time,
       location: location
     )}
-  end
-
-  @impl true
-  def handle_info(:update, socket) do
-    set_lists = SetListServer.list_set_lists()
-
-    # Get all songs that are currently in any set
-    used_song_titles = socket.assigns.new_set_list.sets
-    |> Enum.flat_map(fn set ->
-      Enum.map(set.songs, fn song ->
-        if is_map(song), do: song.title, else: song
-      end)
-    end)
-    |> MapSet.new()
-
-    # Filter out songs that are already in sets
-    songs = SongServer.list_songs()
-    |> Enum.filter(fn song ->
-      song.status in [:ready, :performed] and
-      not MapSet.member?(used_song_titles, song.title)
-    end)
-
-    {:noreply, assign(socket, set_lists: set_lists, songs: songs)}
-  end
-
-  @impl true
-  def handle_info({:sets_updated, sets}, socket) do
-    # ... existing code ...
-  end
-
-  defp format_duration(seconds) when is_integer(seconds) do
-    minutes = div(seconds, 60)
-    remaining_seconds = rem(seconds, 60)
-    "#{minutes}:#{String.pad_leading("#{remaining_seconds}", 2, "0")}"
-  end
-  defp format_duration(_), do: "0:00"
-
-  defp tuning_color(:standard), do: "bg-indigo-100 text-indigo-800"
-  defp tuning_color(:drop_d), do: "bg-blue-100 text-blue-800"
-  defp tuning_color(:e_flat), do: "bg-green-100 text-green-800"
-  defp tuning_color(:drop_c_sharp), do: "bg-purple-100 text-purple-800"
-  defp tuning_color(_), do: "bg-gray-100 text-gray-800"
-
-  defp display_tuning(:standard), do: "Standard"
-  defp display_tuning(:drop_d), do: "Drop D"
-  defp display_tuning(:e_flat), do: "Eb"
-  defp display_tuning(:drop_c_sharp), do: "Drop C#"
-  defp display_tuning(tuning) when is_atom(tuning), do: String.capitalize(to_string(tuning))
-  defp display_tuning(_), do: "Unknown"
-
-  defp get_song_title(song) do
-    cond do
-      is_map(song) and Map.has_key?(song, :title) -> song.title
-      is_binary(song) -> song
-      true -> nil
-    end
-  end
-
-  defp get_song_tuning(song) do
-    cond do
-      is_map(song) and Map.has_key?(song, :tuning) -> song.tuning
-      true -> nil
-    end
-  end
-
-  defp get_band_name(song, songs) do
-    song_title = get_song_title(song)
-    case Enum.find(songs, &(&1.title == song_title)) do
-      nil -> nil
-      song -> song.band_name
-    end
-  end
-
-  defp get_tuning(song, songs) do
-    # First try to get tuning directly from the song data
-    tuning = get_song_tuning(song)
-    if tuning, do: tuning, else: do_get_tuning(song, songs)
-  end
-
-  defp do_get_tuning(song, songs) do
-    song_title = get_song_title(song)
-    case Enum.find(songs, &(&1.title == song_title)) do
-      nil -> nil
-      song -> song.tuning
-    end
-  end
-
-  defp error_message_from_changeset(%Ecto.Changeset{} = changeset) do
-    Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
-      Enum.reduce(opts, msg, fn {key, value}, acc ->
-        String.replace(acc, "%{#{key}}", to_string(value))
-      end)
-    end)
-    |> Enum.map(fn {field, errors} ->
-      "#{Phoenix.Naming.humanize(field)} #{Enum.join(errors, ", ")}"
-    end)
-    |> Enum.join(". ")
-  end
-
-  defp recalculate_total_duration(sets) do
-    Enum.reduce(sets, 0, fn set, acc ->
-      set_duration = (set.duration || 0)
-      break_duration = (set.break_duration || 0)
-      acc + set_duration + break_duration
-    end)
-  end
-
-  @impl true
-  def handle_event("update_break_duration", %{"set-index" => set_index, "duration" => duration}, socket) do
-    set_index = String.to_integer(set_index)
-    # Convert minutes to seconds (user enters minutes, we store seconds)
-    duration_seconds = String.to_integer(duration) * 60
-
-    new_sets = List.update_at(socket.assigns.new_set_list.sets, set_index, fn set ->
-      %{set | break_duration: duration_seconds}
-    end)
-
-    total_duration = recalculate_total_duration(new_sets)
-    new_set_list = %{socket.assigns.new_set_list |
-      sets: new_sets,
-      total_duration: total_duration
-    }
-
-    {:noreply, assign(socket, new_set_list: new_set_list)}
   end
 
   @impl true
@@ -644,6 +527,112 @@ defmodule BandDbWeb.SetListEditorLive do
           end
         end
     end
+  end
+
+  @impl true
+  def handle_info(:update, socket) do
+    set_lists = SetListServer.list_set_lists()
+
+    # Get all songs that are currently in any set
+    used_song_titles = socket.assigns.new_set_list.sets
+    |> Enum.flat_map(fn set ->
+      Enum.map(set.songs, fn song ->
+        if is_map(song), do: song.title, else: song
+      end)
+    end)
+    |> MapSet.new()
+
+    # Filter out songs that are already in sets
+    songs = SongServer.list_songs()
+    |> Enum.filter(fn song ->
+      song.status in [:ready, :performed] and
+      not MapSet.member?(used_song_titles, song.title)
+    end)
+
+    {:noreply, assign(socket, set_lists: set_lists, songs: songs)}
+  end
+
+  @impl true
+  def handle_info({:sets_updated, _sets}, socket) do
+    # Not currently doing anything with this message
+    {:noreply, socket}
+  end
+
+  defp format_duration(seconds) when is_integer(seconds) do
+    minutes = div(seconds, 60)
+    remaining_seconds = rem(seconds, 60)
+    "#{minutes}:#{String.pad_leading("#{remaining_seconds}", 2, "0")}"
+  end
+  defp format_duration(_), do: "0:00"
+
+  defp tuning_color(:standard), do: "bg-indigo-100 text-indigo-800"
+  defp tuning_color(:drop_d), do: "bg-blue-100 text-blue-800"
+  defp tuning_color(:e_flat), do: "bg-green-100 text-green-800"
+  defp tuning_color(:drop_c_sharp), do: "bg-purple-100 text-purple-800"
+  defp tuning_color(_), do: "bg-gray-100 text-gray-800"
+
+  defp display_tuning(:standard), do: "Standard"
+  defp display_tuning(:drop_d), do: "Drop D"
+  defp display_tuning(:e_flat), do: "Eb"
+  defp display_tuning(:drop_c_sharp), do: "Drop C#"
+  defp display_tuning(tuning) when is_atom(tuning), do: String.capitalize(to_string(tuning))
+  defp display_tuning(_), do: "Unknown"
+
+  defp get_song_title(song) do
+    cond do
+      is_map(song) and Map.has_key?(song, :title) -> song.title
+      is_binary(song) -> song
+      true -> nil
+    end
+  end
+
+  defp get_song_tuning(song) do
+    cond do
+      is_map(song) and Map.has_key?(song, :tuning) -> song.tuning
+      true -> nil
+    end
+  end
+
+  defp get_band_name(song, songs) do
+    song_title = get_song_title(song)
+    case Enum.find(songs, &(&1.title == song_title)) do
+      nil -> nil
+      song -> song.band_name
+    end
+  end
+
+  defp get_tuning(song, songs) do
+    # First try to get tuning directly from the song data
+    tuning = get_song_tuning(song)
+    if tuning, do: tuning, else: do_get_tuning(song, songs)
+  end
+
+  defp do_get_tuning(song, songs) do
+    song_title = get_song_title(song)
+    case Enum.find(songs, &(&1.title == song_title)) do
+      nil -> nil
+      song -> song.tuning
+    end
+  end
+
+  defp error_message_from_changeset(%Ecto.Changeset{} = changeset) do
+    Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
+      Enum.reduce(opts, msg, fn {key, value}, acc ->
+        String.replace(acc, "%{#{key}}", to_string(value))
+      end)
+    end)
+    |> Enum.map(fn {field, errors} ->
+      "#{Phoenix.Naming.humanize(field)} #{Enum.join(errors, ", ")}"
+    end)
+    |> Enum.join(". ")
+  end
+
+  defp recalculate_total_duration(sets) do
+    Enum.reduce(sets, 0, fn set, acc ->
+      set_duration = (set.duration || 0)
+      break_duration = (set.break_duration || 0)
+      acc + set_duration + break_duration
+    end)
   end
 
   defp generate_calendar_description(set_list) do

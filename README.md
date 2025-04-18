@@ -1,5 +1,7 @@
 # BandDb
 
+[![Test](https://github.com/romanmt/band_db/actions/workflows/test.yml/badge.svg)](https://github.com/romanmt/band_db/actions/workflows/test.yml)
+
 To start your Phoenix server:
 
   * Run `mix setup` to install and setup dependencies

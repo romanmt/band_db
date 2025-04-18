@@ -4,11 +4,10 @@ defmodule BandDb.Calendar do
   Handles Google Calendar integration and management.
   """
 
-  import Ecto.Query
   alias BandDb.Repo
+  alias BandDb.Accounts.User
   alias BandDb.Calendar.GoogleAuth
   alias BandDb.Calendar.GoogleAPI
-  alias BandDb.Accounts.User
 
   @doc """
   Gets the Google Auth record for a user.
@@ -327,7 +326,6 @@ defmodule BandDb.Calendar do
                 # Ensure we always have an end time
                 # If we get here, we don't have start or end time
                 # Use current date + default times as a fallback
-                timezone = "America/New_York"
                 now = DateTime.utc_now()
 
                 # Create a naive datetime for 9 PM today
@@ -418,10 +416,8 @@ defmodule BandDb.Calendar do
     GoogleAPI.get_shareable_link(calendar_id)
   end
 
-  @doc """
-  Private helper function to ensure tzdata is initialized before using timezone functions
-  Returns :ok if successful, or {:error, reason} if tzdata cannot be initialized
-  """
+  # Private helper function to ensure tzdata is initialized before using timezone functions
+  # Returns :ok if successful, or {:error, reason} if tzdata cannot be initialized
   defp ensure_tzdata do
     try do
       # Force tzdata to be loaded

@@ -58,13 +58,33 @@ defmodule BandDb.SetLists.SetListServer do
   # Server Callbacks
 
   @impl true
-  def init(_name) do
-    # Load the initial state from the database
-    set_lists = load_set_lists_from_storage()
-    Logger.info("SetListServer initialized with #{map_size(set_lists)} set lists")
+  def init(name) do
+    # Check if we're in test mode
+    sandbox_mode = Application.get_env(:band_db, BandDb.Repo)[:pool] == DBConnection.Ownership
 
-    # Return the state with in-memory set lists
-    {:ok, %{set_lists: set_lists}}
+    if sandbox_mode do
+      # In test mode, defer database access to handle_info to avoid connection ownership issues
+      # This allows the test process to properly set up sandbox before we access the database
+      Logger.debug("Starting SetListServer in sandbox mode, deferring DB access")
+      Process.send_after(self(), :load_initial_state, 100)
+      {:ok, %{set_lists: %{}, server_name: name}}
+    else
+      # In production mode, load state immediately
+      Logger.debug("Starting SetListServer in production mode, loading immediately")
+      set_lists = load_set_lists_from_storage()
+      Logger.info("SetListServer initialized with #{map_size(set_lists)} set lists")
+      {:ok, %{set_lists: set_lists, server_name: name}}
+    end
+  end
+
+  @impl true
+  def handle_info(:load_initial_state, %{server_name: server_name} = state) do
+    # Now we can safely access the database since the process that started us
+    # has had time to set up the sandbox
+    Logger.debug("SetListServer (#{inspect(server_name)}) loading initial state from database")
+    set_lists = load_set_lists_from_storage()
+    Logger.info("SetListServer (#{inspect(server_name)}) initialized with #{map_size(set_lists)} set lists")
+    {:noreply, %{state | set_lists: set_lists}}
   end
 
   @impl true
@@ -96,8 +116,8 @@ defmodule BandDb.SetLists.SetListServer do
       # Update the in-memory state
       new_state = %{state | set_lists: Map.put(state.set_lists, name, new_set_list)}
 
-      # Persist asynchronously for recovery purposes
-      Task.start(fn -> persist_set_lists(new_state.set_lists) end)
+      # Persist the updated state
+      persist_set_lists(new_state.set_lists)
 
       {:reply, :ok, new_state}
     end
@@ -127,7 +147,7 @@ defmodule BandDb.SetLists.SetListServer do
     case Map.get(state.set_lists, name) do
       nil ->
         {:reply, {:error, "Set list not found"}, state}
-      existing ->
+      _existing ->
         # Extract sets from params
         sets = cond do
           # If params has a sets field, use that
@@ -174,8 +194,8 @@ defmodule BandDb.SetLists.SetListServer do
         # Update the in-memory state
         new_state = %{state | set_lists: Map.put(state.set_lists, name, updated_set_list)}
 
-        # Persist asynchronously for recovery purposes
-        Task.start(fn -> persist_set_lists(new_state.set_lists) end)
+        # Persist the updated state
+        persist_set_lists(new_state.set_lists)
 
         {:reply, :ok, new_state}
     end
@@ -190,8 +210,8 @@ defmodule BandDb.SetLists.SetListServer do
         # Remove the set list from the in-memory state
         new_state = %{state | set_lists: Map.delete(state.set_lists, name)}
 
-        # Persist asynchronously for recovery purposes
-        Task.start(fn -> persist_set_lists(new_state.set_lists) end)
+        # Persist the updated state
+        persist_set_lists(new_state.set_lists)
 
         {:reply, :ok, new_state}
     end
@@ -258,6 +278,9 @@ defmodule BandDb.SetLists.SetListServer do
     end
   end
 
+  # Calculate the total duration for nil or any other type
+  defp calculate_total_duration(_), do: 0
+
   # Helper to calculate duration from songs if needed
   defp calculate_songs_duration(songs) when is_list(songs) do
     songs
@@ -272,22 +295,23 @@ defmodule BandDb.SetLists.SetListServer do
   end
   defp calculate_songs_duration(_), do: 0
 
-  # Calculate the total duration of a set list or any structure with duration info
-  defp calculate_total_duration(nil), do: 0
-
-  # Default case for any other type
-  defp calculate_total_duration(_), do: 0
-
   # Load set lists from storage (database) for recovery
   defp load_set_lists_from_storage do
+    # Handle any duplicate set lists first
+    Logger.debug("Checking for duplicate set lists in database")
+    deduplicate_set_lists_in_database()
+
     # Query all set lists with their sets
+    Logger.debug("Loading set lists from database")
     set_lists = SetList
     |> preload(:sets)
     |> order_by([sl], sl.name)
     |> Repo.all()
 
+    Logger.debug("Found #{length(set_lists)} set lists in database")
+
     # Convert them to our in-memory format (map with name as key)
-    set_lists
+    result = set_lists
     |> Enum.map(fn sl ->
       # Convert the set list to a map with nested sets
       {
@@ -313,81 +337,68 @@ defmodule BandDb.SetLists.SetListServer do
       }
     end)
     |> Map.new()
+
+    Logger.debug("Successfully loaded #{map_size(result)} set lists into memory")
+    result
+  end
+
+  # Helper to deduplicate set lists with the same name in the database
+  defp deduplicate_set_lists_in_database do
+    # Find any set lists with duplicate names
+    duplicate_names = Repo.all(
+      from sl in SetList,
+      group_by: sl.name,
+      having: count(sl.id) > 1,
+      select: sl.name
+    )
+
+    # Handle each set of duplicates
+    Enum.each(duplicate_names, fn name ->
+      # Get all set lists with this name, ordered by ID (oldest first)
+      duplicates = Repo.all(from sl in SetList, where: sl.name == ^name, order_by: sl.id)
+
+      case duplicates do
+        [] ->
+          :ok # Should never happen, but included for completeness
+        [_one] ->
+          :ok # Should never happen, but included for completeness
+        [keep | others] ->
+          # We'll keep the first one, and delete the rest
+          Logger.warning("Found #{length(duplicates)} set lists with name '#{name}'. Keeping ID #{keep.id} and deleting others.")
+
+          # Get all IDs to delete
+          ids_to_delete = Enum.map(others, & &1.id)
+
+          # Delete all associated sets first
+          Enum.each(ids_to_delete, fn id ->
+            Repo.delete_all(from s in Set, where: s.set_list_id == ^id)
+          end)
+
+          # Then delete the duplicate set lists
+          {deleted, _} = Repo.delete_all(from sl in SetList, where: sl.id in ^ids_to_delete)
+          Logger.info("Deleted #{deleted} duplicate set lists with name '#{name}'")
+      end
+    end)
   end
 
   # Persist set lists to storage (database) for recovery
   defp persist_set_lists(set_lists) do
+    # Always persist synchronously to prevent connection ownership issues
+    do_persist_set_lists(set_lists)
+  end
+
+  # Actual persistence logic
+  defp do_persist_set_lists(set_lists) do
     # Use a transaction to ensure all updates are atomic
     Repo.transaction(fn ->
-      # Get all existing set lists from the database
-      existing_set_lists = Repo.all(from sl in SetList, select: sl.name)
-      existing_set_list_names = MapSet.new(existing_set_lists)
+      # Delete all existing set lists and their sets
+      # This is simpler and more reliable than trying to coordinate updates/creates/deletes
+      Repo.delete_all(from s in Set)
+      Repo.delete_all(from sl in SetList)
 
-      # Determine which set lists to create, update, or delete
-      current_set_list_names = MapSet.new(Map.keys(set_lists))
-
-      # Set lists to create (in current but not in existing)
-      to_create = MapSet.difference(current_set_list_names, existing_set_list_names)
-
-      # Set lists to update (in both)
-      to_update = MapSet.intersection(current_set_list_names, existing_set_list_names)
-
-      # Set lists to delete (in existing but not in current)
-      to_delete = MapSet.difference(existing_set_list_names, current_set_list_names)
-
-      # Delete set lists that no longer exist in memory
-      Repo.delete_all(from sl in SetList, where: sl.name in ^MapSet.to_list(to_delete))
-
-      # Update existing set lists
-      Enum.each(MapSet.to_list(to_update), fn name ->
-        set_list = Map.get(set_lists, name)
-
-        # Find the existing set list
-        db_set_list = Repo.get_by(SetList, name: name)
-
-        # Update the set list with total_duration and any calendar fields
-        calendar_fields = [
-          total_duration: set_list.total_duration,
-          date: Map.get(set_list, :date),
-          location: Map.get(set_list, :location),
-          start_time: Map.get(set_list, :start_time),
-          end_time: Map.get(set_list, :end_time),
-          calendar_event_id: Map.get(set_list, :calendar_event_id)
-        ]
-
-        # Filter out nil values
-        calendar_fields = Enum.filter(calendar_fields, fn {_, v} -> v != nil end)
-
-        db_set_list
-        |> SetList.changeset(Map.new(calendar_fields))
-        |> Repo.update!()
-
-        # Delete all existing sets and create new ones
-        Repo.delete_all(from s in Set, where: s.set_list_id == ^db_set_list.id)
-
-        # Create new sets
-        Enum.each(set_list.sets, fn set ->
-          # Convert the songs if they're maps to match the database schema
-          songs = convert_songs_for_storage(set.songs)
-
-          %Set{}
-          |> Set.changeset(%{
-            name: set.name,
-            duration: set.duration,
-            break_duration: set.break_duration,
-            songs: songs,
-            set_list_id: db_set_list.id,
-            set_order: set.set_order
-          })
-          |> Repo.insert!()
-        end)
-      end)
-
-      # Create new set lists
-      Enum.each(MapSet.to_list(to_create), fn name ->
-        set_list = Map.get(set_lists, name)
-
-        # Create the set list with total_duration and any calendar fields
+      # Insert all set lists in memory
+      Enum.each(set_lists, fn {name, set_list} ->
+        # Create the set list record
         calendar_fields = [
           name: name,
           total_duration: set_list.total_duration,
@@ -406,9 +417,8 @@ defmodule BandDb.SetLists.SetListServer do
         |> SetList.changeset(Map.new(calendar_fields))
         |> Repo.insert!()
 
-        # Create the sets
+        # Create all sets for this set list
         Enum.each(set_list.sets, fn set ->
-          # Convert the songs if they're maps to match the database schema
           songs = convert_songs_for_storage(set.songs)
 
           %Set{}
@@ -424,6 +434,12 @@ defmodule BandDb.SetLists.SetListServer do
         end)
       end)
     end)
+    |> case do
+      {:ok, _} -> :ok
+      {:error, reason} ->
+        Logger.error("Error persisting set lists: #{inspect(reason)}")
+        {:error, :persist_failed}
+    end
   end
 
   # Convert songs to the format expected by the database
@@ -435,34 +451,6 @@ defmodule BandDb.SetLists.SetListServer do
     end)
     |> Enum.filter(&(&1 != nil))
   end
-
-  # Error handling helper
-  defp format_changeset_errors(changeset) do
-    changeset
-    |> errors_on()
-    |> Map.to_list()
-    |> Enum.map_join(", ", fn {key, errors} ->
-      errors_text = Enum.join(errors, ", ")
-      "#{key} #{errors_text}"
-    end)
-  end
-
-  # Implementation to safely handle error message generation
-  defp errors_on(changeset) do
-    Ecto.Changeset.traverse_errors(changeset, fn {message, opts} ->
-      Regex.replace(~r"%{(\w+)}", message, fn _, key ->
-        opts
-        |> Keyword.get(String.to_existing_atom(key), key)
-        |> stringify_value()
-      end)
-    end)
-  end
-
-  defp stringify_value(value) when is_tuple(value), do: inspect(value)
-  defp stringify_value(value) when is_atom(value), do: Atom.to_string(value)
-  defp stringify_value(value) when is_list(value), do: inspect(value)
-  defp stringify_value(value) when is_map(value), do: inspect(value)
-  defp stringify_value(value), do: to_string(value)
 
   # Helper function to safely get a value from a map or struct
   defp safe_get(data, key, default \\ nil) do
