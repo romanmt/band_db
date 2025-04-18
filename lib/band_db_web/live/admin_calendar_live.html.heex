@@ -75,10 +75,10 @@
       <%= if @google_connected and length(@calendars) > 0 do %>
         <div class="mt-8">
           <h3 class="text-lg leading-6 font-medium text-gray-900">
-            Your Calendars
+            Band Calendar
           </h3>
           <div class="mt-2 max-w-xl text-sm text-gray-500">
-            <p>These are the calendars available in your Google account.</p>
+            <p>This is your band's calendar where rehearsals and performances are synced.</p>
           </div>
           
           <div class="mt-4 overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
@@ -87,7 +87,6 @@
                 <tr>
                   <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Name</th>
                   <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Description</th>
-                  <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Type</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200 bg-white">
@@ -98,9 +97,6 @@
                     </td>
                     <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                       <%= calendar.description || "-" %>
-                    </td>
-                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                      <%= if calendar.primary, do: "Primary", else: "Secondary" %>
                     </td>
                   </tr>
                 <% end %>

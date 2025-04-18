@@ -12,7 +12,16 @@ defmodule BandDbWeb.AdminCalendarLive do
     google_auth = Calendar.get_google_auth(user)
 
     connected = google_auth != nil
-    calendars = if connected, do: get_calendars(user), else: []
+
+    # Only get the band calendar instead of all calendars
+    band_calendar = if connected && google_auth.calendar_id do
+      case get_band_calendar(user, google_auth.calendar_id) do
+        {:ok, calendar} -> [calendar]
+        _ -> []
+      end
+    else
+      []
+    end
 
     # Get selected calendar ID if there is one
     calendar_id = if google_auth, do: google_auth.calendar_id, else: nil
@@ -26,7 +35,7 @@ defmodule BandDbWeb.AdminCalendarLive do
     socket = assign(socket,
       google_connected: connected,
       google_auth: google_auth,
-      calendars: calendars,
+      calendars: band_calendar,
       show_create_calendar_modal: false,
       band_name: "",
       calendar_error: nil,
@@ -169,6 +178,16 @@ defmodule BandDbWeb.AdminCalendarLive do
     case Calendar.get_shareable_link(calendar_id) do
       {:ok, link} -> link
       {:error, _reason} -> nil
+    end
+  end
+
+  # Get only the band calendar by ID
+  defp get_band_calendar(user, calendar_id) do
+    case Calendar.get_access_token(user) do
+      {:ok, access_token} ->
+        Calendar.get_calendar(access_token, calendar_id)
+      {:error, _reason} ->
+        {:error, "Failed to get access token"}
     end
   end
 

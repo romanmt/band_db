@@ -134,6 +134,14 @@ defmodule BandDb.Calendar do
   end
 
   @doc """
+  Gets a specific calendar by ID.
+  Returns {:ok, calendar} or {:error, reason}
+  """
+  def get_calendar(access_token, calendar_id) do
+    GoogleAPI.get_calendar(access_token, calendar_id)
+  end
+
+  @doc """
   Lists events for a calendar within a date range.
   Returns {:ok, events} or {:error, reason}
   """

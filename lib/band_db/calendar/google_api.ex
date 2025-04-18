@@ -90,7 +90,7 @@ defmodule BandDb.Calendar.GoogleAPI do
   end
 
   @doc """
-  Lists the user's calendars.
+  Lists all calendars for the user.
   Returns {:ok, calendars} or {:error, reason}
   """
   def list_calendars(access_token) do
@@ -114,6 +114,34 @@ defmodule BandDb.Calendar.GoogleAPI do
 
       {:ok, %{status_code: status_code, body: body}} ->
         {:error, "Failed to list calendars: HTTP #{status_code} - #{body}"}
+
+      {:error, %{reason: reason}} ->
+        {:error, "Network error: #{reason}"}
+    end
+  end
+
+  @doc """
+  Gets a specific calendar by ID.
+  Returns {:ok, calendar} or {:error, reason}
+  """
+  def get_calendar(access_token, calendar_id) do
+    headers = [
+      {"Authorization", "Bearer #{access_token}"},
+      {"Accept", "application/json"}
+    ]
+
+    case HTTPoison.get("#{@calendar_api_url}/calendars/#{calendar_id}", headers) do
+      {:ok, %{status_code: 200, body: body}} ->
+        calendar = Jason.decode!(body)
+        {:ok, %{
+          id: calendar["id"],
+          summary: calendar["summary"],
+          description: calendar["description"],
+          primary: false
+        }}
+
+      {:ok, %{status_code: status_code, body: body}} ->
+        {:error, "Failed to get calendar: HTTP #{status_code} - #{body}"}
 
       {:error, %{reason: reason}} ->
         {:error, "Network error: #{reason}"}

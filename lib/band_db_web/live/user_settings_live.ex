@@ -201,7 +201,7 @@ defmodule BandDbWeb.UserSettingsLive do
         <%= if @connected && length(@calendars) > 0 do %>
           <div>
             <h3 class="text-lg font-medium text-gray-900 mb-2">
-              Your Calendars
+              Band Calendar
             </h3>
 
             <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-md">
@@ -209,20 +209,18 @@ defmodule BandDbWeb.UserSettingsLive do
                 <thead class="bg-gray-50">
                   <tr>
                     <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-xs font-semibold text-gray-900">Name</th>
-                    <th scope="col" class="px-3 py-3.5 text-left text-xs font-semibold text-gray-900">Type</th>
+                    <th scope="col" class="px-3 py-3.5 text-left text-xs font-semibold text-gray-900">Description</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 bg-white">
                   <%= for calendar <- @calendars do %>
-                    <tr class={if @google_auth && @google_auth.calendar_id == calendar.id, do: "bg-blue-50", else: ""}>
+                    <tr class="bg-blue-50">
                       <td class="whitespace-nowrap py-2 pl-4 pr-3 text-sm font-medium text-gray-900">
                         <%= calendar.summary %>
-                        <%= if @google_auth && @google_auth.calendar_id == calendar.id do %>
-                          <span class="text-xs text-blue-600 ml-2">(active)</span>
-                        <% end %>
+                        <span class="text-xs text-blue-600 ml-2">(active)</span>
                       </td>
                       <td class="whitespace-nowrap px-3 py-2 text-sm text-gray-500">
-                        <%= if calendar.primary, do: "Primary", else: "Secondary" %>
+                        <%= calendar.description || "-" %>
                       </td>
                     </tr>
                   <% end %>
@@ -257,11 +255,21 @@ defmodule BandDbWeb.UserSettingsLive do
     # Check Google Calendar connection status
     connected = has_valid_google_auth?(user)
 
+    # Get Google Auth
+    google_auth = Calendar.get_google_auth(user)
+
     # Check if user has a band calendar configured
     has_calendar = connected && has_band_calendar?(user)
 
-    # Get calendars list if connected
-    calendars = if connected, do: get_calendars(user), else: []
+    # Get only the band calendar instead of all calendars
+    band_calendar = if connected && has_calendar do
+      case get_band_calendar(user, google_auth.calendar_id) do
+        {:ok, calendar} -> [calendar]
+        _ -> []
+      end
+    else
+      []
+    end
 
     # Get active tab from params
     active_tab = if Map.has_key?(socket.assigns, :active_tab), do: socket.assigns.active_tab, else: "account"
@@ -277,9 +285,9 @@ defmodule BandDbWeb.UserSettingsLive do
       |> assign(:active_tab, active_tab)
       |> assign(:connected, connected)
       |> assign(:has_calendar, has_calendar)
-      |> assign(:calendars, calendars)
+      |> assign(:calendars, band_calendar)
       |> assign(:calendar_error, nil)
-      |> assign(:google_auth, Calendar.get_google_auth(user))
+      |> assign(:google_auth, google_auth)
 
     {:ok, socket}
   end
@@ -399,6 +407,16 @@ defmodule BandDbWeb.UserSettingsLive do
     case Calendar.list_calendars(user) do
       {:ok, calendars} -> calendars
       {:error, _} -> []
+    end
+  end
+
+  # Get only the band calendar by ID
+  defp get_band_calendar(user, calendar_id) do
+    case Calendar.get_access_token(user) do
+      {:ok, access_token} ->
+        Calendar.get_calendar(access_token, calendar_id)
+      {:error, _reason} ->
+        {:error, "Failed to get access token"}
     end
   end
 end

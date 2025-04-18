@@ -1,0 +1,159 @@
+#+TITLE: Google Calendar Integration Plan
+#+AUTHOR: BandDb Team
+#+DATE: 
+
+* Overview
+This document outlines the phased approach for integrating Google Calendar with our BandDb application. The integration will follow the "Band Admin OAuth" approach, where a band administrator connects their Google account to create and manage a shared calendar for the band.
+
+* Phase 1: Authentication Setup [1-2 weeks]
+:PROPERTIES:
+:GOAL: Establish secure OAuth connection between BandDb and Google Calendar
+:END:
+
+** Tasks
+*** Register application in Google Cloud Console
+- [X] Create a new project
+- [X] Enable Google Calendar API
+- [X] Configure OAuth consent screen (requesting only necessary calendar scopes)
+- [X] Generate OAuth client ID and secret
+
+*** Implement OAuth flow in Phoenix
+- [X] Create OAuth controller with callback endpoint
+- [X] Implement secure token storage in database
+- [X] Handle token refresh logic
+
+*** Create admin settings interface
+- [X] Add "Connect to Google Calendar" button in admin panel
+- [X] Provide clear permissions explanation
+- [X] Show connection status and disconnect option
+
+** Validation Criteria
+- [X] Admin can successfully authenticate with Google
+- [X] OAuth tokens are securely stored and refreshed when needed
+- [X] Connection status is accurately displayed in the admin UI
+
+* Phase 2: Basic Calendar Operations [1-2 weeks]
+:PROPERTIES:
+:GOAL: Create and manage a band-specific calendar
+:END:
+
+** Tasks
+*** Create Google Calendar API client module
+- [X] Implement calendar creation function
+- [X] Implement calendar retrieval/listing function
+- [X] Add calendar metadata operations (update, delete)
+
+*** Build calendar management interface
+- [X] Show existing calendars
+- [X] Allow admin to create a new "[Band Name] Rehearsals & Shows" calendar
+- [X] Provide calendar customization options (color, description)
+
+*** Implement calendar viewing within app
+- [X] Display simple monthly/weekly calendar view
+- [X] Show basic event information
+
+** Validation Criteria
+- [X] Admin can create and view a band calendar
+- [X] Calendar appears in both BandDb and Google Calendar
+- [X] Basic calendar operations function correctly
+
+* Phase 3: Event Integration [2-3 weeks]
+:PROPERTIES:
+:GOAL: Automatically sync rehearsal plans and set lists with calendar events
+:END:
+
+** Tasks
+*** Extend rehearsal plan functionality
+- [X] Add calendar event creation when saving rehearsal plans
+- [X] Include relevant details (date, duration, location, link back to plan)
+- [X] Handle updates and deletions
+
+*** Extend set list functionality
+- [X] Add performance event creation when saving set lists
+- [X] Include performance details (venue, time, link back to set list)
+- [ ] Handle updates and deletions
+
+*** Implement bidirectional linking
+- [X] Create deep links from calendar events to BandDb resources
+- [X] Show calendar event status in rehearsal/set list views
+- [ ] Sync changes in either direction
+
+** Validation Criteria
+- [X] Creating rehearsals automatically creates calendar events
+- [X] Creating set lists for performances adds show events to calendar
+- [ ] Updates in app are reflected in calendar and vice versa
+- [X] Links between resources work correctly
+
+* Phase 4: Sharing & Notifications [1-2 weeks]
+:PROPERTIES:
+:GOAL: Ensure all band members have access to the calendar and receive appropriate notifications
+:END:
+
+** Tasks
+*** Implement calendar sharing
+- [X] Auto-generate sharing settings for band members
+- [X] Create one-click sharing options for admin
+- [X] Provide different permission levels (view vs. edit)
+
+*** Add notification system
+- [ ] Send email notifications for new calendar events
+- [ ] Create in-app notifications for upcoming rehearsals/shows
+- [ ] Allow users to set notification preferences
+
+*** Build sharing management UI
+- [X] Show current sharing status
+- [X] Allow admin to adjust permissions
+- [X] Provide sharing links/codes
+
+** Validation Criteria
+- [X] All band members can access the calendar
+- [ ] Notifications are delivered appropriately
+- [X] Sharing permissions work as expected
+
+* Phase 5: Enhanced Features [2+ weeks]
+:PROPERTIES:
+:GOAL: Add advanced calendar features to improve scheduling efficiency
+:END:
+
+** Tasks
+*** Implement availability checking
+- [ ] Add conflict detection when scheduling new events
+- [ ] Create visual indicators for potential scheduling conflicts
+- [ ] Allow band members to mark unavailable times
+
+*** Add recurring event support
+- [ ] Support for regular rehearsal schedules
+- [ ] Handle exceptions to recurring events
+- [ ] Sync recurring events with Google Calendar
+
+*** Create calendar insights
+- [ ] Track rehearsal frequency and duration
+- [ ] Show upcoming performance preparation timelines
+- [ ] Highlight scheduling patterns and conflicts
+
+** Validation Criteria
+- [ ] System helps avoid scheduling conflicts
+- [ ] Recurring events work correctly
+- [ ] Insights provide valuable scheduling information
+
+* Technical Considerations
+** Security
+- [X] Store OAuth tokens securely (encrypted at rest)
+- [X] Implement proper token refresh logic
+- [X] Use minimal permissions scopes
+
+** Error Handling
+- [X] Graceful handling of API rate limits
+- [ ] Recovery from sync failures
+- [X] Clear error messages for users
+
+** Performance
+- [ ] Batch API operations where possible
+- [ ] Asynchronous updates for non-critical operations
+- [ ] Smart caching to reduce API calls
+
+* Future Extensions
+- [ ] Mobile push notifications
+- [ ] Integration with other calendar providers
+- [ ] Advanced availability preferences (preferred days/times)
+- [ ] Multi-calendar support for different band activities 
