@@ -17,8 +17,20 @@ defmodule BandDb.Application do
       {Phoenix.PubSub, name: BandDb.PubSub},
       # Start the Finch HTTP client for sending emails
       {Finch, name: BandDb.Finch, pools: %{default: [protocols: [:http1]]}},
-      # Start the Ecto repository
-      BandDb.Repo,
+    ]
+
+    # Only start the Repo if SKIP_DB is not set
+    children =
+      if System.get_env("SKIP_DB") == "true" do
+        Logger.info("Skipping database initialization for unit tests")
+        children
+      else
+        # Start the Ecto repository
+        children ++ [BandDb.Repo]
+      end
+
+    # Add the rest of the children
+    children = children ++ [
       # Start a Task.Supervisor for managing async operations
       {Task.Supervisor, name: BandDb.TaskSupervisor},
       # Start the Endpoint (http/https)

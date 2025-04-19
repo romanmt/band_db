@@ -11,6 +11,21 @@ jobs:
     name: Unit Tests
     runs-on: ubuntu-latest
     
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: band_db_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
     steps:
       - uses: actions/checkout@v3
       
@@ -44,6 +59,7 @@ jobs:
         run: ./scripts/ci_unit_tests.sh
         env:
           MIX_ENV: test
+          SKIP_DB: "true"
 
   integration-test:
     name: Integration Tests

@@ -29,11 +29,13 @@ config :phoenix, :plug_init_mode, :runtime
 config :phoenix_live_view,
   enable_expensive_runtime_checks: true
 
-# Configure your database
-config :band_db, BandDb.Repo,
-  username: "postgres",
-  password: "postgres",
-  hostname: "localhost",
-  database: "band_db_test#{System.get_env("MIX_TEST_PARTITION")}",
-  pool: Ecto.Adapters.SQL.Sandbox,
-  pool_size: 10
+# Configure your database - only used for DB tests
+if System.get_env("SKIP_DB") != "true" do
+  config :band_db, BandDb.Repo,
+    username: "postgres",
+    password: "postgres",
+    hostname: "localhost",
+    database: "band_db_test#{System.get_env("MIX_TEST_PARTITION")}",
+    pool: Ecto.Adapters.SQL.Sandbox,
+    pool_size: 10
+end
