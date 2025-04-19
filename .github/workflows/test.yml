@@ -56,10 +56,12 @@ jobs:
         run: mix compile --warnings-as-errors
       
       - name: Run unit tests
-        run: ./scripts/ci_unit_tests.sh
+        run: |
+          # Skip database creation and run tests directly with SKIP_DB=true
+          export SKIP_DB=true
+          mix test --only unit --exclude db --trace
         env:
           MIX_ENV: test
-          SKIP_DB: "true"
 
   integration-test:
     name: Integration Tests
@@ -111,7 +113,12 @@ jobs:
       - name: Compile
         run: mix compile --warnings-as-errors
       
-      - name: Run all tests
-        run: ./scripts/ci_all_tests.sh
+      - name: Create database and run all tests
+        run: |
+          # Explicitly create database
+          mix ecto.create
+          mix ecto.migrate
+          # Run all tests including DB tests
+          mix test --include db
         env:
           MIX_ENV: test 

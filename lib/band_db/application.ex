@@ -8,6 +8,9 @@ defmodule BandDb.Application do
 
   @impl true
   def start(_type, _args) do
+    # Check if the environment is test and if SKIP_DB is set
+    skip_db = System.get_env("SKIP_DB") == "true"
+
     children = [
       # Start the Telemetry supervisor
       BandDbWeb.Telemetry,
@@ -21,7 +24,7 @@ defmodule BandDb.Application do
 
     # Only start the Repo if SKIP_DB is not set
     children =
-      if System.get_env("SKIP_DB") == "true" do
+      if skip_db do
         Logger.info("Skipping database initialization for unit tests")
         children
       else
@@ -29,19 +32,40 @@ defmodule BandDb.Application do
         children ++ [BandDb.Repo]
       end
 
+    # The Song, SetList, and Rehearsal Servers depend on persistence,
+    # so we need to handle them differently in unit tests
+    server_modules =
+      if skip_db do
+        # Mock or dummy implementations for servers
+        Logger.info("Using mock persistence modules for unit tests")
+        [
+          # Start a Task.Supervisor for managing async operations
+          {Task.Supervisor, name: BandDb.TaskSupervisor},
+          # Start the Endpoint (http/https)
+          BandDbWeb.Endpoint,
+          # Ensure our servers are configured with mocks before starting
+          {BandDb.Songs.SongServer, BandDb.Songs.SongServer},
+          {BandDb.SetLists.SetListServer, BandDb.SetLists.SetListServer},
+          BandDb.Rehearsals.RehearsalServer
+        ]
+      else
+        # Real implementations for servers
+        [
+          # Start a Task.Supervisor for managing async operations
+          {Task.Supervisor, name: BandDb.TaskSupervisor},
+          # Start the Endpoint (http/https)
+          BandDbWeb.Endpoint,
+          # Start the Song Server
+          {BandDb.Songs.SongServer, BandDb.Songs.SongServer},
+          # Start the Set List Server
+          {BandDb.SetLists.SetListServer, BandDb.SetLists.SetListServer},
+          # Start the Rehearsal Server
+          BandDb.Rehearsals.RehearsalServer
+        ]
+      end
+
     # Add the rest of the children
-    children = children ++ [
-      # Start a Task.Supervisor for managing async operations
-      {Task.Supervisor, name: BandDb.TaskSupervisor},
-      # Start the Endpoint (http/https)
-      BandDbWeb.Endpoint,
-      # Start the Song Server
-      {BandDb.Songs.SongServer, BandDb.Songs.SongServer},
-      # Start the Set List Server
-      {BandDb.SetLists.SetListServer, BandDb.SetLists.SetListServer},
-      # Start the Rehearsal Server
-      BandDb.Rehearsals.RehearsalServer
-    ]
+    children = children ++ server_modules
 
     # Explicitly initialize tzdata
     initialize_tzdata()

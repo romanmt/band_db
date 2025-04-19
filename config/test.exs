@@ -30,7 +30,19 @@ config :phoenix_live_view,
   enable_expensive_runtime_checks: true
 
 # Configure your database - only used for DB tests
-if System.get_env("SKIP_DB") != "true" do
+if System.get_env("SKIP_DB") == "true" do
+  # Provide minimal config to satisfy Mix tasks but avoid actual DB connections
+  config :band_db, BandDb.Repo,
+    adapter: Ecto.Adapters.Postgres,
+    database: "band_db_test_dummy",
+    pool: Ecto.Adapters.SQL.Sandbox,
+    pool_size: 1,
+    # Set parameters that will prevent actual connections
+    hostname: "localhost",
+    username: "postgres",
+    password: "postgres",
+    connect_timeout: 1  # Very short timeout to fail quickly
+else
   config :band_db, BandDb.Repo,
     username: "postgres",
     password: "postgres",
