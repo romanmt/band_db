@@ -24,6 +24,9 @@ defmodule BandDb.DataCase do
       import Ecto.Changeset
       import Ecto.Query
       import BandDb.DataCase
+
+      # Automatically tag tests using DataCase with :db
+      @moduletag :db
     end
   end
 

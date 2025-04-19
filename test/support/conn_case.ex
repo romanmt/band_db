@@ -28,6 +28,9 @@ defmodule BandDbWeb.ConnCase do
       import Plug.Conn
       import Phoenix.ConnTest
       import BandDbWeb.ConnCase
+
+      # Automatically tag tests using ConnCase with :db
+      @moduletag :db
     end
   end
 

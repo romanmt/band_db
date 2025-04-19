@@ -79,7 +79,6 @@ defmodule BandDb.Rehearsals.RehearsalPersistence do
           duration: plan.duration,
           rehearsal_songs: rehearsal_song_uuids,
           set_songs: set_song_uuids,
-          band_id: Map.get(plan, :band_id, Ecto.UUID.generate()),
           scheduled_date: Map.get(plan, :scheduled_date),
           start_time: Map.get(plan, :start_time),
           end_time: Map.get(plan, :end_time),

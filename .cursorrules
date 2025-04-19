@@ -18,6 +18,23 @@
 14. Don't make unncessary changes without asking
 15. Fix all compiler warnings before committing code - warnings often indicate potential bugs or code issues
 
+# Unit Testing Rules
+1. Test one thing per test - each test should verify a single behavior or concept
+2. Follow the Arrange-Act-Assert pattern (setup, perform action, verify result)
+3. Use descriptive test names that explain expected behavior
+4. Keep tests independent from each other
+5. Minimize test setup - if setup is complex, use fixtures and helpers
+6. Test both positive cases (happy paths) and edge cases
+7. Avoid test interdependencies - tests should run in any order
+8. Mock external dependencies to isolate unit behavior - unit tests should not touch the database
+9. Write tests before or alongside implementation (TDD approach)
+10. Keep assertions focused and specific
+11. Test public interfaces, not implementation details
+12. Make failures obvious - failed tests should clearly identify the problem
+13. Maintain test code with the same care as production code
+14. Create helpers/factories for common test setup routines
+15. Avoid excessive mocking that obscures the actual behavior
+
 # Deployment
 
 1. **Platform**:

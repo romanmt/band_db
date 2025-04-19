@@ -1,7 +1,7 @@
 defmodule BandDb.Songs.SongServer do
   use GenServer
   require Logger
-  alias BandDb.Songs.{Song, SongPersistence}
+  alias BandDb.Songs.Song
 
   # Client API
 
@@ -41,8 +41,8 @@ defmodule BandDb.Songs.SongServer do
 
   @impl true
   def init(_args) do
-    # Load initial state from persistence
-    case SongPersistence.load_songs() do
+    # Load initial state from persistence using the configurable module
+    case persistence_module().load_songs() do
       {:ok, songs} ->
         schedule_backup()
         {:ok, %{songs: songs}}
@@ -188,12 +188,17 @@ defmodule BandDb.Songs.SongServer do
   @impl true
   def handle_info(:backup, state) do
     Logger.info("Backing up songs")
-    SongPersistence.persist_songs(state.songs)
+    persistence_module().persist_songs(state.songs)
     schedule_backup()
     {:noreply, state}
   end
 
   defp schedule_backup do
     Process.send_after(self(), :backup, :timer.minutes(1))
+  end
+
+  # Get the configured persistence module
+  defp persistence_module do
+    Application.get_env(:band_db, :song_persistence, BandDb.Songs.SongPersistence)
   end
 end

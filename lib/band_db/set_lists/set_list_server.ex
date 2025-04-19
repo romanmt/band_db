@@ -8,15 +8,15 @@ defmodule BandDb.SetLists.SetListServer do
   """
   use GenServer
   require Logger
-  alias BandDb.{Repo, SetLists.SetList, SetLists.Set}
-  import Ecto.Query
 
   # Client API
 
   @doc """
   Starts the SetListServer with the given name.
   """
-  def start_link(name \\ __MODULE__) do
+  def start_link(name \\ __MODULE__)
+
+  def start_link(name) when is_atom(name) do
     GenServer.start_link(__MODULE__, name, name: name)
   end
 
@@ -297,159 +297,55 @@ defmodule BandDb.SetLists.SetListServer do
 
   # Load set lists from storage (database) for recovery
   defp load_set_lists_from_storage do
-    # Handle any duplicate set lists first
-    Logger.debug("Checking for duplicate set lists in database")
-    deduplicate_set_lists_in_database()
+    # Check if we're in test mode
+    test_env = Application.get_env(:band_db, :env) == :test
 
-    # Query all set lists with their sets
-    Logger.debug("Loading set lists from database")
-    set_lists = SetList
-    |> preload(:sets)
-    |> order_by([sl], sl.name)
-    |> Repo.all()
-
-    Logger.debug("Found #{length(set_lists)} set lists in database")
-
-    # Convert them to our in-memory format (map with name as key)
-    result = set_lists
-    |> Enum.map(fn sl ->
-      # Convert the set list to a map with nested sets
-      {
-        sl.name,
-        %{
-          name: sl.name,
-          sets: Enum.map(sl.sets, fn set ->
-            %{
-              name: set.name,
-              duration: set.duration,
-              break_duration: set.break_duration,
-              songs: set.songs,
-              set_order: set.set_order
-            }
-          end) |> Enum.sort_by(& &1.set_order),
-          total_duration: sl.total_duration,
-          date: sl.date,
-          location: sl.location,
-          start_time: sl.start_time,
-          end_time: sl.end_time,
-          calendar_event_id: sl.calendar_event_id
-        }
-      }
-    end)
-    |> Map.new()
-
-    Logger.debug("Successfully loaded #{map_size(result)} set lists into memory")
-    result
-  end
-
-  # Helper to deduplicate set lists with the same name in the database
-  defp deduplicate_set_lists_in_database do
-    # Find any set lists with duplicate names
-    duplicate_names = Repo.all(
-      from sl in SetList,
-      group_by: sl.name,
-      having: count(sl.id) > 1,
-      select: sl.name
-    )
-
-    # Handle each set of duplicates
-    Enum.each(duplicate_names, fn name ->
-      # Get all set lists with this name, ordered by ID (oldest first)
-      duplicates = Repo.all(from sl in SetList, where: sl.name == ^name, order_by: sl.id)
-
-      case duplicates do
-        [] ->
-          :ok # Should never happen, but included for completeness
-        [_one] ->
-          :ok # Should never happen, but included for completeness
-        [keep | others] ->
-          # We'll keep the first one, and delete the rest
-          Logger.warning("Found #{length(duplicates)} set lists with name '#{name}'. Keeping ID #{keep.id} and deleting others.")
-
-          # Get all IDs to delete
-          ids_to_delete = Enum.map(others, & &1.id)
-
-          # Delete all associated sets first
-          Enum.each(ids_to_delete, fn id ->
-            Repo.delete_all(from s in Set, where: s.set_list_id == ^id)
-          end)
-
-          # Then delete the duplicate set lists
-          {deleted, _} = Repo.delete_all(from sl in SetList, where: sl.id in ^ids_to_delete)
-          Logger.info("Deleted #{deleted} duplicate set lists with name '#{name}'")
+    if test_env do
+      # In test mode, use the mock or return empty state to avoid DB access
+      case persistence_module().load_set_lists() do
+        {:ok, set_lists} -> set_lists
+        {:error, _reason} -> %{}
       end
-    end)
+    else
+      # In production, use normal persistence
+      try do
+        case persistence_module().load_set_lists() do
+          {:ok, set_lists} -> set_lists
+          {:error, _reason} -> %{}
+        end
+      rescue
+        # Handle any database connection errors
+        e ->
+          Logger.error("Failed to load set lists from storage: #{inspect(e)}")
+          %{}
+      end
+    end
   end
 
   # Persist set lists to storage (database) for recovery
   defp persist_set_lists(set_lists) do
-    # Always persist synchronously to prevent connection ownership issues
-    do_persist_set_lists(set_lists)
-  end
+    # Check if we're in test mode
+    test_env = Application.get_env(:band_db, :env) == :test
 
-  # Actual persistence logic
-  defp do_persist_set_lists(set_lists) do
-    # Use a transaction to ensure all updates are atomic
-    Repo.transaction(fn ->
-      # Delete all existing set lists and their sets
-      # This is simpler and more reliable than trying to coordinate updates/creates/deletes
-      Repo.delete_all(from s in Set)
-      Repo.delete_all(from sl in SetList)
-
-      # Insert all set lists in memory
-      Enum.each(set_lists, fn {name, set_list} ->
-        # Create the set list record
-        calendar_fields = [
-          name: name,
-          total_duration: set_list.total_duration,
-          date: Map.get(set_list, :date),
-          location: Map.get(set_list, :location),
-          start_time: Map.get(set_list, :start_time),
-          end_time: Map.get(set_list, :end_time),
-          calendar_event_id: Map.get(set_list, :calendar_event_id)
-        ]
-
-        # Filter out nil values
-        calendar_fields = Enum.filter(calendar_fields, fn {_, v} -> v != nil end)
-
-        # Create the set list
-        db_set_list = %SetList{}
-        |> SetList.changeset(Map.new(calendar_fields))
-        |> Repo.insert!()
-
-        # Create all sets for this set list
-        Enum.each(set_list.sets, fn set ->
-          songs = convert_songs_for_storage(set.songs)
-
-          %Set{}
-          |> Set.changeset(%{
-            name: set.name,
-            duration: set.duration,
-            break_duration: set.break_duration,
-            songs: songs,
-            set_list_id: db_set_list.id,
-            set_order: set.set_order
-          })
-          |> Repo.insert!()
-        end)
-      end)
-    end)
-    |> case do
-      {:ok, _} -> :ok
-      {:error, reason} ->
-        Logger.error("Error persisting set lists: #{inspect(reason)}")
-        {:error, :persist_failed}
+    if test_env do
+      # In test mode, use the mock without database access
+      persistence_module().persist_set_lists(set_lists)
+    else
+      # In production, use normal persistence with error handling
+      try do
+        persistence_module().persist_set_lists(set_lists)
+      rescue
+        # Handle any database connection errors
+        e ->
+          Logger.error("Failed to persist set lists to storage: #{inspect(e)}")
+          {:error, :persist_failed}
+      end
     end
   end
 
-  # Convert songs to the format expected by the database
-  defp convert_songs_for_storage(songs) do
-    Enum.map(songs, fn
-      %{title: title} -> title
-      song when is_binary(song) -> song
-      _ -> nil
-    end)
-    |> Enum.filter(&(&1 != nil))
+  # Get the configured persistence module
+  defp persistence_module do
+    Application.get_env(:band_db, :set_list_persistence, BandDb.SetLists.SetListPersistence)
   end
 
   # Helper function to safely get a value from a map or struct
