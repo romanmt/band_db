@@ -9,7 +9,11 @@ defmodule BandDb.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
-      deps: deps()
+      deps: deps(),
+      preferred_cli_env: [
+        "test.unit": :test,
+        "test.all": :test
+      ]
     ]
   end
 
@@ -83,6 +87,8 @@ defmodule BandDb.MixProject do
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
+      "test.unit": ["test --exclude db"],
+      "test.all": ["test --include db"],
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
       "assets.build": ["tailwind band_db", "esbuild band_db"],
       "assets.deploy": [

@@ -5,14 +5,16 @@ defmodule BandDb.Songs.SongPersistence do
   """
 
   alias BandDb.Songs.Song
-  alias BandDb.Repo
+
+  # Get the configured repo module
+  defp repo, do: Application.get_env(:band_db, :repo, BandDb.Repo)
 
   @doc """
   Loads all songs from the database.
   Returns {:ok, songs} or {:error, reason}
   """
   def load_songs do
-    case Repo.all(Song) do
+    case repo().all(Song) do
       songs when is_list(songs) -> {:ok, songs}
       _ -> {:ok, []}
     end
@@ -23,9 +25,9 @@ defmodule BandDb.Songs.SongPersistence do
   Returns :ok on success or {:error, reason} on failure.
   """
   def persist_songs(songs) do
-    Repo.transaction(fn ->
+    repo().transaction(fn ->
       # Get existing songs indexed by UUID for comparison
-      existing_songs = Repo.all(Song)
+      existing_songs = repo().all(Song)
       existing_uuids = MapSet.new(existing_songs, & &1.uuid)
 
       # Insert or update each song
@@ -34,12 +36,12 @@ defmodule BandDb.Songs.SongPersistence do
           # Find existing song and update it
           existing = Enum.find(existing_songs, & &1.uuid == song.uuid)
           Song.changeset(existing, Map.from_struct(song))
-          |> Repo.update!()
+          |> repo().update!()
         else
           # Insert new song
           %Song{}
           |> Song.changeset(Map.from_struct(song))
-          |> Repo.insert!()
+          |> repo().insert!()
         end
       end)
 
@@ -49,7 +51,7 @@ defmodule BandDb.Songs.SongPersistence do
         not MapSet.member?(current_uuids, song.uuid)
       end)
 
-      Enum.each(songs_to_delete, &Repo.delete!/1)
+      Enum.each(songs_to_delete, &repo().delete!/1)
     end)
   end
 end

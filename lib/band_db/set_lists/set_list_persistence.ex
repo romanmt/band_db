@@ -3,15 +3,19 @@ defmodule BandDb.SetLists.SetListPersistence do
   Handles persistence of set lists using Ecto.
   """
   require Logger
-  alias BandDb.{Repo, SetLists.SetList, SetLists.Set}
+  alias BandDb.SetLists.SetList
+  alias BandDb.SetLists.Set
   import Ecto.Query
+
+  # Get the configured repo module
+  defp repo, do: Application.get_env(:band_db, :repo, BandDb.Repo)
 
   @doc """
   Loads set lists from the database.
   """
   def load_set_lists do
     try do
-      set_lists = Repo.all(from sl in SetList,
+      set_lists = repo().all(from sl in SetList,
         preload: [:sets])
       |> Enum.map(fn set_list ->
         {set_list.name, %{
@@ -49,10 +53,10 @@ defmodule BandDb.SetLists.SetListPersistence do
   Ensures set list names are unique by handling duplicates appropriately.
   """
   def persist_set_lists(state) do
-    Repo.transaction(fn ->
+    repo().transaction(fn ->
       # Delete all existing set lists and their sets to avoid duplicates
-      Repo.delete_all(Set)
-      Repo.delete_all(SetList)
+      repo().delete_all(Set)
+      repo().delete_all(SetList)
 
       # Insert all set lists and their sets
       # Keep track of inserted names to avoid duplicates
@@ -76,7 +80,7 @@ defmodule BandDb.SetLists.SetListPersistence do
 
         # Create the set list with error handling for unique constraint
         result = try do
-          Repo.insert(%SetList{}
+          repo().insert(%SetList{}
             |> SetList.changeset(Map.new(calendar_fields)))
         rescue
           # Handle unique constraint errors
@@ -85,7 +89,7 @@ defmodule BandDb.SetLists.SetListPersistence do
             # Try again with a new unique name
             new_unique_name = "#{unique_name}_#{System.unique_integer([:positive])}"
             new_calendar_fields = Keyword.put(calendar_fields, :name, new_unique_name)
-            Repo.insert(%SetList{} |> SetList.changeset(Map.new(new_calendar_fields)))
+            repo().insert(%SetList{} |> SetList.changeset(Map.new(new_calendar_fields)))
           e ->
             Logger.error("Unexpected error when inserting set list: #{inspect(e)}")
             {:error, :persist_failed}
@@ -95,7 +99,7 @@ defmodule BandDb.SetLists.SetListPersistence do
           {:ok, db_set_list} ->
             # Create all sets for this set list
             Enum.each(set_list.sets, fn set ->
-              Repo.insert!(%Set{
+              repo().insert!(%Set{
                 set_list_id: db_set_list.id,
                 name: set.name,
                 songs: set.songs,

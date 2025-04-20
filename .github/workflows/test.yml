@@ -11,20 +11,7 @@ jobs:
     name: Unit Tests
     runs-on: ubuntu-latest
     
-    services:
-      postgres:
-        image: postgres:14
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: band_db_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    # No need for Postgres service for unit tests
     
     steps:
       - uses: actions/checkout@v3
@@ -57,9 +44,12 @@ jobs:
       
       - name: Run unit tests
         run: |
-          # Skip database creation and run tests directly with SKIP_DB=true
+          # Set environment variables to skip DB entirely
           export SKIP_DB=true
-          mix test --only unit --exclude db --trace
+          export UNIT_TEST=true
+          
+          # We don't need any DB operations for unit tests
+          mix test --only unit
         env:
           MIX_ENV: test
 

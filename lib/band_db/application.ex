@@ -8,72 +8,64 @@ defmodule BandDb.Application do
 
   @impl true
   def start(_type, _args) do
-    # Check if the environment is test and if SKIP_DB is set
+    # Check if we're in unit test mode
+    unit_test_mode = Application.get_env(:band_db, :unit_test_mode, false)
     skip_db = System.get_env("SKIP_DB") == "true"
+    skip_repo = Application.get_env(:band_db, :skip_repo, false)
 
-    children = [
-      # Start the Telemetry supervisor
-      BandDbWeb.Telemetry,
-      # Start the DNS cluster
-      {DNSCluster, query: Application.get_env(:band_db, :dns_cluster_query) || :ignore},
-      # Start the PubSub system
-      {Phoenix.PubSub, name: BandDb.PubSub},
-      # Start the Finch HTTP client for sending emails
-      {Finch, name: BandDb.Finch, pools: %{default: [protocols: [:http1]]}},
-    ]
+    # Exit early for unit tests with --no-start flag
+    if unit_test_mode && System.get_env("MIX_TEST_NO_START") == "true" do
+      Logger.info("Skipping application start for unit tests with --no-start")
+      {:ok, self()}
+    else
+      # Always start these children
+      children = [
+        # Start the Telemetry supervisor
+        BandDbWeb.Telemetry,
+        # Start the DNS cluster
+        {DNSCluster, query: Application.get_env(:band_db, :dns_cluster_query) || :ignore},
+        # Start the PubSub system
+        {Phoenix.PubSub, name: BandDb.PubSub},
+        # Start the Finch HTTP client for sending emails
+        {Finch, name: BandDb.Finch, pools: %{default: [protocols: [:http1]]}},
+        # Start a Task.Supervisor for managing async operations
+        {Task.Supervisor, name: BandDb.TaskSupervisor},
+        # Start the Endpoint (http/https)
+        BandDbWeb.Endpoint,
+      ]
 
-    # Only start the Repo if SKIP_DB is not set
-    children =
-      if skip_db do
-        Logger.info("Skipping database initialization for unit tests")
-        children
-      else
-        # Start the Ecto repository
-        children ++ [BandDb.Repo]
-      end
+      # Add database and server components only if not in unit test mode
+      children =
+        if unit_test_mode || skip_db || skip_repo do
+          Logger.info("Starting application in unit test mode, skipping database")
 
-    # The Song, SetList, and Rehearsal Servers depend on persistence,
-    # so we need to handle them differently in unit tests
-    server_modules =
-      if skip_db do
-        # Mock or dummy implementations for servers
-        Logger.info("Using mock persistence modules for unit tests")
-        [
-          # Start a Task.Supervisor for managing async operations
-          {Task.Supervisor, name: BandDb.TaskSupervisor},
-          # Start the Endpoint (http/https)
-          BandDbWeb.Endpoint,
-          # Ensure our servers are configured with mocks before starting
-          {BandDb.Songs.SongServer, BandDb.Songs.SongServer},
-          {BandDb.SetLists.SetListServer, BandDb.SetLists.SetListServer},
-          BandDb.Rehearsals.RehearsalServer
-        ]
-      else
-        # Real implementations for servers
-        [
-          # Start a Task.Supervisor for managing async operations
-          {Task.Supervisor, name: BandDb.TaskSupervisor},
-          # Start the Endpoint (http/https)
-          BandDbWeb.Endpoint,
-          # Start the Song Server
-          {BandDb.Songs.SongServer, BandDb.Songs.SongServer},
-          # Start the Set List Server
-          {BandDb.SetLists.SetListServer, BandDb.SetLists.SetListServer},
-          # Start the Rehearsal Server
-          BandDb.Rehearsals.RehearsalServer
-        ]
-      end
+          # Just add the GenServers with mocks configured
+          children ++ [
+            {BandDb.Songs.SongServer, BandDb.Songs.SongServer},
+            {BandDb.SetLists.SetListServer, BandDb.SetLists.SetListServer},
+            BandDb.Rehearsals.RehearsalServer
+          ]
+        else
+          Logger.info("Starting application with database support")
+          # Add the Repo and GenServers with real persistence
+          children ++ [
+            # Start the Repo
+            BandDb.Repo,
+            # Start the GenServers
+            {BandDb.Songs.SongServer, BandDb.Songs.SongServer},
+            {BandDb.SetLists.SetListServer, BandDb.SetLists.SetListServer},
+            BandDb.Rehearsals.RehearsalServer
+          ]
+        end
 
-    # Add the rest of the children
-    children = children ++ server_modules
+      # Explicitly initialize tzdata
+      initialize_tzdata()
 
-    # Explicitly initialize tzdata
-    initialize_tzdata()
-
-    # See https://hexdocs.pm/elixir/Supervisor.html
-    # for other strategies and supported options
-    opts = [strategy: :one_for_one, name: BandDb.Supervisor]
-    Supervisor.start_link(children, opts)
+      # See https://hexdocs.pm/elixir/Supervisor.html
+      # for other strategies and supported options
+      opts = [strategy: :one_for_one, name: BandDb.Supervisor]
+      Supervisor.start_link(children, opts)
+    end
   end
 
   # Tell Phoenix to update the endpoint configuration

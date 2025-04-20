@@ -4,8 +4,12 @@ defmodule BandDb.Rehearsals.RehearsalPersistence do
   This module is responsible for loading and saving rehearsal plans to the database.
   """
 
-  alias BandDb.{Rehearsals.RehearsalPlan, Songs.Song, Repo}
+  alias BandDb.Rehearsals.RehearsalPlan
+  alias BandDb.Songs.Song
   import Ecto.Query
+
+  # Get the configured repo module
+  defp repo, do: Application.get_env(:band_db, :repo, BandDb.Repo)
 
   @doc """
   Loads all rehearsal plans from the database.
@@ -14,13 +18,13 @@ defmodule BandDb.Rehearsals.RehearsalPersistence do
   def load_plans do
     # Get all non-deleted songs indexed by UUID
     songs_by_uuid = from(s in Song)
-    |> Repo.all()
+    |> repo().all()
     |> Enum.reduce(%{}, fn song, acc ->
       Map.put(acc, song.uuid, song)
     end)
 
     # Get all rehearsal plans
-    plans = Repo.all(RehearsalPlan)
+    plans = repo().all(RehearsalPlan)
     |> Enum.map(fn plan ->
       # Convert the stored UUIDs back to full song structs, skipping any that don't exist
       rehearsal_songs = Enum.map(plan.rehearsal_songs, fn uuid ->
@@ -49,9 +53,9 @@ defmodule BandDb.Rehearsals.RehearsalPersistence do
   Returns :ok on success or {:error, reason} on failure.
   """
   def persist_plans(plans) do
-    Repo.transaction(fn ->
+    repo().transaction(fn ->
       # Get existing plans indexed by date for comparison
-      existing_plans = Repo.all(RehearsalPlan)
+      existing_plans = repo().all(RehearsalPlan)
       existing_dates = MapSet.new(existing_plans, & &1.date)
 
       # Insert or update each plan
@@ -90,12 +94,12 @@ defmodule BandDb.Rehearsals.RehearsalPersistence do
           # Find existing plan and update it
           existing = Enum.find(existing_plans, & &1.date == plan.date)
           RehearsalPlan.changeset(existing, plan_attrs)
-          |> Repo.update!()
+          |> repo().update!()
         else
           # Insert new plan
           %RehearsalPlan{}
           |> RehearsalPlan.changeset(plan_attrs)
-          |> Repo.insert!()
+          |> repo().insert!()
         end
       end)
 
@@ -105,7 +109,7 @@ defmodule BandDb.Rehearsals.RehearsalPersistence do
         not MapSet.member?(current_dates, plan.date)
       end)
 
-      Enum.each(plans_to_delete, &Repo.delete!/1)
+      Enum.each(plans_to_delete, &repo().delete!/1)
     end)
   end
 end
