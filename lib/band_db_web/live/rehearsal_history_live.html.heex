@@ -77,11 +77,35 @@
   <%= for plan <- @plans do %>
     <%= if plan.expanded do %>
       <div class="print-plan p-8" data-date={plan.date}>
-        <div class="mb-8 flex justify-between items-center">
-          <h1 class="text-2xl font-bold text-gray-900">Rehearsal Plan</h1>
-          <p class="text-gray-600"><%= Calendar.strftime(plan.date, "%B %d, %Y") %></p>
-        </div>
         <div class="space-y-6">
+          <%= if plan.calendar_event_id do %>
+            <div class="border border-blue-100 rounded-md overflow-hidden mb-6">
+              <div class="bg-blue-50 px-4 py-2">
+                <span class="text-blue-800 font-medium">Scheduled Rehearsal</span>
+              </div>
+              <div class="px-4 py-3">
+                <div class="grid grid-cols-3 gap-4">
+                  <div>
+                    <span class="text-gray-700">Date</span>
+                    <div class="text-gray-900"><%= Date.to_string(plan.scheduled_date) %></div>
+                  </div>
+                  <div>
+                    <span class="text-gray-700">Time</span>
+                    <div class="text-gray-900">
+                      <%= Time.to_string(plan.start_time) %> - <%= Time.to_string(plan.end_time) %>
+                    </div>
+                  </div>
+                  <%= if plan.location && plan.location != "" do %>
+                    <div>
+                      <span class="text-gray-700">Location</span>
+                      <div class="text-gray-900"><%= plan.location %></div>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+          
           <%= if Map.get(plan, :notes, "") != "" do %>
             <div>
               <h2 class="text-xl font-semibold text-gray-900">Notes</h2>
