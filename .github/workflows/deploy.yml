@@ -7,106 +7,11 @@ on:
     branches: [ main, master ]
 
 jobs:
-  unit-test:
-    name: Unit Tests
+  test:
+    name: Test
     runs-on: ubuntu-latest
     
-    # No need for Postgres service for unit tests
-    
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Set up Elixir
-        uses: erlef/setup-beam@v1
-        with:
-          elixir-version: '1.18'
-          otp-version: '26'
-      
-      - name: Restore dependencies cache
-        uses: actions/cache@v3
-        with:
-          path: deps
-          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
-          restore-keys: ${{ runner.os }}-mix-
-      
-      - name: Install dependencies
-        run: mix deps.get
-      
-      - name: Restore build cache
-        uses: actions/cache@v3
-        with:
-          path: _build
-          key: ${{ runner.os }}-build-${{ hashFiles('**/mix.lock') }}
-          restore-keys: ${{ runner.os }}-build-
-      
-      - name: Create temporary mock Repo
-        run: |
-          # Create a mock Repo module to completely avoid database connections
-          mkdir -p lib/band_db/mock
-          cat > lib/band_db/mock/repo_mock.ex << 'EOF'
-          defmodule BandDb.Repo do
-            @moduledoc """
-            Mock Repo module that prevents any database operations for unit tests.
-            """
-            
-            use Ecto.Repo,
-              otp_app: :band_db,
-              adapter: Ecto.Adapters.Postgres
-            
-            @doc "Mock implementation that always returns an empty list"
-            def all(_), do: []
-            
-            @doc "Mock implementation that always succeeds"
-            def get(_, _), do: nil
-            
-            @doc "Mock implementation that always succeeds"
-            def get_by(_, _), do: nil
-            
-            @doc "Mock implementation that always succeeds"
-            def insert(_), do: {:ok, %{}}
-            
-            @doc "Mock implementation that always succeeds"
-            def insert!(params), do: params
-            
-            @doc "Mock implementation that always succeeds"
-            def update(_), do: {:ok, %{}}
-            
-            @doc "Mock implementation that always succeeds"
-            def update!(params), do: params
-            
-            @doc "Mock implementation that always succeeds"
-            def delete(_), do: {:ok, %{}}
-            
-            @doc "Mock implementation that always succeeds"
-            def delete!(params), do: params
-            
-            @doc "Mock implementation of start_link that does nothing"
-            def start_link(_), do: {:ok, self()}
-            
-            @doc "Mock implementation that always succeeds"
-            def transaction(fun, _opts \\ []), do: {:ok, fun.()}
-            
-            @doc "Mock implementation that always succeeds"
-            def checkout(fun, _opts \\ []), do: fun.()
-          end
-          EOF
-      
-      - name: Compile
-        run: MIX_ENV=test mix compile --warnings-as-errors
-      
-      - name: Run unit tests
-        run: |
-          # Run unit tests with unit_test.exs config and explicitly disable database
-          # Using --no-start to prevent application startup that might initialize DB
-          MIX_ENV=test mix test --only unit --trace --no-start
-        env:
-          SKIP_DB: "true"
-          UNIT_TEST: "true"
-
-  integration-test:
-    name: Integration Tests
-    runs-on: ubuntu-latest
-    
+    # We need Postgres for all tests to simplify the workflow
     services:
       postgres:
         image: postgres:14
@@ -121,7 +26,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
+    
     steps:
       - uses: actions/checkout@v3
       
@@ -156,8 +61,8 @@ jobs:
           # Explicitly create database
           mix ecto.create
           mix ecto.migrate
-          # Run all tests including DB tests
-          mix test --include db
+          # Run all tests
+          mix test
         env:
           MIX_ENV: test
           # Set explicit db connection parameters
@@ -166,7 +71,7 @@ jobs:
   deploy:
     name: Deploy to Fly.io
     runs-on: ubuntu-latest
-    needs: [unit-test, integration-test]  # This makes sure deploy only runs if both test jobs pass
+    needs: [test]  # This makes sure deploy only runs if test job passes
     # Only deploy on push to main/master, not on pull requests
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     
