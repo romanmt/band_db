@@ -23,7 +23,7 @@ defmodule BandDbWeb.Endpoint do
     at: "/",
     from: :band_db,
     gzip: false,
-    only: BandDbWeb.static_paths()
+    only: BandDbWeb.StaticPaths.static_paths()
 
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.
