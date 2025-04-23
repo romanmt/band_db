@@ -50,23 +50,38 @@ jobs:
           key: ${{ runner.os }}-build-${{ hashFiles('**/mix.lock') }}
           restore-keys: ${{ runner.os }}-build-
       
+      - name: Verify PostgreSQL is running
+        run: |
+          # Install PostgreSQL client
+          apt-get update && apt-get install -y postgresql-client
+          
+          # Output PostgreSQL service status information
+          echo "Checking PostgreSQL connection..."
+          pg_isready -h localhost -p 5432
+          
+          echo "Attempting to connect using psql..."
+          PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c "SELECT 1"
+          
+          echo "PostgreSQL is running and accessible"
+      
       - name: Compile
         run: mix compile --warnings-as-errors
       
-      - name: Run unit tests
+      - name: Create a database for unit tests
         run: |
-          # Set environment variables to skip DB entirely
-          export SKIP_DB=true
-          export UNIT_TEST=true
-          
-          # Create the database (but we won't actually use it in tests)
-          mix ecto.create
-          
-          # Load unit test configuration which properly handles skipping database
-          mix test --only unit --config config/unit_test.exs
+          # We need a real database for Phoenix to start
+          MIX_ENV=test mix ecto.create
+          echo "Database was created successfully"
+      
+      - name: Run unit tests with explicit database setup
+        run: |
+          # Explicitly set all required environment variables
+          # Rather than trying to bypass DB, we'll use a real one but only run unit tests
+          MIX_ENV=test mix test --only unit --config config/unit_test.exs --no-start
         env:
           MIX_ENV: test
           DATABASE_URL: "ecto://postgres:postgres@localhost/band_db_test"
+          UNIT_TEST: "true"
 
   integration-test:
     name: Integration Tests
