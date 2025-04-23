@@ -76,8 +76,13 @@ jobs:
       - name: Run unit tests with explicit database setup
         run: |
           # Explicitly set all required environment variables
-          # Rather than trying to bypass DB, we'll use a real one but only run unit tests
-          MIX_ENV=test mix test --only unit --no-start
+          # Start Phoenix PubSub system
+          MIX_ENV=test mix phx.server &
+          PHOENIX_PID=$!
+          # Run unit tests
+          MIX_ENV=test mix test --only unit
+          # Clean up
+          kill $PHOENIX_PID
         env:
           MIX_ENV: test
           DATABASE_URL: "ecto://postgres:postgres@localhost/band_db_test"
