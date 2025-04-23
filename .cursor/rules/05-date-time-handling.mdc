@@ -1,0 +1,27 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Date and Time Handling
+
+## Data Types
+- Use Elixir's built-in `Date`, `Time`, and `DateTime` structs
+- Avoid string representations except at API boundaries
+
+## Time Zone Handling
+- All `DateTime` structs must include explicit time zone information
+- Use "America/New_York" as the default time zone
+- Preserve original timezone when working with external services
+- Create datetimes in their intended timezone
+
+## Data Exchange
+- Use ISO 8601 format with timezone information
+- Parse timestamps using `DateTime.from_iso8601/1`
+- Include explicit timezone information in all exchanges
+
+## Event Modeling
+- Support all-day events (date only) and time-specific events
+- For all-day events, store only the `date` field
+- For time-specific events, store `date`, `start_time`, and `end_time` with timezone
+- All-day events in Google Calendar should end on following day (start date + 1)

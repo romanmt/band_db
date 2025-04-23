@@ -1,0 +1,36 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Deployment Guidelines
+
+## Platform
+- Application deployed to fly.io using the free tier
+- All deployments managed through fly.io CLI
+- Production secrets set using fly secrets
+- Prioritize free tier usage for as long as possible
+
+## Environment Configuration
+- Use runtime.exs for environment-specific settings
+- Set production database URL through fly.io secrets
+- Configure release settings appropriately for fly.io
+- Optimize for resource efficiency to stay within free limits
+
+## Release Process
+- Verify all tests pass before deployment
+- Run database migrations as part of release process
+- Monitor deployment logs for errors
+- Ensure releases are optimized for minimal resource consumption
+
+## Resource Optimization
+- Use minimal VM configurations that fit within free tier limits
+- Optimize application for low memory usage
+- Implement efficient database queries to minimize resource consumption
+- Monitor resource usage to stay within free tier limits
+- Do not enable any paid features without explicit approval
+
+## Scaling
+- Configure appropriate fly.io machine sizes based on workload
+- Utilize fly.io regions for optimal latency
+- Set appropriate memory/CPU constraints

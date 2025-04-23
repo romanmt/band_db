@@ -44,6 +44,62 @@ Ready to run in production? Please [check our deployment guides](https://hexdocs
    - Duration tracking for sets and individual songs
    - YouTube integration for reference recordings
 
+6. **Google Calendar Integration**
+   - Connect to Google Calendar to manage rehearsal plans and show schedules
+   - Two-way sync between app events and calendar
+   - Share calendar with band members
+
+# Google Calendar Integration
+
+## Setup Instructions
+
+### Prerequisites
+
+1. A Google account
+2. A Google Cloud project with the Calendar API enabled
+3. OAuth credentials (client ID and client secret)
+
+### Configuration Steps
+
+1. Create a `.env` file based on the `.env.example` template
+2. Fill in your Google Cloud credentials:
+   ```
+   GOOGLE_CLIENT_ID=your-client-id-here
+   GOOGLE_CLIENT_SECRET=your-client-secret-here
+   GOOGLE_REDIRECT_URI=http://localhost:4000/auth/google/callback
+   ```
+3. Create a `.env.exs` file with the same credentials for Phoenix to load:
+   ```elixir
+   # This file loads environment variables directly for development
+   System.put_env("GOOGLE_CLIENT_ID", "your-client-id-here")
+   System.put_env("GOOGLE_CLIENT_SECRET", "your-client-secret-here")
+   System.put_env("GOOGLE_REDIRECT_URI", "http://localhost:4000/auth/google/callback")
+   ```
+
+### Security Note
+
+The `.env` and `.env.exs` files contain sensitive credentials and should never be committed to version control. They are automatically excluded by the `.gitignore` file. Always keep your Google API credentials secure and never share them publicly.
+
+For production deployment, use environment variables or a secure secrets management system rather than files.
+
+### Usage
+
+1. Log in as an admin user
+2. Navigate to "Admin" -> "Calendar Settings"
+3. Click "Connect Google Calendar"
+4. Follow the Google authentication flow
+5. Once connected, you can create a band calendar
+6. Rehearsal plans and set lists will automatically sync with this calendar
+
+## Implementation Details
+
+The integration follows these key steps:
+
+1. **Authentication**: OAuth 2.0 flow connecting band admin to Google
+2. **Calendar Creation**: Custom calendar for band events  
+3. **Event Sync**: Two-way sync between app events and calendar
+4. **Sharing**: Band members get access to the shared calendar
+
 # Development Guidelines
 
-For detailed development rules, date/time handling guidelines, and architectural strategy, please refer to the `.cursorrules` file in the project root.
+For detailed development rules, date/time handling guidelines, and architectural strategy, please refer to the `.cursor/rules` directory.

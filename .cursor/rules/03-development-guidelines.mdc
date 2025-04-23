@@ -1,0 +1,23 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Development Guidelines
+
+## Core Principles
+- State managed in memory, persisted only for restarts/resilience
+- Keep state management, business logic, and persistence code separate
+- All migrations must have both up and down functions
+- Develop in small, testable steps
+- Use conventional commit messages
+- Write tests for all new functionality
+
+## Coding Conventions
+- snake_case for variables and functions
+- PascalCase for modules
+- Use @moduledoc and @doc for documentation
+- Small, focused functions with single responsibility
+- Use pattern matching and guards effectively
+- Prefer immutable data structures and pure functions
+- Fix all compiler warnings before committing

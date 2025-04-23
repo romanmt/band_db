@@ -13,16 +13,24 @@
     <link rel="icon" type="image/png" sizes="192x192" href={~p"/android-chrome-192x192.png"} />
     <link rel="shortcut icon" href={~p"/favicon.ico"} />
     <meta name="theme-color" content="#ffffff" />
+    
+    <!-- Preconnect to font providers -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&display=swap" rel="stylesheet">
+    
+    <!-- Font imports - we're handling these in app.css -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- App styles and scripts -->
     <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
     <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}>
     </script>
+    
+    <!-- Third-party scripts -->
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
   </head>
-  <body class="bg-white">
+  <body class="bg-gray-50 antialiased">
     {@inner_content}
   </body>
 </html>

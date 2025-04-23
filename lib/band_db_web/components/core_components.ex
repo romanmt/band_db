@@ -222,6 +222,12 @@ defmodule BandDbWeb.CoreComponents do
   """
   attr :type, :string, default: nil
   attr :class, :string, default: nil
+  attr :variant, :string, default: "primary", values: ~w(primary secondary accent danger warning)
+  attr :size, :string, default: nil, values: [nil, "sm", "lg"]
+  attr :icon, :string, default: nil
+  attr :icon_position, :string, default: "left", values: ["left", "right"]
+  attr :full_width, :boolean, default: false
+  attr :disabled, :boolean, default: false
   attr :rest, :global, include: ~w(disabled form name value)
 
   slot :inner_block, required: true
@@ -231,13 +237,23 @@ defmodule BandDbWeb.CoreComponents do
     <button
       type={@type}
       class={[
-        "phx-submit-loading:opacity-75 rounded-lg bg-zinc-900 hover:bg-zinc-700 py-2 px-3",
-        "text-sm font-semibold leading-6 text-white active:text-white/80",
+        "btn",
+        @variant == "primary" && "btn-primary",
+        @variant == "secondary" && "btn-secondary",
+        @variant == "accent" && "btn-accent",
+        @variant == "danger" && "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500",
+        @variant == "warning" && "bg-yellow-500 text-white hover:bg-yellow-600 focus:ring-yellow-500",
+        @size == "sm" && "btn-sm",
+        @size == "lg" && "btn-lg",
+        @full_width && "w-full",
+        @disabled && "opacity-50 cursor-not-allowed",
         @class
       ]}
       {@rest}
     >
-      {render_slot(@inner_block)}
+      <.icon :if={@icon && @icon_position == "left"} name={@icon} class="h-4 w-4 mr-1.5 -ml-0.5" />
+      <%= render_slot(@inner_block) %>
+      <.icon :if={@icon && @icon_position == "right"} name={@icon} class="h-4 w-4 ml-1.5 -mr-0.5" />
     </button>
     """
   end

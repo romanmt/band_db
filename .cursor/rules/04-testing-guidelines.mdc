@@ -1,0 +1,23 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Testing Guidelines
+
+## Testing Principles
+- One concept per test
+- Follow Arrange-Act-Assert pattern
+- Use descriptive test names explaining expected behavior
+- Keep tests independent and idempotent
+- Test both happy paths and edge cases
+- Mock external dependencies for unit tests
+- Use TDD approach when possible
+
+## Testing Best Practices
+- Test public interfaces, not implementation details
+- Keep assertions focused and specific
+- Create helpers/factories for common test setup
+- Avoid test interdependencies
+- Maintain test code with same care as production code
+- Avoid excessive mocking that obscures behavior

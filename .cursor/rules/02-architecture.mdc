@@ -1,0 +1,30 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Architecture and Separation of Concerns
+
+The application follows a clear separation of concerns with these layers:
+
+## State Management Layer
+- Implemented as GenServers (e.g., `SongServer`, `RehearsalPlanServer`)
+- Manages in-memory state
+- Handles concurrent access and atomic operations
+- Example: `SongServer` manages the list of songs in memory
+
+## Business Logic Layer
+- Contains pure functions implementing business rules
+- No side effects, can be tested independently
+- Example: `RehearsalPlanLive.generate_plan/2` logic for creating rehearsal plans
+
+## Persistence Layer
+- Handles saving/loading state for server restarts and resilience
+- Example: `RehearsalPlanServer.save_plan/4` and `list_plans/0`
+
+## Communication Flow
+1. LiveViews receive user input/events
+2. LiveViews call GenServer functions for state changes
+3. GenServers update state and may trigger persistence
+4. Business logic functions called by LiveViews or GenServers
+5. Persistence handled asynchronously when necessary

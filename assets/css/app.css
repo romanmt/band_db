@@ -4,6 +4,145 @@
 
 /* This file is for your main application CSS */
 
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600;700&display=swap');
+
+/* Global styles */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-gray-50 text-gray-900 font-sans antialiased;
+}
+
+/* Custom component styles */
+@layer components {
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 border border-transparent 
+           rounded-md shadow-sm text-sm font-medium focus:outline-none focus:ring-2 
+           focus:ring-offset-2 transition-all duration-150 ease-in-out;
+  }
+  
+  .btn-primary {
+    @apply btn bg-primary-600 text-white hover:bg-primary-700 
+           focus:ring-primary-500 active:bg-primary-800;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-white text-gray-700 border-gray-300 hover:bg-gray-50 
+           focus:ring-primary-500 active:bg-gray-100;
+  }
+  
+  .btn-accent {
+    @apply btn bg-accent-500 text-white hover:bg-accent-600 
+           focus:ring-accent-500 active:bg-accent-700;
+  }
+  
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+  
+  .btn-lg {
+    @apply px-6 py-3 text-base;
+  }
+  
+  /* Cards */
+  .card {
+    @apply bg-white rounded-lg shadow-card overflow-hidden transition-shadow duration-200;
+  }
+  
+  .card:hover {
+    @apply shadow-card-hover;
+  }
+  
+  .card-header {
+    @apply px-4 py-5 sm:px-6 border-b border-gray-200;
+  }
+  
+  .card-body {
+    @apply px-4 py-5 sm:p-6;
+  }
+  
+  .card-footer {
+    @apply px-4 py-4 sm:px-6 bg-gray-50 border-t border-gray-200;
+  }
+  
+  /* Forms */
+  .form-input {
+    @apply block w-full rounded-md border-gray-300 shadow-sm 
+           focus:border-primary-500 focus:ring-primary-500 sm:text-sm;
+  }
+  
+  .form-select {
+    @apply block w-full rounded-md border-gray-300 shadow-sm 
+           focus:border-primary-500 focus:ring-primary-500 sm:text-sm;
+  }
+  
+  .form-checkbox {
+    @apply h-4 w-4 rounded border-gray-300 text-primary-600 
+           focus:ring-primary-500;
+  }
+  
+  .form-radio {
+    @apply h-4 w-4 border-gray-300 text-primary-600 
+           focus:ring-primary-500;
+  }
+  
+  /* Tags/Badges */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .badge-primary {
+    @apply badge bg-primary-100 text-primary-800;
+  }
+  
+  .badge-secondary {
+    @apply badge bg-secondary-100 text-secondary-800;
+  }
+  
+  .badge-accent {
+    @apply badge bg-accent-100 text-accent-800;
+  }
+  
+  .badge-neutral {
+    @apply badge bg-gray-100 text-gray-800;
+  }
+  
+  /* Tables */
+  .table-container {
+    @apply overflow-x-auto rounded-lg shadow-sm border border-gray-200;
+  }
+  
+  .table-default {
+    @apply min-w-full divide-y divide-gray-200 bg-white;
+  }
+  
+  .table-default th {
+    @apply px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50;
+  }
+  
+  .table-default td {
+    @apply px-4 py-3 whitespace-nowrap text-sm text-gray-500;
+  }
+  
+  .table-default tr {
+    @apply hover:bg-gray-50;
+  }
+  
+  /* Navigation */
+  .nav-link {
+    @apply flex items-center gap-2 px-3 py-2 text-gray-800 hover:text-primary-700 
+           hover:bg-primary-50 rounded-md transition-all duration-150 ease-in-out font-medium;
+  }
+  
+  .nav-link-active {
+    @apply text-primary-700 bg-primary-50;
+  }
+}
+
 /* Print styles */
 @media print {
   body {
@@ -56,4 +195,23 @@
 
 .drag-handle:active {
   cursor: grabbing;
+}
+
+/* Animations */
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.slide-in {
+  animation: slideIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes slideIn {
+  0% { transform: translateY(10px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
 }

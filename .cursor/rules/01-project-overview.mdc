@@ -1,0 +1,15 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# BandDb Project Overview
+
+BandDb is a Phoenix application for managing a band's song library, rehearsal plans, and setlists.
+
+## Features
+- User authentication system
+- Song management with details tracking
+- Rehearsal planning with intelligent song selection
+- Set list management with performance optimization
+- Performance features including tuning organization
