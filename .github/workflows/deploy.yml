@@ -44,14 +44,14 @@ jobs:
       
       - name: Run unit tests
         run: |
-          # Set environment variables to skip DB entirely
-          export SKIP_DB=true
-          export UNIT_TEST=true
-          
           # We don't need any DB operations for unit tests
           mix test --only unit
         env:
           MIX_ENV: test
+          SKIP_DB: "true"
+          UNIT_TEST: "true"
+          # Use an obviously fake DATABASE_URL to prevent connection attempts
+          DATABASE_URL: "ecto://fake:fake@localhost/nodbneeded"
 
   integration-test:
     name: Integration Tests
@@ -110,6 +110,8 @@ jobs:
           mix test --include db
         env:
           MIX_ENV: test
+          # Set explicit db connection parameters
+          DATABASE_URL: "ecto://postgres:postgres@localhost/band_db_test"
 
   deploy:
     name: Deploy to Fly.io
