@@ -77,11 +77,12 @@ jobs:
         run: |
           # Explicitly set all required environment variables
           # Rather than trying to bypass DB, we'll use a real one but only run unit tests
-          MIX_ENV=test mix test --only unit --config config/unit_test.exs --no-start
+          MIX_ENV=test mix test --only unit --no-start
         env:
           MIX_ENV: test
           DATABASE_URL: "ecto://postgres:postgres@localhost/band_db_test"
           UNIT_TEST: "true"
+          SKIP_DB: "true"
 
   integration-test:
     name: Integration Tests
