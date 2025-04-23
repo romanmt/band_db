@@ -4,8 +4,8 @@ on:
   workflow_call: # Only run when called by another workflow
 
 jobs:
-  unit-test:
-    name: Unit Tests
+  all-tests:
+    name: All Tests
     runs-on: ubuntu-latest
     
     # Add Postgres service to prevent connection errors
@@ -67,82 +67,23 @@ jobs:
       - name: Compile
         run: mix compile --warnings-as-errors
       
-      - name: Create a database for unit tests
+      - name: Run unit tests
         run: |
-          # We need a real database for Phoenix to start
-          MIX_ENV=test mix ecto.create
-          echo "Database was created successfully"
-      
-      - name: Run unit tests with explicit database setup
-        run: |
-          # Explicitly set all required environment variables
-          # Start Phoenix PubSub system
-          MIX_ENV=test mix phx.server &
-          PHOENIX_PID=$!
-          # Run unit tests
-          MIX_ENV=test mix test --only unit
-          # Clean up
-          kill $PHOENIX_PID
+          # Create and migrate database
+          mix ecto.create
+          mix ecto.migrate
+          
+          # Run unit tests first
+          echo "Running unit tests..."
+          mix test --only unit
         env:
           MIX_ENV: test
           DATABASE_URL: "ecto://postgres:postgres@localhost/band_db_test"
-          UNIT_TEST: "true"
-          SKIP_DB: "true"
-
-  integration-test:
-    name: Integration Tests
-    runs-on: ubuntu-latest
-    
-    services:
-      postgres:
-        image: postgres:14
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: band_db_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    steps:
-      - uses: actions/checkout@v3
       
-      - name: Set up Elixir
-        uses: erlef/setup-beam@v1
-        with:
-          elixir-version: '1.18'
-          otp-version: '26'
-      
-      - name: Restore dependencies cache
-        uses: actions/cache@v3
-        with:
-          path: deps
-          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
-          restore-keys: ${{ runner.os }}-mix-
-      
-      - name: Install dependencies
-        run: mix deps.get
-      
-      - name: Restore build cache
-        uses: actions/cache@v3
-        with:
-          path: _build
-          key: ${{ runner.os }}-build-${{ hashFiles('**/mix.lock') }}
-          restore-keys: ${{ runner.os }}-build-
-      
-      - name: Compile
-        run: mix compile --warnings-as-errors
-      
-      - name: Create database and run all tests
+      - name: Run integration tests
         run: |
-          # Explicitly create database
-          mix ecto.create
-          mix ecto.migrate
-          # Run all tests including DB tests
+          # Run integration tests
+          echo "Running integration tests..."
           mix test --include db
         env:
           MIX_ENV: test
