@@ -4,6 +4,7 @@ defmodule BandDb.SetLists.SetList do
   """
   use Ecto.Schema
   import Ecto.Changeset
+  alias BandDb.Accounts.Band
 
   schema "set_lists" do
     field :name, :string
@@ -14,6 +15,7 @@ defmodule BandDb.SetLists.SetList do
     field :end_time, :time
     field :calendar_event_id, :string
     has_many :sets, BandDb.SetLists.Set
+    belongs_to :band, Band
 
     timestamps()
   end
@@ -23,8 +25,9 @@ defmodule BandDb.SetLists.SetList do
   """
   def changeset(set_list, attrs) do
     set_list
-    |> cast(attrs, [:name, :total_duration, :date, :location, :start_time, :end_time, :calendar_event_id])
-    |> validate_required([:name])
+    |> cast(attrs, [:name, :total_duration, :date, :location, :start_time, :end_time, :calendar_event_id, :band_id])
+    |> validate_required([:name, :band_id])
     |> unique_constraint(:name)
+    |> foreign_key_constraint(:band_id)
   end
 end

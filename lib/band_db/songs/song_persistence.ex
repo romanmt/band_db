@@ -5,19 +5,25 @@ defmodule BandDb.Songs.SongPersistence do
   """
 
   alias BandDb.Songs.Song
+  import Ecto.Query
 
   # Get the configured repo module
   defp repo, do: Application.get_env(:band_db, :repo, BandDb.Repo)
 
   @doc """
   Loads all songs from the database.
-  Returns {:ok, songs} or {:error, reason}
   """
   def load_songs do
-    case repo().all(Song) do
-      songs when is_list(songs) -> {:ok, songs}
-      _ -> {:ok, []}
-    end
+    songs = repo().all(Song)
+    {:ok, songs}
+  end
+
+  @doc """
+  Loads songs for a specific band from the database.
+  """
+  def load_songs_by_band_id(band_id) do
+    songs = repo().all(from s in Song, where: s.band_id == ^band_id)
+    {:ok, songs}
   end
 
   @doc """

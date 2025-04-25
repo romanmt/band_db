@@ -9,12 +9,16 @@ defmodule BandDb.Songs.SongServer do
     GenServer.start_link(__MODULE__, [], name: name)
   end
 
-  def add_song(title, status, band_name, duration \\ nil, notes \\ nil, tuning \\ :standard, youtube_link \\ nil, server \\ __MODULE__) do
-    GenServer.call(server, {:add_song, title, status, band_name, duration, notes, tuning, youtube_link})
+  def add_song(title, status, band_name, duration \\ nil, notes \\ nil, tuning \\ :standard, youtube_link \\ nil, band_id \\ nil, server \\ __MODULE__) do
+    GenServer.call(server, {:add_song, title, status, band_name, duration, notes, tuning, youtube_link, band_id})
   end
 
   def list_songs(server \\ __MODULE__) do
     GenServer.call(server, :list_songs)
+  end
+
+  def list_songs_by_band(band_id, server \\ __MODULE__) do
+    GenServer.call(server, {:list_songs_by_band, band_id})
   end
 
   def get_song(title, server \\ __MODULE__) do
@@ -33,8 +37,8 @@ defmodule BandDb.Songs.SongServer do
     GenServer.call(server, {:update_song, title, attrs})
   end
 
-  def bulk_import_songs(song_text, server \\ __MODULE__) do
-    GenServer.call(server, {:bulk_import_songs, song_text})
+  def bulk_import_songs(song_text, band_id \\ nil, server \\ __MODULE__) do
+    GenServer.call(server, {:bulk_import_songs, song_text, band_id})
   end
 
   # Server Callbacks
@@ -53,7 +57,7 @@ defmodule BandDb.Songs.SongServer do
   end
 
   @impl true
-  def handle_call({:add_song, title, status, band_name, duration, notes, tuning, youtube_link}, _from, state) do
+  def handle_call({:add_song, title, status, band_name, duration, notes, tuning, youtube_link, band_id}, _from, state) do
     songs = state.songs
     case Enum.find(songs, fn song -> song.title == title end) do
       nil ->
@@ -65,7 +69,8 @@ defmodule BandDb.Songs.SongServer do
           notes: notes,
           tuning: tuning,
           youtube_link: youtube_link,
-          uuid: Ecto.UUID.generate()
+          uuid: Ecto.UUID.generate(),
+          band_id: band_id
         }
         new_state = %{state | songs: [new_song | songs]}
         {:reply, {:ok, new_song}, new_state}
@@ -77,6 +82,12 @@ defmodule BandDb.Songs.SongServer do
   @impl true
   def handle_call(:list_songs, _from, state) do
     {:reply, state.songs, state}
+  end
+
+  @impl true
+  def handle_call({:list_songs_by_band, band_id}, _from, state) do
+    filtered_songs = Enum.filter(state.songs, fn song -> song.band_id == band_id end)
+    {:reply, filtered_songs, state}
   end
 
   @impl true
@@ -130,7 +141,7 @@ defmodule BandDb.Songs.SongServer do
   end
 
   @impl true
-  def handle_call({:bulk_import_songs, song_text}, _from, state) do
+  def handle_call({:bulk_import_songs, song_text, band_id}, _from, state) do
     songs = state.songs
     new_songs = song_text
     |> String.split("\n")
@@ -159,7 +170,8 @@ defmodule BandDb.Songs.SongServer do
             status: String.to_existing_atom(String.trim(status)),
             tuning: tuning_atom,
             notes: String.trim(notes),
-            uuid: Ecto.UUID.generate()
+            uuid: Ecto.UUID.generate(),
+            band_id: band_id
           }
       end
     end)

@@ -6,7 +6,7 @@ defmodule BandDb.Accounts do
   import Ecto.Query, warn: false
   alias BandDb.Repo
 
-  alias BandDb.Accounts.{User, UserToken, UserNotifier, InvitationToken}
+  alias BandDb.Accounts.{User, UserToken, UserNotifier, InvitationToken, Band}
 
   @invitation_token_validity_in_days 7
 
@@ -77,6 +77,136 @@ defmodule BandDb.Accounts do
 
   """
   def get_user!(id), do: Repo.get!(User, id)
+
+  ## Band functions
+
+  @doc """
+  Returns the list of bands.
+
+  ## Examples
+
+      iex> list_bands()
+      [%Band{}, ...]
+
+  """
+  def list_bands do
+    Repo.all(Band)
+  end
+
+  @doc """
+  Gets a single band.
+
+  Raises `Ecto.NoResultsError` if the Band does not exist.
+
+  ## Examples
+
+      iex> get_band!(123)
+      %Band{}
+
+      iex> get_band!(456)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_band!(id), do: Repo.get!(Band, id)
+
+  @doc """
+  Gets a band by name.
+
+  ## Examples
+
+      iex> get_band_by_name("My Band")
+      %Band{}
+
+      iex> get_band_by_name("Unknown Band")
+      nil
+  """
+  def get_band_by_name(name) when is_binary(name) do
+    Repo.get_by(Band, name: name)
+  end
+
+  @doc """
+  Creates a band.
+
+  ## Examples
+
+      iex> create_band(%{field: value})
+      {:ok, %Band{}}
+
+      iex> create_band(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_band(attrs \\ %{}) do
+    %Band{}
+    |> Band.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates a band.
+
+  ## Examples
+
+      iex> update_band(band, %{field: new_value})
+      {:ok, %Band{}}
+
+      iex> update_band(band, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_band(%Band{} = band, attrs) do
+    band
+    |> Band.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes a band.
+
+  ## Examples
+
+      iex> delete_band(band)
+      {:ok, %Band{}}
+
+      iex> delete_band(band)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_band(%Band{} = band) do
+    Repo.delete(band)
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking band changes.
+
+  ## Examples
+
+      iex> change_band(band)
+      %Ecto.Changeset{data: %Band{}}
+
+  """
+  def change_band(%Band{} = band, attrs \\ %{}) do
+    Band.changeset(band, attrs)
+  end
+
+  @doc """
+  Gets a user with preloaded band.
+  """
+  def get_user_with_band!(id) do
+    User
+    |> Repo.get!(id)
+    |> Repo.preload(:band)
+  end
+
+  @doc """
+  Gets a user by session token with preloaded band.
+  """
+  def get_user_by_session_token_with_band(token) do
+    case get_user_by_session_token(token) do
+      nil -> nil
+      user -> Repo.preload(user, :band)
+    end
+  end
 
   ## User registration
 

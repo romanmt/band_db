@@ -1,6 +1,7 @@
 defmodule BandDb.Accounts.User do
   use Ecto.Schema
   import Ecto.Changeset
+  alias BandDb.Accounts.Band
 
   schema "users" do
     field :email, :string
@@ -11,6 +12,7 @@ defmodule BandDb.Accounts.User do
     field :invitation_token, :string
     field :invitation_token_expires_at, :utc_datetime
     field :is_admin, :boolean, default: false
+    belongs_to :band, Band
 
     timestamps(type: :utc_datetime)
   end
@@ -40,11 +42,12 @@ defmodule BandDb.Accounts.User do
   """
   def registration_changeset(user, attrs, opts \\ []) do
     user
-    |> cast(attrs, [:email, :password, :invitation_token, :invitation_token_expires_at])
-    |> validate_required([:email, :password, :invitation_token])
+    |> cast(attrs, [:email, :password, :invitation_token, :invitation_token_expires_at, :band_id])
+    |> validate_required([:email, :password, :invitation_token, :band_id])
     |> validate_email(opts)
     |> validate_password(opts)
     |> validate_invitation_token()
+    |> foreign_key_constraint(:band_id)
   end
 
   defp validate_invitation_token(changeset) do

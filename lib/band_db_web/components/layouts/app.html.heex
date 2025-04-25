@@ -45,6 +45,12 @@
             </:trigger>
             <:content>
               <div class="py-1 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 animate-fade-in">
+                <%= if @current_user.band do %>
+                  <div class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 border-b border-gray-100">
+                    <.icon name="hero-musical-note" class="h-4 w-4" />
+                    Band: <%= @current_user.band.name %>
+                  </div>
+                <% end %>
                 <.link
                   href={~p"/users/settings"}
                   class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"

@@ -16,12 +16,16 @@ defmodule BandDb.Rehearsals.RehearsalServer do
     GenServer.start_link(__MODULE__, [], name: name)
   end
 
-  def save_plan(date, rehearsal_songs, set_songs, duration, server \\ __MODULE__) do
-    GenServer.call(server, {:save_plan, date, rehearsal_songs, set_songs, duration})
+  def save_plan(date, rehearsal_songs, set_songs, duration, band_id \\ nil, server \\ __MODULE__) do
+    GenServer.call(server, {:save_plan, date, rehearsal_songs, set_songs, duration, band_id})
   end
 
   def list_plans(server \\ __MODULE__) do
     GenServer.call(server, :list_plans)
+  end
+
+  def list_plans_by_band(band_id, server \\ __MODULE__) do
+    GenServer.call(server, {:list_plans_by_band, band_id})
   end
 
   def get_plan(date, server \\ __MODULE__) do
@@ -56,7 +60,7 @@ defmodule BandDb.Rehearsals.RehearsalServer do
   end
 
   @impl true
-  def handle_call({:save_plan, date, rehearsal_songs, set_songs, duration}, _from, state) do
+  def handle_call({:save_plan, date, rehearsal_songs, set_songs, duration, band_id}, _from, state) do
     plans = state.plans
     case Enum.find(plans, fn plan -> plan.date == date end) do
       nil ->
@@ -68,7 +72,8 @@ defmodule BandDb.Rehearsals.RehearsalServer do
           date: date,
           rehearsal_songs: rehearsal_song_uuids,
           set_songs: set_song_uuids,
-          duration: duration
+          duration: duration,
+          band_id: band_id
         }
         new_state = %{state | plans: [new_plan | plans]}
 
@@ -94,6 +99,45 @@ defmodule BandDb.Rehearsals.RehearsalServer do
             # Convert UUIDs to full song objects
             song_uuids = MapSet.new(rehearsal_songs ++ set_songs)
             songs_by_uuid = BandDb.Songs.SongServer.list_songs()
+                            |> Enum.filter(&(&1.uuid in song_uuids))
+                            |> Enum.reduce(%{}, fn song, acc -> Map.put(acc, song.uuid, song) end)
+
+            # Map UUIDs to song objects or keep the UUID if song is not found
+            rehearsal_song_objects = Enum.map(rehearsal_songs, fn uuid ->
+              Map.get(songs_by_uuid, uuid) || uuid
+            end)
+
+            set_song_objects = Enum.map(set_songs, fn uuid ->
+              Map.get(songs_by_uuid, uuid) || uuid
+            end)
+
+            %{plan | rehearsal_songs: rehearsal_song_objects, set_songs: set_song_objects}
+          else
+            plan # Already has song objects
+          end
+        _ ->
+          plan # Not the expected format, return as is
+      end
+    end)
+
+    {:reply, plans, state}
+  end
+
+  @impl true
+  def handle_call({:list_plans_by_band, band_id}, _from, state) do
+    # Filter plans by band_id
+    plans = state.plans
+    |> Enum.filter(fn plan -> plan.band_id == band_id end)
+    |> Enum.map(fn plan ->
+      case plan do
+        %{rehearsal_songs: rehearsal_songs, set_songs: set_songs} when is_list(rehearsal_songs) and is_list(set_songs) ->
+          # Check if the first item is a string (UUID) or a song struct
+          if (Enum.empty?(rehearsal_songs) or is_binary(List.first(rehearsal_songs))) or
+             (Enum.empty?(set_songs) or is_binary(List.first(set_songs))) do
+
+            # Convert UUIDs to full song objects
+            song_uuids = MapSet.new(rehearsal_songs ++ set_songs)
+            songs_by_uuid = BandDb.Songs.SongServer.list_songs_by_band(band_id)
                             |> Enum.filter(&(&1.uuid in song_uuids))
                             |> Enum.reduce(%{}, fn song, acc -> Map.put(acc, song.uuid, song) end)
 

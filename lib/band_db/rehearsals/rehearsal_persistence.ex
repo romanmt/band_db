@@ -49,6 +49,44 @@ defmodule BandDb.Rehearsals.RehearsalPersistence do
   end
 
   @doc """
+  Loads rehearsal plans for a specific band from the database.
+  Returns {:ok, plans} or {:error, reason}
+  """
+  def load_plans_by_band_id(band_id) do
+    # Get songs for this band indexed by UUID
+    songs_by_uuid = from(s in Song, where: s.band_id == ^band_id)
+    |> repo().all()
+    |> Enum.reduce(%{}, fn song, acc ->
+      Map.put(acc, song.uuid, song)
+    end)
+
+    # Get all rehearsal plans for this band
+    plans = from(p in RehearsalPlan, where: p.band_id == ^band_id)
+    |> repo().all()
+    |> Enum.map(fn plan ->
+      # Convert the stored UUIDs back to full song structs, skipping any that don't exist
+      rehearsal_songs = Enum.map(plan.rehearsal_songs, fn uuid ->
+        Map.get(songs_by_uuid, uuid)
+      end) |> Enum.reject(&is_nil/1)
+
+      set_songs = Enum.map(plan.set_songs, fn uuid ->
+        Map.get(songs_by_uuid, uuid)
+      end) |> Enum.reject(&is_nil/1)
+
+      # If no songs found, keep the original UUIDs
+      rehearsal_songs = if Enum.empty?(rehearsal_songs), do: plan.rehearsal_songs, else: rehearsal_songs
+      set_songs = if Enum.empty?(set_songs), do: plan.set_songs, else: set_songs
+
+      %{plan |
+        rehearsal_songs: rehearsal_songs,
+        set_songs: set_songs
+      }
+    end)
+
+    {:ok, plans}
+  end
+
+  @doc """
   Persists all rehearsal plans to the database.
   Returns :ok on success or {:error, reason} on failure.
   """
