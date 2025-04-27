@@ -78,12 +78,12 @@ defmodule BandDbWeb.UserRegistrationLive do
                 <input type="hidden" name="user[band_id]" value={@predefined_band.id} />
               <% else %>
                 <div class="flex flex-col space-y-2">
-                  <.input
-                    field={@form[:new_band_name]}
-                    type="text"
-                    placeholder="Enter new band name"
-                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  />
+                <.input
+                  field={@form[:new_band_name]}
+                  type="text"
+                  placeholder="Enter new band name"
+                  class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                />
                   <p class="text-xs text-gray-500">
                     You're creating a new band. To join an existing band, you need a band-specific invitation.
                   </p>
@@ -203,35 +203,35 @@ defmodule BandDbWeb.UserRegistrationLive do
   defp handle_band_selection(user_params, socket) do
     # If there's a predefined band from the invitation, we're already good
     if socket.assigns[:predefined_band] do
-      {user_params, socket}
+        {user_params, socket}
     else
       # For non-band-specific invites, users can only create a new band
-      # User is creating a new band
-      new_band_name = user_params["new_band_name"]
+        # User is creating a new band
+        new_band_name = user_params["new_band_name"]
 
-      if new_band_name && String.trim(new_band_name) != "" do
-        case Accounts.create_band(%{name: new_band_name}) do
-          {:ok, band} ->
-            user_params = Map.put(user_params, "band_id", band.id)
-            {user_params, socket}
+        if new_band_name && String.trim(new_band_name) != "" do
+          case Accounts.create_band(%{name: new_band_name}) do
+            {:ok, band} ->
+              user_params = Map.put(user_params, "band_id", band.id)
+              {user_params, socket}
 
-          {:error, _changeset} ->
-            # Band creation failed, likely because the name is taken
-            socket =
-              socket
-              |> put_flash(:error, "Band name already taken")
-              |> assign(:check_errors, true)
+            {:error, _changeset} ->
+              # Band creation failed, likely because the name is taken
+              socket =
+                socket
+                |> put_flash(:error, "Band name already taken")
+                |> assign(:check_errors, true)
 
-            {user_params, socket}
+              {user_params, socket}
+          end
+        else
+          socket =
+            socket
+            |> put_flash(:error, "Band name cannot be empty")
+            |> assign(:check_errors, true)
+
+          {user_params, socket}
         end
-      else
-        socket =
-          socket
-          |> put_flash(:error, "Band name cannot be empty")
-          |> assign(:check_errors, true)
-
-        {user_params, socket}
-      end
     end
   end
 

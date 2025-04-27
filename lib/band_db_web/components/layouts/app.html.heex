@@ -2,7 +2,7 @@
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex items-center justify-between h-16">
       <div class="flex items-center">
-        <a href="/" class="flex items-center">
+        <a href="/songs" class="flex items-center">
           <img src={~p"/images/logo.png"} class="h-9 w-auto" />
           <span class="ml-2.5 text-xl font-display font-bold text-primary-700" style="letter-spacing: 0.5px; text-transform: uppercase;">Band Boss</span>
         </a>
@@ -10,7 +10,7 @@
       
       <div class="hidden md:block">
         <nav class="flex items-center space-x-1">
-          <.link navigate={~p"/"} class="nav-link">
+          <.link navigate={~p"/songs"} class="nav-link">
             <.icon name="hero-list-bullet" class="h-5 w-5" />
             <span>Song List</span>
           </.link>
@@ -95,7 +95,7 @@
   <!-- Mobile menu, show/hide based on menu state -->
   <div class="md:hidden hidden" id="mobile-menu">
     <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t border-gray-200">
-      <.link navigate={~p"/"} class="nav-link block">
+      <.link navigate={~p"/songs"} class="nav-link block">
         <.icon name="hero-list-bullet" class="h-5 w-5" />
         <span>Song List</span>
       </.link>

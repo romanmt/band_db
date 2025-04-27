@@ -248,7 +248,7 @@ defmodule BandDbWeb.UserAuth do
 
   defp maybe_store_return_to(conn), do: conn
 
-  defp signed_in_path(_conn), do: ~p"/"
+  defp signed_in_path(_conn), do: ~p"/songs"
 
   @doc """
   Used for routes that require the user to be an admin.
