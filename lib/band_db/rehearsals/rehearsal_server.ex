@@ -11,6 +11,10 @@ defmodule BandDb.Rehearsals.RehearsalServer do
     GenServer.start_link(__MODULE__, [], name: name)
   end
 
+  def start_link({:via, Registry, {registry, _}} = name) do
+    GenServer.start_link(__MODULE__, [], name: name)
+  end
+
   def start_link(opts) when is_list(opts) do
     name = Keyword.get(opts, :name, __MODULE__)
     GenServer.start_link(__MODULE__, [], name: name)

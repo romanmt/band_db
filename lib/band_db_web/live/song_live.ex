@@ -1,9 +1,11 @@
 defmodule BandDbWeb.SongLive do
   use BandDbWeb, :live_view
+  use BandDbWeb.Live.Lifecycle
   import BandDbWeb.Components.PageHeader
   import BandDbWeb.Components.SongForm
 
   alias BandDb.Songs.SongServer
+  alias BandDb.ServerLookup
 
   on_mount {BandDbWeb.UserAuth, :ensure_authenticated}
 
@@ -12,8 +14,9 @@ defmodule BandDbWeb.SongLive do
     # Ensure the current user has a band association
     case socket.assigns.current_user do
       %{band_id: band_id, band: band} when not is_nil(band_id) ->
-        # Get songs filtered by band_id
-        songs = SongServer.list_songs_by_band(band_id)
+        # Get songs filtered by band_id - use ServerLookup
+        song_server = ServerLookup.get_song_server(band_id)
+        songs = SongServer.list_songs_by_band(band_id, song_server)
 
         {:ok,
           socket
@@ -29,7 +32,8 @@ defmodule BandDbWeb.SongLive do
             show_bulk_import_modal: false,
             bulk_import_text: "",
             band_id: band_id,
-            band_name: band.name
+            band_name: band.name,
+            song_server: song_server
           )}
 
       _ ->
@@ -99,15 +103,16 @@ defmodule BandDbWeb.SongLive do
     case SongServer.add_song(
       song_params["title"],
       status,
-      socket.assigns.band_name,  # Use the current band's name
+      socket.assigns.band_name,
       duration_seconds,
       song_params["notes"],
       tuning,
       song_params["youtube_link"],
-      socket.assigns.band_id  # Pass the band_id
+      socket.assigns.band_id,
+      socket.assigns.song_server
     ) do
       {:ok, _song} ->
-        songs = SongServer.list_songs_by_band(socket.assigns.band_id)
+        songs = SongServer.list_songs_by_band(socket.assigns.band_id, socket.assigns.song_server)
         {:noreply,
           socket
           |> assign(songs: songs, show_modal: false)
@@ -123,11 +128,11 @@ defmodule BandDbWeb.SongLive do
   @impl true
   def handle_event("search", %{"search" => %{"term" => term}}, socket) do
     filtered_songs = if term == "" do
-      SongServer.list_songs_by_band(socket.assigns.band_id)
+      SongServer.list_songs_by_band(socket.assigns.band_id, socket.assigns.song_server)
     else
       term = String.downcase(term)
 
-      SongServer.list_songs_by_band(socket.assigns.band_id)
+      SongServer.list_songs_by_band(socket.assigns.band_id, socket.assigns.song_server)
       |> Enum.filter(fn song ->
         String.contains?(String.downcase(song.title), term) ||
         String.contains?(String.downcase(song.band_name), term) ||
@@ -157,10 +162,10 @@ defmodule BandDbWeb.SongLive do
     socket = assign(socket, updating_song: title)
 
     # Update the status
-    SongServer.update_song_status(title, String.to_existing_atom(new_status))
+    SongServer.update_song_status(title, String.to_existing_atom(new_status), socket.assigns.song_server)
 
     # Get updated song list
-    songs = SongServer.list_songs_by_band(socket.assigns.band_id)
+    songs = SongServer.list_songs_by_band(socket.assigns.band_id, socket.assigns.song_server)
 
     # Reset the updating flag
     {:noreply, assign(socket, songs: songs, updating_song: nil)}
@@ -172,10 +177,10 @@ defmodule BandDbWeb.SongLive do
     socket = assign(socket, updating_song: title)
 
     # Update the tuning
-    SongServer.update_song_tuning(title, String.to_existing_atom(new_tuning))
+    SongServer.update_song_tuning(title, String.to_existing_atom(new_tuning), socket.assigns.song_server)
 
     # Get updated song list
-    songs = SongServer.list_songs_by_band(socket.assigns.band_id)
+    songs = SongServer.list_songs_by_band(socket.assigns.band_id, socket.assigns.song_server)
 
     # Reset the updating flag
     {:noreply, assign(socket, songs: songs, updating_song: nil)}
@@ -183,7 +188,7 @@ defmodule BandDbWeb.SongLive do
 
   @impl true
   def handle_event("clear_search", _params, socket) do
-    {:noreply, assign(socket, songs: SongServer.list_songs_by_band(socket.assigns.band_id), search_term: "", expanded_sections: %{})}
+    {:noreply, assign(socket, songs: SongServer.list_songs_by_band(socket.assigns.band_id, socket.assigns.song_server), search_term: "", expanded_sections: %{})}
   end
 
   @impl true
@@ -221,9 +226,9 @@ defmodule BandDbWeb.SongLive do
     # Modify the bulk import to add the current band's ID to each song
     bulk_import_text = socket.assigns.bulk_import_text
 
-    case SongServer.bulk_import_songs(bulk_import_text, socket.assigns.band_id) do
+    case SongServer.bulk_import_songs(bulk_import_text, socket.assigns.band_id, socket.assigns.song_server) do
       {:ok, count} ->
-        songs = SongServer.list_songs_by_band(socket.assigns.band_id)
+        songs = SongServer.list_songs_by_band(socket.assigns.band_id, socket.assigns.song_server)
         {:noreply,
           socket
           |> assign(songs: songs, show_bulk_import_modal: false, bulk_import_text: "")
@@ -260,24 +265,28 @@ defmodule BandDbWeb.SongLive do
 
     original_title = song_params["original_title"]
 
-    case SongServer.update_song(original_title, %{
-      title: song_params["title"],
-      band_name: song_params["band_name"],
-      duration: duration_seconds,
-      notes: song_params["notes"],
-      status: status,
-      tuning: tuning,
-      youtube_link: song_params["youtube_link"]
-    }) do
+    case SongServer.update_song(
+      original_title,
+      %{
+        title: song_params["title"],
+        band_name: song_params["band_name"],
+        duration: duration_seconds,
+        notes: song_params["notes"],
+        status: status,
+        tuning: tuning,
+        youtube_link: song_params["youtube_link"]
+      },
+      socket.assigns.song_server
+    ) do
       {:ok, _updated_song} ->
-        songs = SongServer.list_songs_by_band(socket.assigns.band_id)
+        songs = SongServer.list_songs_by_band(socket.assigns.band_id, socket.assigns.song_server)
         {:noreply,
           socket
           |> assign(songs: songs, show_edit_modal: false, editing_song: nil)
           |> put_flash(:info, "Song updated successfully")}
 
       :ok ->
-        songs = SongServer.list_songs_by_band(socket.assigns.band_id)
+        songs = SongServer.list_songs_by_band(socket.assigns.band_id, socket.assigns.song_server)
         {:noreply,
           socket
           |> assign(songs: songs, show_edit_modal: false, editing_song: nil)

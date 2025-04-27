@@ -110,6 +110,21 @@ defmodule BandDb.Accounts do
   def get_band!(id), do: Repo.get!(Band, id)
 
   @doc """
+  Gets a single band.
+  Returns nil if the Band does not exist.
+
+  ## Examples
+
+      iex> get_band(123)
+      %Band{}
+
+      iex> get_band(456)
+      nil
+
+  """
+  def get_band(id), do: Repo.get(Band, id)
+
+  @doc """
   Gets a band by name.
 
   ## Examples

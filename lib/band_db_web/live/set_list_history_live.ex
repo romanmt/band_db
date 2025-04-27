@@ -1,19 +1,65 @@
 defmodule BandDbWeb.SetListHistoryLive do
   use BandDbWeb, :live_view
   import BandDbWeb.Components.PageHeader
-  alias BandDb.{SetLists.SetListServer, Songs.SongServer}
+  alias BandDb.{SetLists.SetListServer, Songs.SongServer, ServerLookup, Accounts}
   import BandDbWeb.Components.ExpandableSection
+
+  on_mount {BandDbWeb.UserAuth, :ensure_authenticated}
 
   @impl true
   def mount(_params, _session, socket) do
-    set_lists = SetListServer.list_set_lists()
-    songs = case Process.whereis(BandDb.Songs.SongServer) do
-      nil -> []
-      _ -> SongServer.list_songs()
-    end
-    expanded_sets = %{}
+    # Get the band_id from the current_user
+    band_id = socket.assigns.current_user.band_id
 
-    {:ok, assign(socket, set_lists: set_lists, expanded_sets: expanded_sets, songs: songs)}
+    case get_set_lists_for_band(band_id) do
+      {:ok, set_lists, songs} ->
+        expanded_sets = %{}
+        {:ok, assign(socket,
+                   set_lists: set_lists,
+                   expanded_sets: expanded_sets,
+                   songs: songs,
+                   band_id: band_id,
+                   set_list_server: ServerLookup.get_set_list_server(band_id),
+                   song_server: ServerLookup.get_song_server(band_id),
+                   error_message: nil)}
+
+      {:error, reason} ->
+        {:ok,
+          socket
+          |> assign(set_lists: [],
+                   songs: [],
+                   expanded_sets: %{},
+                   band_id: nil,
+                   set_list_server: nil,
+                   song_server: nil,
+                   error_message: reason)}
+    end
+  end
+
+  # Get set lists for a band, handling the case where the band doesn't exist
+  defp get_set_lists_for_band(nil), do: {:error, "Your user account is not associated with any band. Please contact an administrator."}
+  defp get_set_lists_for_band(band_id) do
+    # Check if the band exists first
+    case Accounts.get_band(band_id) do
+      nil ->
+        {:error, "Band not found. Please contact an administrator."}
+      _band ->
+        # Now it's safe to get the servers since we know the band exists
+        set_list_server = ServerLookup.get_set_list_server(band_id)
+        song_server = ServerLookup.get_song_server(band_id)
+
+        try do
+          set_lists = SetListServer.list_set_lists(set_list_server)
+          songs = SongServer.list_songs(song_server)
+          {:ok, set_lists, songs}
+        rescue
+          error in ArgumentError ->
+            {:error, "Failed to load set lists. Please try again later."}
+          # Handle any other exceptions
+          _ ->
+            {:error, "Failed to load set lists. Please try again later."}
+        end
+    end
   end
 
   @impl true
@@ -44,8 +90,18 @@ defmodule BandDbWeb.SetListHistoryLive do
 
   @impl true
   def handle_info({:set_list_updated, _}, socket) do
-    set_lists = SetListServer.list_set_lists()
-    {:noreply, assign(socket, set_lists: set_lists)}
+    if socket.assigns.set_list_server do
+      set_lists = SetListServer.list_set_lists(socket.assigns.set_list_server)
+      {:noreply, assign(socket, set_lists: set_lists)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_info({:monitor_for_cleanup, _user}, socket) do
+    # Just implement the handler to avoid warnings
+    {:noreply, socket}
   end
 
   defp format_duration(seconds) when is_integer(seconds) do

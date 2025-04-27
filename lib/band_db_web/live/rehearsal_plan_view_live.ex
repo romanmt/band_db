@@ -3,24 +3,59 @@ defmodule BandDbWeb.RehearsalPlanViewLive do
   import BandDbWeb.Components.PageHeader
   alias BandDb.Rehearsals.RehearsalServer
   alias BandDbWeb.Components.RehearsalPlanComponent
+  alias BandDb.{ServerLookup, Accounts}
 
   on_mount {BandDbWeb.UserAuth, :ensure_authenticated}
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
-    # Get all plans
-    plans = RehearsalServer.list_plans()
+    # Get the user's band ID
+    band_id = socket.assigns.current_user.band_id
 
-    # Try to find the plan by ID
-    case find_plan_by_id(plans, id) do
-      nil ->
+    case get_rehearsal_plan(band_id, id) do
+      {:ok, plan} ->
+        {:ok, assign(socket, plan: plan, plan_id: id)}
+
+      {:error, :plan_not_found} ->
         {:ok,
           socket
           |> put_flash(:error, "Rehearsal plan not found")
           |> push_navigate(to: ~p"/rehearsal/history")}
 
-      plan ->
-        {:ok, assign(socket, plan: plan, plan_id: id)}
+      {:error, :server_error} ->
+        {:ok,
+          socket
+          |> put_flash(:error, "Could not access rehearsal data. Please try again later.")
+          |> push_navigate(to: ~p"/rehearsal/history")}
+
+      {:error, :no_band} ->
+        {:ok,
+          socket
+          |> put_flash(:error, "Your user is not associated with a band. Please contact an administrator.")
+          |> push_navigate(to: ~p"/rehearsal/history")}
+    end
+  end
+
+  defp get_rehearsal_plan(nil, _id), do: {:error, :no_band}
+  defp get_rehearsal_plan(band_id, id) do
+    # Check if the band exists first
+    case Accounts.get_band(band_id) do
+      nil ->
+        {:error, :no_band}
+      _band ->
+        # Now it's safe to get the rehearsal server
+        rehearsal_server = ServerLookup.get_rehearsal_server(band_id)
+
+        try do
+          plans = RehearsalServer.list_plans(rehearsal_server)
+
+          case find_plan_by_id(plans, id) do
+            nil -> {:error, :plan_not_found}
+            plan -> {:ok, plan}
+          end
+        rescue
+          _ -> {:error, :server_error}
+        end
     end
   end
 

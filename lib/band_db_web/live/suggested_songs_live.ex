@@ -3,15 +3,66 @@ defmodule BandDbWeb.SuggestedSongsLive do
   import BandDbWeb.Components.PageHeader
   import BandDbWeb.Components.SongForm
 
+  alias BandDb.ServerLookup
   alias BandDb.Songs.SongServer
+  alias BandDb.Accounts
 
   on_mount {BandDbWeb.UserAuth, :ensure_authenticated}
 
   @impl true
-  def mount(_params, _session, socket) do
-    songs = SongServer.list_songs()
-    suggested_songs = Enum.filter(songs, & &1.status == :suggested)
-    {:ok, assign(socket, songs: suggested_songs, search_term: "", updating_song: nil, show_modal: false, show_edit_modal: false, editing_song: nil)}
+  def mount(_params, session, socket) do
+    band_id = socket.assigns.current_user.band_id
+
+    case get_songs_for_band(band_id) do
+      {:ok, songs, song_server} ->
+        suggested_songs = Enum.filter(songs, & &1.status == :suggested)
+        {:ok, assign(socket,
+                     songs: suggested_songs,
+                     search_term: "",
+                     updating_song: nil,
+                     show_modal: false,
+                     show_edit_modal: false,
+                     editing_song: nil,
+                     band_id: band_id,
+                     song_server: song_server,
+                     error_message: nil)}
+
+      {:error, reason} ->
+        {:ok,
+          socket
+          |> assign(songs: [],
+                   search_term: "",
+                   updating_song: nil,
+                   show_modal: false,
+                   show_edit_modal: false,
+                   editing_song: nil,
+                   band_id: nil,
+                   song_server: nil,
+                   error_message: reason)}
+    end
+  end
+
+  # Get songs for a band, handling the case where the band doesn't exist
+  defp get_songs_for_band(nil), do: {:error, "Your user account is not associated with any band. Please contact an administrator."}
+  defp get_songs_for_band(band_id) do
+    # Check if the band exists first
+    case Accounts.get_band(band_id) do
+      nil ->
+        {:error, "Band not found. Please contact an administrator."}
+      _band ->
+        # Now it's safe to get the song server since we know the band exists
+        song_server = ServerLookup.get_song_server(band_id)
+        try do
+          songs = SongServer.list_songs(song_server)
+          {:ok, songs, song_server}
+        rescue
+          error in ArgumentError ->
+            {:error, "Failed to load songs. Please try again later."}
+          # Handle any other exceptions
+          _ ->
+            {:error, "Failed to load songs. Please try again later."}
+        end
+    end
   end
 
   @impl true
@@ -26,57 +77,73 @@ defmodule BandDbWeb.SuggestedSongsLive do
 
   @impl true
   def handle_event("add_song", %{"song" => song_params}, socket) do
-    duration_seconds = case song_params["duration"] do
-      "" -> nil
-      nil -> nil
-      duration_str ->
-        [minutes_str, seconds_str] = String.split(duration_str, ":")
-        String.to_integer(minutes_str) * 60 + String.to_integer(seconds_str)
-    end
+    if socket.assigns.song_server == nil do
+      {:noreply, socket |> put_flash(:error, "Please select a band first")}
+    else
+      duration_seconds = case song_params["duration"] do
+        "" -> nil
+        nil -> nil
+        duration_str ->
+          [minutes_str, seconds_str] = String.split(duration_str, ":")
+          String.to_integer(minutes_str) * 60 + String.to_integer(seconds_str)
+      end
 
-    status = String.to_existing_atom(song_params["status"])
-    tuning = String.to_existing_atom(song_params["tuning"] || "standard")
+      status = String.to_existing_atom(song_params["status"])
+      tuning = String.to_existing_atom(song_params["tuning"] || "standard")
 
-    case SongServer.add_song(
-      song_params["title"],
-      status,
-      song_params["band_name"],
-      duration_seconds,
-      song_params["notes"],
-      tuning
-    ) do
-      {:ok, _song} ->
-        songs = SongServer.list_songs()
-        suggested_songs = Enum.filter(songs, & &1.status == :suggested)
-        filtered_songs = filter_songs(suggested_songs, socket.assigns.search_term)
-        {:noreply,
-          socket
-          |> assign(songs: filtered_songs, show_modal: false)
-          |> put_flash(:info, "Song added successfully")}
+      case SongServer.add_song(
+        song_params["title"],
+        status,
+        song_params["band_name"],
+        duration_seconds,
+        song_params["notes"],
+        tuning,
+        nil,
+        socket.assigns.band_id,
+        socket.assigns.song_server
+      ) do
+        {:ok, _song} ->
+          songs = SongServer.list_songs(socket.assigns.song_server)
+          suggested_songs = Enum.filter(songs, & &1.status == :suggested)
+          filtered_songs = filter_songs(suggested_songs, socket.assigns.search_term)
+          {:noreply,
+            socket
+            |> assign(songs: filtered_songs, show_modal: false)
+            |> put_flash(:info, "Song added successfully")}
 
-      {:error, :song_already_exists} ->
-        {:noreply,
-          socket
-          |> put_flash(:error, "A song with that title already exists")}
+        {:error, :song_already_exists} ->
+          {:noreply,
+            socket
+            |> put_flash(:error, "A song with that title already exists")}
+      end
     end
   end
 
   @impl true
   def handle_event("search", %{"search" => %{"term" => term}}, socket) do
-    songs = SongServer.list_songs()
-    suggested_songs = Enum.filter(songs, & &1.status == :suggested)
-    filtered_songs = filter_songs(suggested_songs, term)
-    {:noreply, assign(socket, songs: filtered_songs, search_term: term)}
+    case socket.assigns.songs do
+      nil ->
+        {:noreply, socket}
+      [] when socket.assigns.error_message != nil ->
+        {:noreply, socket}
+      songs ->
+        filtered_songs = filter_songs(songs, term)
+        {:noreply, assign(socket, songs: filtered_songs, search_term: term)}
+    end
   end
 
   @impl true
   def handle_event("update_status", %{"title" => title, "value" => new_status}, socket) do
-    socket = assign(socket, updating_song: title)
-    SongServer.update_song_status(title, String.to_existing_atom(new_status))
-    songs = SongServer.list_songs()
-    suggested_songs = Enum.filter(songs, & &1.status == :suggested)
-    filtered_songs = filter_songs(suggested_songs, socket.assigns.search_term)
-    {:noreply, assign(socket, songs: filtered_songs, updating_song: nil)}
+    if socket.assigns.song_server == nil do
+      {:noreply, socket |> put_flash(:error, "Please select a band first")}
+    else
+      socket = assign(socket, updating_song: title)
+      SongServer.update_song_status(title, String.to_existing_atom(new_status), socket.assigns.song_server)
+      songs = SongServer.list_songs(socket.assigns.song_server)
+      suggested_songs = Enum.filter(songs, & &1.status == :suggested)
+      filtered_songs = filter_songs(suggested_songs, socket.assigns.search_term)
+      {:noreply, assign(socket, songs: filtered_songs, updating_song: nil)}
+    end
   end
 
   @impl true
@@ -92,40 +159,44 @@ defmodule BandDbWeb.SuggestedSongsLive do
 
   @impl true
   def handle_event("update_song", %{"song" => song_params}, socket) do
-    duration_seconds = case song_params["duration"] do
-      "" -> nil
-      nil -> nil
-      duration_str ->
-        [minutes_str, seconds_str] = String.split(duration_str, ":")
-        String.to_integer(minutes_str) * 60 + String.to_integer(seconds_str)
-    end
+    if socket.assigns.song_server == nil do
+      {:noreply, socket |> put_flash(:error, "Please select a band first")}
+    else
+      duration_seconds = case song_params["duration"] do
+        "" -> nil
+        nil -> nil
+        duration_str ->
+          [minutes_str, seconds_str] = String.split(duration_str, ":")
+          String.to_integer(minutes_str) * 60 + String.to_integer(seconds_str)
+      end
 
-    status = String.to_existing_atom(song_params["status"])
-    tuning = String.to_existing_atom(song_params["tuning"] || "standard")
-    original_title = song_params["original_title"]
+      status = String.to_existing_atom(song_params["status"])
+      tuning = String.to_existing_atom(song_params["tuning"] || "standard")
+      original_title = song_params["original_title"]
 
-    case SongServer.update_song(original_title, %{
-      title: song_params["title"],
-      band_name: song_params["band_name"],
-      duration: duration_seconds,
-      notes: song_params["notes"],
-      status: status,
-      tuning: tuning,
-      youtube_link: song_params["youtube_link"]
-    }) do
-      {:ok, _song} ->
-        songs = SongServer.list_songs()
-        suggested_songs = Enum.filter(songs, & &1.status == :suggested)
-        filtered_songs = filter_songs(suggested_songs, socket.assigns.search_term)
-        {:noreply,
-          socket
-          |> assign(songs: filtered_songs, show_edit_modal: false, editing_song: nil)
-          |> put_flash(:info, "Song updated successfully")}
+      case SongServer.update_song(original_title, %{
+        title: song_params["title"],
+        band_name: song_params["band_name"],
+        duration: duration_seconds,
+        notes: song_params["notes"],
+        status: status,
+        tuning: tuning,
+        youtube_link: song_params["youtube_link"]
+      }, socket.assigns.song_server) do
+        {:ok, _song} ->
+          songs = SongServer.list_songs(socket.assigns.song_server)
+          suggested_songs = Enum.filter(songs, & &1.status == :suggested)
+          filtered_songs = filter_songs(suggested_songs, socket.assigns.search_term)
+          {:noreply,
+            socket
+            |> assign(songs: filtered_songs, show_edit_modal: false, editing_song: nil)
+            |> put_flash(:info, "Song updated successfully")}
 
-      {:error, :not_found} ->
-        {:noreply,
-          socket
-          |> put_flash(:error, "Song not found")}
+        {:error, :not_found} ->
+          {:noreply,
+            socket
+            |> put_flash(:error, "Song not found")}
+      end
     end
   end
 

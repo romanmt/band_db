@@ -3,37 +3,80 @@ defmodule BandDbWeb.RehearsalPlanLive do
   import BandDbWeb.Components.PageHeader
   alias BandDb.Songs.SongServer
   alias BandDb.Rehearsals.RehearsalServer
+  alias BandDb.{ServerLookup, Accounts}
   require Logger
 
   on_mount {BandDbWeb.UserAuth, :ensure_authenticated}
 
   @impl true
   def mount(_params, _session, socket) do
-    songs = SongServer.list_songs()
+    # Get the band_id from the current_user
+    band_id = socket.assigns.current_user.band_id
 
-    # Get songs that need rehearsal
-    needs_rehearsal = Enum.filter(songs, & &1.status == :needs_learning)
-    # Get songs that are ready or have been performed
-    ready_songs = Enum.filter(songs, & &1.status in [:ready, :performed])
+    case get_song_data(band_id) do
+      {:ok, songs, needs_rehearsal, ready_songs, rehearsal_plan} ->
+        {:ok, assign(socket,
+          songs: songs,
+          needs_rehearsal: needs_rehearsal,
+          ready_songs: ready_songs,
+          rehearsal_plan: rehearsal_plan,
+          total_duration: calculate_total_duration(rehearsal_plan),
+          show_date_modal: false,
+          date: Date.utc_today(),
+          should_schedule: false,
+          scheduled_date: Date.utc_today(),
+          start_time: ~T[19:00:00],
+          end_time: ~T[21:00:00],
+          location: "",
+          band_id: band_id,
+          song_server: ServerLookup.get_song_server(band_id),
+          rehearsal_server: ServerLookup.get_rehearsal_server(band_id),
+          has_calendar: BandDb.Calendar.get_google_auth(socket.assigns.current_user) != nil,
+          error_message: nil
+        )}
 
-    # Generate initial plan
-    rehearsal_plan = generate_plan(needs_rehearsal, ready_songs)
+      {:error, reason} ->
+        {:ok,
+          socket
+          |> put_flash(:error, reason)
+          |> push_navigate(to: ~p"/songs")}
+    end
+  end
 
-    {:ok, assign(socket,
-      songs: songs,
-      needs_rehearsal: needs_rehearsal,
-      ready_songs: ready_songs,
-      rehearsal_plan: rehearsal_plan,
-      total_duration: calculate_total_duration(rehearsal_plan),
-      show_date_modal: false,
-      date: Date.utc_today(),
-      should_schedule: false,
-      scheduled_date: Date.utc_today(),
-      start_time: ~T[19:00:00],
-      end_time: ~T[21:00:00],
-      location: "",
-      has_calendar: BandDb.Calendar.get_google_auth(socket.assigns.current_user) != nil
-    )}
+  defp get_song_data(nil), do: {:error, "Your user account is not associated with any band. Please contact an administrator."}
+  defp get_song_data(band_id) do
+    # Check if the band exists first
+    case Accounts.get_band(band_id) do
+      nil ->
+        {:error, "Band not found. Please contact an administrator."}
+      _band ->
+        # Now it's safe to get the servers
+        song_server = ServerLookup.get_song_server(band_id)
+        rehearsal_server = ServerLookup.get_rehearsal_server(band_id)
+
+        try do
+          songs = SongServer.list_songs(song_server)
+
+          # Get songs that need rehearsal
+          needs_rehearsal = Enum.filter(songs, & &1.status == :needs_learning)
+          # Get songs that are ready or have been performed
+          ready_songs = Enum.filter(songs, & &1.status in [:ready, :performed])
+
+          # Get rehearsal plans
+          plans = RehearsalServer.list_plans(rehearsal_server)
+
+          # Generate initial plan
+          rehearsal_plan = generate_plan(needs_rehearsal, ready_songs, plans)
+
+          {:ok, songs, needs_rehearsal, ready_songs, rehearsal_plan}
+        rescue
+          error in ArgumentError ->
+            {:error, "Failed to load song data. Please try again later."}
+          # Handle any other exceptions
+          _ ->
+            {:error, "Failed to load song data. Please try again later."}
+        end
+    end
   end
 
   @impl true
@@ -94,72 +137,80 @@ defmodule BandDbWeb.RehearsalPlanLive do
     # Ensure scheduled_date is the same as date since we're using a single field
     socket = assign(socket, scheduled_date: date)
 
-    # Save the rehearsal plan
-    case RehearsalServer.save_plan(
-      date,
-      socket.assigns.rehearsal_plan.rehearsal,
-      socket.assigns.rehearsal_plan.set,
-      socket.assigns.total_duration
-    ) do
-      {:ok, _plan} ->
-        # Use plan date for deep linking - it's unique and stable
-        date_str = Date.to_iso8601(date)
+    if socket.assigns.rehearsal_server do
+      # Save the rehearsal plan
+      case RehearsalServer.save_plan(
+        socket.assigns.rehearsal_server,
+        date,
+        socket.assigns.rehearsal_plan.rehearsal,
+        socket.assigns.rehearsal_plan.set,
+        socket.assigns.total_duration
+      ) do
+        {:ok, _plan} ->
+          # Use plan date for deep linking - it's unique and stable
+          date_str = Date.to_iso8601(date)
 
-        # If scheduling is enabled and connected to Google Calendar, create calendar event
-        if socket.assigns.should_schedule && socket.assigns.has_calendar do
-          user = socket.assigns.current_user
-          google_auth = BandDb.Calendar.get_google_auth(user)
+          # If scheduling is enabled and connected to Google Calendar, create calendar event
+          if socket.assigns.should_schedule && socket.assigns.has_calendar do
+            user = socket.assigns.current_user
+            google_auth = BandDb.Calendar.get_google_auth(user)
 
-          if google_auth && google_auth.calendar_id do
-            # Create calendar event
-            app_url = BandDbWeb.Endpoint.url()
-            plan_url = "#{app_url}/rehearsal/plan/#{date_str}"
+            if google_auth && google_auth.calendar_id do
+              # Create calendar event
+              app_url = BandDbWeb.Endpoint.url()
+              plan_url = "#{app_url}/rehearsal/plan/#{date_str}"
 
-            # Use plain text for better compatibility
-            description = """
-            Rehearsal plan includes #{length(socket.assigns.rehearsal_plan.rehearsal)} songs to rehearse and a #{length(socket.assigns.rehearsal_plan.set)} song set.
+              # Use plain text for better compatibility
+              description = """
+              Rehearsal plan includes #{length(socket.assigns.rehearsal_plan.rehearsal)} songs to rehearse and a #{length(socket.assigns.rehearsal_plan.set)} song set.
 
-            """
+              """
 
-            event_params = %{
-              title: "Band Rehearsal - #{Date.to_string(socket.assigns.scheduled_date)}",
-              description: description,
-              location: socket.assigns.location,
-              date: socket.assigns.scheduled_date,
-              start_time: socket.assigns.start_time,
-              end_time: socket.assigns.end_time,
-              event_type: "rehearsal",
-              rehearsal_plan_id: date_str,
-              source_url: plan_url,
-              source_title: "View Complete Rehearsal Plan in BandDb"
-            }
+              event_params = %{
+                title: "Band Rehearsal - #{Date.to_string(socket.assigns.scheduled_date)}",
+                description: description,
+                location: socket.assigns.location,
+                date: socket.assigns.scheduled_date,
+                start_time: socket.assigns.start_time,
+                end_time: socket.assigns.end_time,
+                event_type: "rehearsal",
+                rehearsal_plan_id: date_str,
+                source_url: plan_url,
+                source_title: "View Complete Rehearsal Plan in BandDb"
+              }
 
-            # Log the params we're sending
-            Logger.debug("Creating calendar event with params: #{inspect(event_params)}")
-            Logger.debug("Date: #{inspect(socket.assigns.scheduled_date)}, Start: #{inspect(socket.assigns.start_time)}, End: #{inspect(socket.assigns.end_time)}")
+              # Log the params we're sending
+              Logger.debug("Creating calendar event with params: #{inspect(event_params)}")
+              Logger.debug("Date: #{inspect(socket.assigns.scheduled_date)}, Start: #{inspect(socket.assigns.start_time)}, End: #{inspect(socket.assigns.end_time)}")
 
-            case BandDb.Calendar.create_event(user, google_auth.calendar_id, event_params) do
-              {:ok, event_id} ->
-                # Update rehearsal plan with event info
-                RehearsalServer.update_plan_calendar_info(date, %{
-                  scheduled_date: socket.assigns.scheduled_date,
-                  start_time: socket.assigns.start_time,
-                  end_time: socket.assigns.end_time,
-                  location: socket.assigns.location,
-                  calendar_event_id: event_id
-                })
+              case BandDb.Calendar.create_event(user, google_auth.calendar_id, event_params) do
+                {:ok, event_id} ->
+                  # Update rehearsal plan with event info
+                  RehearsalServer.update_plan_calendar_info(socket.assigns.rehearsal_server, date, %{
+                    scheduled_date: socket.assigns.scheduled_date,
+                    start_time: socket.assigns.start_time,
+                    end_time: socket.assigns.end_time,
+                    location: socket.assigns.location,
+                    calendar_event_id: event_id
+                  })
 
-                {:noreply,
-                  socket
-                  |> put_flash(:info, "Rehearsal plan saved and added to calendar")
-                  |> push_navigate(to: ~p"/rehearsal/history")}
+                  {:noreply,
+                    socket
+                    |> put_flash(:info, "Rehearsal plan saved and added to calendar")
+                    |> push_navigate(to: ~p"/rehearsal/history")}
 
-              {:error, reason} ->
-                # Plan saved but calendar event failed
-                {:noreply,
-                  socket
-                  |> put_flash(:error, "Rehearsal plan saved but calendar event failed: #{reason}")
-                  |> push_navigate(to: ~p"/rehearsal/history")}
+                {:error, reason} ->
+                  # Plan saved but calendar event failed
+                  {:noreply,
+                    socket
+                    |> put_flash(:error, "Rehearsal plan saved but calendar event failed: #{reason}")
+                    |> push_navigate(to: ~p"/rehearsal/history")}
+              end
+            else
+              {:noreply,
+                socket
+                |> put_flash(:info, "Rehearsal plan saved for #{Date.to_string(date)}")
+                |> push_navigate(to: ~p"/rehearsal/history")}
             end
           else
             {:noreply,
@@ -167,41 +218,56 @@ defmodule BandDbWeb.RehearsalPlanLive do
               |> put_flash(:info, "Rehearsal plan saved for #{Date.to_string(date)}")
               |> push_navigate(to: ~p"/rehearsal/history")}
           end
-        else
+
+        {:error, :plan_already_exists} ->
           {:noreply,
             socket
-            |> put_flash(:info, "Rehearsal plan saved for #{Date.to_string(date)}")
+            |> put_flash(:error, "A rehearsal plan already exists for #{Date.to_string(date)}")
             |> push_navigate(to: ~p"/rehearsal/history")}
-        end
 
-      {:error, :plan_already_exists} ->
-        {:noreply,
-          socket
-          |> put_flash(:error, "A rehearsal plan already exists for #{Date.to_string(date)}")
-          |> push_navigate(to: ~p"/rehearsal/history")}
-
-      {:error, reason} ->
-        {:noreply,
-          socket
-          |> put_flash(:error, "Failed to save rehearsal plan: #{inspect(reason)}")
-          |> push_navigate(to: ~p"/rehearsal/history")}
+        {:error, reason} ->
+          {:noreply,
+            socket
+            |> put_flash(:error, "Failed to save rehearsal plan: #{inspect(reason)}")
+            |> push_navigate(to: ~p"/rehearsal/history")}
+      end
+    else
+      {:noreply,
+        socket
+        |> put_flash(:error, "Rehearsal server not available. Please try again later.")
+        |> push_navigate(to: ~p"/rehearsal/history")}
     end
   end
 
   @impl true
   def handle_event("regenerate", _params, socket) do
-    rehearsal_plan = generate_plan(socket.assigns.needs_rehearsal, socket.assigns.ready_songs)
-    {:noreply, assign(socket,
-      rehearsal_plan: rehearsal_plan,
-      total_duration: calculate_total_duration(rehearsal_plan)
-    )}
+    # Get the current plans from the server to ensure we have the latest data
+    if socket.assigns.rehearsal_server do
+      try do
+        plans = RehearsalServer.list_plans(socket.assigns.rehearsal_server)
+        rehearsal_plan = generate_plan(socket.assigns.needs_rehearsal, socket.assigns.ready_songs, plans)
+
+        {:noreply, assign(socket,
+          rehearsal_plan: rehearsal_plan,
+          total_duration: calculate_total_duration(rehearsal_plan)
+        )}
+      rescue
+        _ ->
+          {:noreply,
+            socket
+            |> put_flash(:error, "Failed to regenerate plan. Server may not be available.")
+            |> push_navigate(to: ~p"/rehearsal/history")}
+      end
+    else
+      {:noreply,
+        socket
+        |> put_flash(:error, "Rehearsal server not available. Please try again later.")
+        |> push_navigate(to: ~p"/rehearsal/history")}
+    end
   end
 
   # Generate a rehearsal plan with songs that need rehearsal and a full set of ready/performed songs
-  defp generate_plan(needs_rehearsal, ready_songs) do
-    # Get rehearsal history
-    plans = RehearsalServer.list_plans()
-
+  defp generate_plan(needs_rehearsal, ready_songs, plans) do
     # Create a map of song titles to their last rehearsal date
     last_rehearsal_dates = Enum.reduce(plans, %{}, fn plan, acc ->
       # Add rehearsal songs

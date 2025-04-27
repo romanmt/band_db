@@ -34,32 +34,39 @@ defmodule BandDb.Application do
         BandDbWeb.Endpoint,
       ]
 
-      # Add database and server components only if not in unit test mode
+      # Add database only if not in unit test mode
       children =
         if unit_test_mode || skip_db || skip_repo do
           Logger.info("Starting application in unit test mode, skipping database")
+          children
+        else
+          Logger.info("Starting application with database support")
+          # Add the Repo
+          children ++ [BandDb.Repo]
+        end
 
-          # Just add the GenServers with mocks configured
+      # Explicitly initialize tzdata
+      initialize_tzdata()
+
+      # Add Registry and DynamicSupervisor for band servers
+      children =
+        if Application.get_env(:band_db, :env) == :test do
+          # In test mode, we might still want the global servers for simplicity
           children ++ [
             {BandDb.Songs.SongServer, BandDb.Songs.SongServer},
             {BandDb.SetLists.SetListServer, BandDb.SetLists.SetListServer},
             BandDb.Rehearsals.RehearsalServer
           ]
         else
-          Logger.info("Starting application with database support")
-          # Add the Repo and GenServers with real persistence
-          children ++ [
-            # Start the Repo
-            BandDb.Repo,
-            # Start the GenServers
-            {BandDb.Songs.SongServer, BandDb.Songs.SongServer},
-            {BandDb.SetLists.SetListServer, BandDb.SetLists.SetListServer},
-            BandDb.Rehearsals.RehearsalServer
-          ]
-        end
+          # Registry for band servers
+          band_registry = {Registry, keys: :unique, name: BandDb.BandRegistry}
+          # Dynamic supervisor for band servers
+          band_supervisor = {DynamicSupervisor, strategy: :one_for_one, name: BandDb.BandSupervisor}
 
-      # Explicitly initialize tzdata
-      initialize_tzdata()
+          # Only start the registry and supervisor, not the global servers
+          # This way, band-specific servers will only start on user login
+          children ++ [band_registry, band_supervisor]
+        end
 
       # See https://hexdocs.pm/elixir/Supervisor.html
       # for other strategies and supported options

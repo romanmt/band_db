@@ -103,3 +103,31 @@ The integration follows these key steps:
 # Development Guidelines
 
 For detailed development rules, date/time handling guidelines, and architectural strategy, please refer to the `.cursor/rules` directory.
+
+# Band Server Lifecycle Management
+
+The application includes a band server lifecycle management system that optimizes resource usage by:
+
+1. Starting band-specific servers when a user logs in
+2. Stopping band servers when all band members log out
+
+## Implementation Details
+
+- **ServerLifecycle Module**: Manages starting/stopping band servers on login/logout events
+- **Process Monitoring**: Uses Elixir process monitoring to detect disconnected LiveView sessions
+- **Resource Optimization**: Prevents unnecessary server processes from running when not in use
+
+## Adding Lifecycle Management to LiveView Modules
+
+When creating new LiveView modules, add lifecycle management support:
+
+```elixir
+defmodule BandDbWeb.YourLiveView do
+  use BandDbWeb, :live_view
+  use BandDbWeb.Live.Lifecycle  # Add this line
+  
+  # Your LiveView implementation
+end
+```
+
+This ensures proper cleanup of band servers when users disconnect or their sessions timeout.

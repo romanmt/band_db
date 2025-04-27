@@ -5,6 +5,7 @@ defmodule BandDbWeb.UserAuth do
   import Phoenix.Controller
 
   alias BandDb.Accounts
+  alias BandDb.Accounts.ServerLifecycle
 
   # Make the remember me cookie valid for 60 days.
   # If you want bump or reduce this value, also change
@@ -28,6 +29,9 @@ defmodule BandDbWeb.UserAuth do
   def log_in_user(conn, user, params \\ %{}) do
     token = Accounts.generate_user_session_token(user)
     user_return_to = get_session(conn, :user_return_to)
+
+    # Start the band server for this user's band
+    ServerLifecycle.on_user_login(user)
 
     conn
     |> renew_session()
@@ -74,6 +78,13 @@ defmodule BandDbWeb.UserAuth do
   """
   def log_out_user(conn) do
     user_token = get_session(conn, :user_token)
+    user = user_token && Accounts.get_user_by_session_token_with_band(user_token)
+
+    # Stop the band server for this user's band
+    if user do
+      ServerLifecycle.on_user_logout(user)
+    end
+
     user_token && Accounts.delete_user_session_token(user_token)
 
     if live_socket_id = get_session(conn, :live_socket_id) do
@@ -153,6 +164,11 @@ defmodule BandDbWeb.UserAuth do
     socket = mount_current_user(socket, session)
 
     if socket.assigns.current_user do
+      # Monitor this LiveView process for cleanup
+      if socket.assigns.current_user.band_id do
+        send(self(), {:monitor_for_cleanup, socket.assigns.current_user})
+      end
+
       {:cont, socket}
     else
       socket =
@@ -177,7 +193,14 @@ defmodule BandDbWeb.UserAuth do
   defp mount_current_user(socket, session) do
     Phoenix.Component.assign_new(socket, :current_user, fn ->
       if user_token = session["user_token"] do
-        Accounts.get_user_by_session_token_with_band(user_token)
+        user = Accounts.get_user_by_session_token_with_band(user_token)
+
+        # Ensure band server is running when mounting LiveView pages
+        if user && user.band_id do
+          ServerLifecycle.on_user_login(user)
+        end
+
+        user
       end
     end)
   end
@@ -238,6 +261,15 @@ defmodule BandDbWeb.UserAuth do
       |> put_flash(:error, "You must be an admin to access this page.")
       |> redirect(to: "/")
       |> halt()
+    end
+  end
+
+  @doc """
+  Handle LiveView disconnect events
+  """
+  def on_disconnect(socket, _) do
+    if socket.assigns[:current_user] do
+      ServerLifecycle.on_user_logout(socket.assigns.current_user)
     end
   end
 end
