@@ -3,6 +3,7 @@ defmodule BandDbWeb.SetListHistoryLive do
   import BandDbWeb.Components.PageHeader
   alias BandDb.{SetLists.SetListServer, Songs.SongServer, ServerLookup, Accounts}
   import BandDbWeb.Components.ExpandableSection
+  require Logger
 
   on_mount {BandDbWeb.UserAuth, :ensure_authenticated}
 
@@ -54,7 +55,8 @@ defmodule BandDbWeb.SetListHistoryLive do
           {:ok, set_lists, songs}
         rescue
           error in ArgumentError ->
-            {:error, "Failed to load set lists. Please try again later."}
+            Logger.error("Error getting set lists: #{inspect(error)}")
+            []
           # Handle any other exceptions
           _ ->
             {:error, "Failed to load set lists. Please try again later."}

@@ -71,7 +71,8 @@ defmodule BandDbWeb.RehearsalPlanLive do
           {:ok, songs, needs_rehearsal, ready_songs, rehearsal_plan}
         rescue
           error in ArgumentError ->
-            {:error, "Failed to load song data. Please try again later."}
+            Logger.error("Error getting song data: #{inspect(error)}")
+            []
           # Handle any other exceptions
           _ ->
             {:error, "Failed to load song data. Please try again later."}

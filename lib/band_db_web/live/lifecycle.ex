@@ -4,7 +4,6 @@ defmodule BandDbWeb.Live.Lifecycle do
   """
   require Logger
   alias BandDb.Accounts.ServerLifecycle
-  alias Phoenix.LiveView
 
   defmacro __using__(_opts) do
     quote do

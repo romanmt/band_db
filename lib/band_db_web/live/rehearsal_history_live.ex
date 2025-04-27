@@ -5,6 +5,7 @@ defmodule BandDbWeb.RehearsalHistoryLive do
   alias BandDb.Songs.SongServer
   alias BandDbWeb.Components.RehearsalPlanComponent
   alias BandDb.{ServerLookup, Accounts}
+  require Logger
 
   on_mount {BandDbWeb.UserAuth, :ensure_authenticated}
 
@@ -61,7 +62,8 @@ defmodule BandDbWeb.RehearsalHistoryLive do
           {:ok, plans, songs}
         rescue
           error in ArgumentError ->
-            {:error, "Failed to load rehearsal plans. Please try again later."}
+            Logger.error("Error getting rehearsal plans: #{inspect(error)}")
+            []
           # Handle any other exceptions
           _ ->
             {:error, "Failed to load rehearsal plans. Please try again later."}

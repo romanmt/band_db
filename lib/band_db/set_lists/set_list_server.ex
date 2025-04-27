@@ -20,7 +20,7 @@ defmodule BandDb.SetLists.SetListServer do
     GenServer.start_link(__MODULE__, name, name: name)
   end
 
-  def start_link({:via, Registry, {registry, _}} = name) do
+  def start_link({:via, Registry, {_registry, _}} = name) do
     GenServer.start_link(__MODULE__, name, name: name)
   end
 

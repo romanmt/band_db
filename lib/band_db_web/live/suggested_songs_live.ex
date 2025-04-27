@@ -10,7 +10,7 @@ defmodule BandDbWeb.SuggestedSongsLive do
   on_mount {BandDbWeb.UserAuth, :ensure_authenticated}
 
   @impl true
-  def mount(_params, session, socket) do
+  def mount(_params, _session, socket) do
     band_id = socket.assigns.current_user.band_id
 
     case get_songs_for_band(band_id) do
@@ -56,7 +56,7 @@ defmodule BandDbWeb.SuggestedSongsLive do
           songs = SongServer.list_songs(song_server)
           {:ok, songs, song_server}
         rescue
-          error in ArgumentError ->
+          _error in ArgumentError ->
             {:error, "Failed to load songs. Please try again later."}
           # Handle any other exceptions
           _ ->
