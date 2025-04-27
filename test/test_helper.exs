@@ -33,3 +33,8 @@ else
   # Use the real repo for integration tests
   Application.put_env(:band_db, :repo, BandDb.Repo)
 end
+
+# Start the registry and supervisor for band servers to fix LiveView tests
+# This is required for all tests that use UserAuth.on_mount
+{:ok, _} = Registry.start_link(keys: :unique, name: BandDb.BandRegistry)
+{:ok, _} = DynamicSupervisor.start_link(strategy: :one_for_one, name: BandDb.BandSupervisor)

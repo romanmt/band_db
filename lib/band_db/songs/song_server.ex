@@ -32,20 +32,20 @@ defmodule BandDb.Songs.SongServer do
     GenServer.call(server, {:list_songs_by_band, band_id})
   end
 
-  def get_song(title, server \\ __MODULE__) do
-    GenServer.call(server, {:get_song, title})
+  def get_song(title, band_id \\ nil, server \\ __MODULE__) do
+    GenServer.call(server, {:get_song, title, band_id})
   end
 
-  def update_song_status(title, new_status, server \\ __MODULE__) do
-    GenServer.call(server, {:update_status, title, new_status})
+  def update_song_status(title, new_status, band_id \\ nil, server \\ __MODULE__) do
+    GenServer.call(server, {:update_status, title, new_status, band_id})
   end
 
-  def update_song_tuning(title, new_tuning, server \\ __MODULE__) do
-    GenServer.call(server, {:update_tuning, title, new_tuning})
+  def update_song_tuning(title, new_tuning, band_id \\ nil, server \\ __MODULE__) do
+    GenServer.call(server, {:update_tuning, title, new_tuning, band_id})
   end
 
-  def update_song(title, attrs, server \\ __MODULE__) do
-    GenServer.call(server, {:update_song, title, attrs})
+  def update_song(title, attrs, band_id \\ nil, server \\ __MODULE__) do
+    GenServer.call(server, {:update_song, title, attrs, band_id})
   end
 
   def bulk_import_songs(song_text, band_id \\ nil, server \\ __MODULE__) do
@@ -103,16 +103,16 @@ defmodule BandDb.Songs.SongServer do
   end
 
   @impl true
-  def handle_call({:get_song, title}, _from, state) do
-    case Enum.find(state.songs, fn song -> song.title == title end) do
+  def handle_call({:get_song, title, band_id}, _from, state) do
+    case Enum.find(state.songs, fn song -> song.title == title && song.band_id == band_id end) do
       nil -> {:reply, {:error, :not_found}, state}
       song -> {:reply, {:ok, song}, state}
     end
   end
 
   @impl true
-  def handle_call({:update_status, title, new_status}, _from, state) do
-    case Enum.find_index(state.songs, fn song -> song.title == title end) do
+  def handle_call({:update_status, title, new_status, band_id}, _from, state) do
+    case Enum.find_index(state.songs, fn song -> song.title == title && song.band_id == band_id end) do
       nil ->
         {:reply, {:error, :not_found}, state}
       index ->
@@ -125,8 +125,8 @@ defmodule BandDb.Songs.SongServer do
   end
 
   @impl true
-  def handle_call({:update_tuning, title, new_tuning}, _from, state) do
-    case Enum.find_index(state.songs, fn song -> song.title == title end) do
+  def handle_call({:update_tuning, title, new_tuning, band_id}, _from, state) do
+    case Enum.find_index(state.songs, fn song -> song.title == title && song.band_id == band_id end) do
       nil ->
         {:reply, {:error, :not_found}, state}
       index ->
@@ -139,8 +139,8 @@ defmodule BandDb.Songs.SongServer do
   end
 
   @impl true
-  def handle_call({:update_song, title, attrs}, _from, state) do
-    case Enum.find_index(state.songs, fn song -> song.title == title end) do
+  def handle_call({:update_song, title, attrs, band_id}, _from, state) do
+    case Enum.find_index(state.songs, fn song -> song.title == title && song.band_id == band_id end) do
       nil ->
         {:reply, {:error, :not_found}, state}
       index ->

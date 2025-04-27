@@ -1,14 +1,18 @@
 defmodule BandDb.Rehearsals.RehearsalServerTest do
-  use BandDb.UnitCase, async: true
+  use BandDb.UnitCase, async: false  # Changed to non-async to prevent issues with the shared mock agent
   alias BandDb.Rehearsals.RehearsalServer
+  alias BandDb.Rehearsals.RehearsalPersistenceMock
   alias BandDb.Songs.Song
 
   setup do
+    # Reset the mock persistence to ensure clean state for each test
+    RehearsalPersistenceMock.reset()
+
     # Each test should use a unique server name to avoid conflicts
     server_name = :"test_rehearsal_server_#{System.unique_integer([:positive])}"
 
     # Start the server with the unique name
-    start_supervised!({RehearsalServer, server_name})
+    {:ok, _pid} = start_supervised({RehearsalServer, server_name})
 
     # Return the server name to the test
     {:ok, server: server_name}
@@ -31,7 +35,7 @@ defmodule BandDb.Rehearsals.RehearsalServerTest do
       set_songs = [%Song{title: "Song 2", uuid: uuid2}]
       duration = 3600
 
-      assert {:ok, plan} = RehearsalServer.save_plan(date, rehearsal_songs, set_songs, duration, server)
+      assert {:ok, plan} = RehearsalServer.save_plan(date, rehearsal_songs, set_songs, duration, nil, server)
       assert plan.date == date
       assert plan.rehearsal_songs == [uuid1] # Note: server stores UUIDs, not full song objects
       assert plan.set_songs == [uuid2]       # Note: server stores UUIDs, not full song objects
@@ -44,8 +48,8 @@ defmodule BandDb.Rehearsals.RehearsalServerTest do
       set_songs = [%Song{title: "Song 2", uuid: Ecto.UUID.generate()}]
       duration = 3600
 
-      RehearsalServer.save_plan(date, rehearsal_songs, set_songs, duration, server)
-      assert {:error, :plan_already_exists} = RehearsalServer.save_plan(date, rehearsal_songs, set_songs, duration, server)
+      {:ok, _} = RehearsalServer.save_plan(date, rehearsal_songs, set_songs, duration, nil, server)
+      assert {:error, :plan_already_exists} = RehearsalServer.save_plan(date, rehearsal_songs, set_songs, duration, nil, server)
     end
 
     test "list_plans/0 returns all plans", %{server: server} do
@@ -55,9 +59,11 @@ defmodule BandDb.Rehearsals.RehearsalServerTest do
       set_songs = [%Song{title: "Song 2", uuid: Ecto.UUID.generate()}]
       duration = 3600
 
-      RehearsalServer.save_plan(date1, rehearsal_songs, set_songs, duration, server)
-      RehearsalServer.save_plan(date2, rehearsal_songs, set_songs, duration, server)
+      # Make sure to capture the return values
+      {:ok, _} = RehearsalServer.save_plan(date1, rehearsal_songs, set_songs, duration, nil, server)
+      {:ok, _} = RehearsalServer.save_plan(date2, rehearsal_songs, set_songs, duration, nil, server)
 
+      # Verify plans were saved
       plans = RehearsalServer.list_plans(server)
       assert length(plans) == 2
       assert Enum.any?(plans, &(&1.date == date1))
@@ -70,7 +76,10 @@ defmodule BandDb.Rehearsals.RehearsalServerTest do
       set_songs = [%Song{title: "Song 2", uuid: Ecto.UUID.generate()}]
       duration = 3600
 
-      RehearsalServer.save_plan(date, rehearsal_songs, set_songs, duration, server)
+      # Make sure to capture the return value
+      {:ok, _} = RehearsalServer.save_plan(date, rehearsal_songs, set_songs, duration, nil, server)
+
+      # Verify the plan was saved
       assert {:ok, plan} = RehearsalServer.get_plan(date, server)
       assert plan.date == date
     end
@@ -87,7 +96,10 @@ defmodule BandDb.Rehearsals.RehearsalServerTest do
       set_songs = [%Song{title: "Song 2", uuid: Ecto.UUID.generate()}]
       duration = 3600
 
-      RehearsalServer.save_plan(date, rehearsal_songs, set_songs, duration, server)
+      # Make sure to capture the return value
+      {:ok, _} = RehearsalServer.save_plan(date, rehearsal_songs, set_songs, duration, nil, server)
+
+      # Verify the update works
       new_duration = 7200
       assert {:ok, updated_plan} = RehearsalServer.update_plan(date, %{duration: new_duration}, server)
       assert updated_plan.duration == new_duration
@@ -105,7 +117,10 @@ defmodule BandDb.Rehearsals.RehearsalServerTest do
       set_songs = [%Song{title: "Song 2", uuid: Ecto.UUID.generate()}]
       duration = 3600
 
-      RehearsalServer.save_plan(date, rehearsal_songs, set_songs, duration, server)
+      # Make sure to capture the return value
+      {:ok, _} = RehearsalServer.save_plan(date, rehearsal_songs, set_songs, duration, nil, server)
+
+      # Verify delete works
       assert :ok = RehearsalServer.delete_plan(date, server)
       assert {:error, :not_found} = RehearsalServer.get_plan(date, server)
     end
@@ -120,7 +135,8 @@ defmodule BandDb.Rehearsals.RehearsalServerTest do
   # Now we can safely test persistence aspects using mocks
   describe "persistence" do
     test "persistence module is properly configured" do
-      assert RehearsalServer.start_link(:test_persistence_server) != {:error, :already_started}
+      assert {:ok, _pid} = RehearsalServer.start_link(:test_persistence_server)
+      # This should now have an empty plans list
       assert :sys.get_state(:test_persistence_server).plans == []
       GenServer.stop(:test_persistence_server)
     end
