@@ -70,7 +70,8 @@ defmodule BandDb.Songs.SongServer do
   @impl true
   def handle_call({:add_song, title, status, band_name, duration, notes, tuning, youtube_link, band_id}, _from, state) do
     songs = state.songs
-    case Enum.find(songs, fn song -> song.title == title end) do
+    # Check if a song with the same title exists for the same band
+    case Enum.find(songs, fn song -> song.title == title && song.band_id == band_id end) do
       nil ->
         new_song = %Song{
           title: title,
@@ -191,9 +192,9 @@ defmodule BandDb.Songs.SongServer do
     case Enum.find(new_songs, &(match?({:error, _}, &1))) do
       {:error, msg} -> {:reply, {:error, msg}, state}
       nil ->
-        # Merge new songs with existing ones, updating if title exists
+        # Merge new songs with existing ones, updating if title exists for the same band
         updated_songs = Enum.reduce(new_songs, songs, fn new_song, acc ->
-          case Enum.find_index(acc, &(&1.title == new_song.title)) do
+          case Enum.find_index(acc, &(&1.title == new_song.title && &1.band_id == new_song.band_id)) do
             nil -> [new_song | acc]
             index ->
               # Preserve the UUID when updating an existing song

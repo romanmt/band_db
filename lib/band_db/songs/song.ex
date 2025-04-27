@@ -39,7 +39,7 @@ defmodule BandDb.Songs.Song do
     song
     |> cast(params, [:title, :status, :notes, :band_name, :duration, :tuning, :youtube_link, :uuid, :band_id])
     |> validate_required([:title, :status, :band_name, :uuid, :band_id])
-    |> unique_constraint(:title)
+    |> unique_constraint([:title, :band_id])
     |> unique_constraint(:uuid)
     |> foreign_key_constraint(:band_id)
   end

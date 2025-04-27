@@ -544,7 +544,7 @@ defmodule BandDb.Accounts do
   @doc """
   Generates a unique invitation token.
   """
-  def generate_invitation_token(created_by_id \\ nil) do
+  def generate_invitation_token(created_by_id \\ nil, band_id \\ nil) do
     token = :crypto.strong_rand_bytes(32) |> Base.url_encode64(padding: false)
     expires_at = DateTime.utc_now() |> DateTime.add(@invitation_token_validity_in_days, :day)
 
@@ -555,13 +555,14 @@ defmodule BandDb.Accounts do
           |> InvitationToken.changeset(%{
             token: token,
             expires_at: expires_at,
-            created_by_id: created_by_id
+            created_by_id: created_by_id,
+            band_id: band_id
           })
           |> Repo.insert()
 
         {token, expires_at}
 
-      _invitation_token -> generate_invitation_token(created_by_id)  # Recursively try again if token exists
+      _invitation_token -> generate_invitation_token(created_by_id, band_id)  # Recursively try again if token exists
     end
   end
 
@@ -574,6 +575,16 @@ defmodule BandDb.Accounts do
       invitation_token ->
         DateTime.compare(invitation_token.expires_at, DateTime.utc_now()) == :gt &&
           is_nil(invitation_token.used_at)
+    end
+  end
+
+  @doc """
+  Gets an invitation token by its token string.
+  """
+  def get_invitation_token(token) do
+    case Repo.get_by(InvitationToken, token: token) do
+      nil -> nil
+      invitation_token -> Repo.preload(invitation_token, :band)
     end
   end
 
@@ -593,8 +604,8 @@ defmodule BandDb.Accounts do
   @doc """
   Generates an invitation link with a unique token.
   """
-  def generate_invitation_link(base_url, created_by_id \\ nil) do
-    {token, expires_at} = generate_invitation_token(created_by_id)
+  def generate_invitation_link(base_url, created_by_id \\ nil, band_id \\ nil) do
+    {token, expires_at} = generate_invitation_token(created_by_id, band_id)
     invitation_url = "#{base_url}/users/register/#{token}"
     {token, invitation_url, expires_at}
   end

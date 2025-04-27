@@ -3,7 +3,14 @@ defmodule BandDbWeb.AdminLive.UsersLive do
   alias BandDb.Accounts
 
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, users: list_users(), invitation_link: nil, invitation_expires_at: nil)}
+    {:ok, assign(socket,
+      users: list_users(),
+      bands: list_bands(),
+      invitation_link: nil,
+      invitation_expires_at: nil,
+      show_invite_modal: false,
+      selected_band_id: nil
+    )}
   end
 
   def handle_event("delete", %{"id" => id}, socket) do
@@ -18,7 +25,27 @@ defmodule BandDbWeb.AdminLive.UsersLive do
     {:noreply, assign(socket, users: list_users())}
   end
 
-  def handle_event("generate_invite", _params, socket) do
+  def handle_event("show_invite_modal", _params, socket) do
+    {:noreply, assign(socket, show_invite_modal: true)}
+  end
+
+  def handle_event("hide_invite_modal", _params, socket) do
+    {:noreply, assign(socket, show_invite_modal: false)}
+  end
+
+  def handle_event("select_band", %{"band_id" => band_id}, socket) do
+    band_id = if band_id == "", do: nil, else: String.to_integer(band_id)
+    {:noreply, assign(socket, selected_band_id: band_id)}
+  end
+
+  def handle_event("generate_invite", %{"band_id" => band_id}, socket) do
+    # Convert band_id to integer or nil
+    band_id = cond do
+      band_id == "" -> nil
+      is_binary(band_id) -> String.to_integer(band_id)
+      true -> band_id
+    end
+
     # Use the PHX_HOST environment variable if available (for production),
     # otherwise fall back to the development endpoint URL
     base_url =
@@ -34,8 +61,14 @@ defmodule BandDbWeb.AdminLive.UsersLive do
     # For custom domain
     base_url = if host_is_fly_domain?(base_url), do: "https://band-boss.com", else: base_url
 
-    {_token, url, expires_at} = Accounts.generate_invitation_link(base_url)
-    {:noreply, assign(socket, invitation_link: url, invitation_expires_at: expires_at)}
+    # Use the current user's ID as created_by_id
+    created_by_id = socket.assigns.current_user.id
+    {_token, url, expires_at} = Accounts.generate_invitation_link(base_url, created_by_id, band_id)
+
+    {:noreply,
+      socket
+      |> assign(invitation_link: url, invitation_expires_at: expires_at, show_invite_modal: false)
+    }
   end
 
   def handle_event("clear_invite", _params, socket) do
@@ -44,6 +77,10 @@ defmodule BandDbWeb.AdminLive.UsersLive do
 
   defp list_users do
     Accounts.list_users()
+  end
+
+  defp list_bands do
+    Accounts.list_bands()
   end
 
   # Check if the host is the Fly.io domain (which we want to replace with our custom domain)
@@ -103,11 +140,78 @@ defmodule BandDbWeb.AdminLive.UsersLive do
         </div>
       <% end %>
 
+      <%= if @show_invite_modal do %>
+        <div class="fixed z-10 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+          <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+              <div>
+                <div class="mt-3 text-center sm:mt-5">
+                  <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                    Generate Invitation Link
+                  </h3>
+                  <div class="mt-2">
+                    <p class="text-sm text-gray-500">
+                      Choose whether this invite should be for a specific band or allow the user to create a new band.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-5 sm:mt-6">
+                <form phx-submit="generate_invite">
+                  <div>
+                    <label for="band_id" class="block text-sm font-medium text-gray-700">
+                      Band (optional)
+                    </label>
+                    <div class="mt-1">
+                      <select
+                        id="band_id"
+                        name="band_id"
+                        phx-change="select_band"
+                        class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                      >
+                        <option value="">No specific band (user will create one)</option>
+                        <%= for band <- @bands do %>
+                          <option value={band.id}><%= band.name %></option>
+                        <% end %>
+                      </select>
+                    </div>
+                    <p class="mt-2 text-sm text-gray-500">
+                      <%= if @selected_band_id do %>
+                        User will be automatically added to the selected band.
+                      <% else %>
+                        User will be able to create a new band or join an existing one.
+                      <% end %>
+                    </p>
+                  </div>
+                  <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
+                    <button
+                      type="submit"
+                      class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:col-start-2 sm:text-sm"
+                    >
+                      Generate Link
+                    </button>
+                    <button
+                      type="button"
+                      phx-click="hide_invite_modal"
+                      class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:col-start-1 sm:text-sm"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
       <div class="bg-white shadow overflow-hidden sm:rounded-lg">
         <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
           <h3 class="text-lg leading-6 font-medium text-gray-900">Users</h3>
           <button
-            phx-click="generate_invite"
+            phx-click="show_invite_modal"
             class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             Generate Invite Link

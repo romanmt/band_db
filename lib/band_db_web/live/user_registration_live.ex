@@ -71,31 +71,24 @@ defmodule BandDbWeb.UserRegistrationLive do
             </div>
             <div class="mt-4">
               <label class="block text-sm font-medium text-gray-700 mb-1">Band</label>
-              <div class="flex items-center space-x-2">
-                <.input
-                  :if={@joining_existing_band}
-                  field={@form[:band_id]}
-                  type="select"
-                  options={@band_options}
-                  class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                />
-                <.input
-                  :if={!@joining_existing_band}
-                  field={@form[:new_band_name]}
-                  type="text"
-                  placeholder="Enter new band name"
-                  class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                />
-                <div class="flex items-center mt-1">
-                  <button
-                    type="button"
-                    phx-click={if @joining_existing_band, do: "switch-to-new-band", else: "switch-to-existing-band"}
-                    class="text-sm text-indigo-600 hover:text-indigo-800 underline focus:outline-none"
-                  >
-                    <%= if @joining_existing_band, do: "Create new band", else: "Join existing band" %>
-                  </button>
+              <%= if @predefined_band do %>
+                <div class="text-gray-900 text-sm py-2">
+                  You'll be joining <span class="font-semibold"><%= @predefined_band.name %></span>
                 </div>
-              </div>
+                <input type="hidden" name="user[band_id]" value={@predefined_band.id} />
+              <% else %>
+                <div class="flex flex-col space-y-2">
+                  <.input
+                    field={@form[:new_band_name]}
+                    type="text"
+                    placeholder="Enter new band name"
+                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  />
+                  <p class="text-xs text-gray-500">
+                    You're creating a new band. To join an existing band, you need a band-specific invitation.
+                  </p>
+                </div>
+              <% end %>
             </div>
           </div>
 
@@ -119,8 +112,30 @@ defmodule BandDbWeb.UserRegistrationLive do
     case Accounts.valid_invitation_token?(token) do
       true ->
         changeset = Accounts.change_user_registration(%User{})
+        invitation_token = Accounts.get_invitation_token(token)
         bands = Accounts.list_bands()
         band_options = for band <- bands, do: {band.name, band.id}
+
+        # Check if the invitation token is associated with a specific band
+        predefined_band = if invitation_token && invitation_token.band_id do
+          Enum.find(bands, &(&1.id == invitation_token.band_id))
+        else
+          nil
+        end
+
+        # Determine if we should show the band selection UI
+        show_band_selection = is_nil(predefined_band)
+
+        # If the invitation has no predefined band, users can ONLY create a new band,
+        # not join existing ones (joining existing bands requires a band-specific invite)
+        joining_existing_band = false
+
+        # If a band is predefined in the invitation, set it as the default
+        changeset = if predefined_band do
+          Accounts.change_user_registration(%User{band_id: predefined_band.id})
+        else
+          changeset
+        end
 
         socket =
           socket
@@ -128,7 +143,10 @@ defmodule BandDbWeb.UserRegistrationLive do
           |> assign(:invitation_token, token)
           |> assign(:bands, bands)
           |> assign(:band_options, band_options)
-          |> assign(:joining_existing_band, Enum.any?(bands))
+          |> assign(:show_band_selection, show_band_selection)
+          |> assign(:joining_existing_band, joining_existing_band)
+          |> assign(:band_specific_invite, !is_nil(predefined_band))
+          |> assign(:predefined_band, predefined_band)
           |> assign_form(changeset)
 
         {:ok, socket, temporary_assigns: [form: nil]}
@@ -149,24 +167,6 @@ defmodule BandDbWeb.UserRegistrationLive do
       |> put_flash(:error, "An invitation is required to register")
       |> redirect(to: ~p"/users/log_in")
     }
-  end
-
-  def handle_event("switch-to-new-band", _, socket) do
-    changeset = Accounts.change_user_registration(%User{})
-
-    {:noreply,
-     socket
-     |> assign(:joining_existing_band, false)
-     |> assign_form(changeset)}
-  end
-
-  def handle_event("switch-to-existing-band", _, socket) do
-    changeset = Accounts.change_user_registration(%User{})
-
-    {:noreply,
-     socket
-     |> assign(:joining_existing_band, true)
-     |> assign_form(changeset)}
   end
 
   def handle_event("save", %{"user" => user_params}, socket) do
@@ -201,38 +201,37 @@ defmodule BandDbWeb.UserRegistrationLive do
   end
 
   defp handle_band_selection(user_params, socket) do
-    cond do
-      socket.assigns.joining_existing_band ->
-        # User is joining an existing band
-        {user_params, socket}
+    # If there's a predefined band from the invitation, we're already good
+    if socket.assigns[:predefined_band] do
+      {user_params, socket}
+    else
+      # For non-band-specific invites, users can only create a new band
+      # User is creating a new band
+      new_band_name = user_params["new_band_name"]
 
-      true ->
-        # User is creating a new band
-        new_band_name = user_params["new_band_name"]
+      if new_band_name && String.trim(new_band_name) != "" do
+        case Accounts.create_band(%{name: new_band_name}) do
+          {:ok, band} ->
+            user_params = Map.put(user_params, "band_id", band.id)
+            {user_params, socket}
 
-        if new_band_name && String.trim(new_band_name) != "" do
-          case Accounts.create_band(%{name: new_band_name}) do
-            {:ok, band} ->
-              user_params = Map.put(user_params, "band_id", band.id)
-              {user_params, socket}
+          {:error, _changeset} ->
+            # Band creation failed, likely because the name is taken
+            socket =
+              socket
+              |> put_flash(:error, "Band name already taken")
+              |> assign(:check_errors, true)
 
-            {:error, _changeset} ->
-              # Band creation failed, likely because the name is taken
-              socket =
-                socket
-                |> put_flash(:error, "Band name already taken")
-                |> assign(:check_errors, true)
-
-              {user_params, socket}
-          end
-        else
-          socket =
-            socket
-            |> put_flash(:error, "Band name cannot be empty")
-            |> assign(:check_errors, true)
-
-          {user_params, socket}
+            {user_params, socket}
         end
+      else
+        socket =
+          socket
+          |> put_flash(:error, "Band name cannot be empty")
+          |> assign(:check_errors, true)
+
+        {user_params, socket}
+      end
     end
   end
 
