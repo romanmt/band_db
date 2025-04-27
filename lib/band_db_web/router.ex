@@ -79,18 +79,11 @@ defmodule BandDbWeb.Router do
   end
 
   scope "/", BandDbWeb do
-    pipe_through [:browser]
-
-    live_session :public do
-      live "/", PageLive, :home
-    end
-  end
-
-  scope "/", BandDbWeb do
     pipe_through [:browser, :require_authenticated_user]
 
     live_session :require_authenticated_user,
       on_mount: [{BandDbWeb.UserAuth, :ensure_authenticated}] do
+      live "/", PageLive, :home
       live "/songs", SongLive
       live "/suggested-songs", SuggestedSongsLive
       live "/rehearsal", RehearsalPlanLive
