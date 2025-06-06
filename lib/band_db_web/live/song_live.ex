@@ -100,6 +100,7 @@ defmodule BandDbWeb.SongLive do
       tuning -> tuning  # Already an atom
     end
 
+    song_server = ServerLookup.get_song_server(socket.assigns.band_id)
     case SongServer.add_song(
       song_params["title"],
       status,
@@ -109,10 +110,10 @@ defmodule BandDbWeb.SongLive do
       tuning,
       song_params["youtube_link"],
       socket.assigns.band_id,
-      socket.assigns.song_server
+      song_server
     ) do
       {:ok, _song} ->
-        songs = SongServer.list_songs_by_band(socket.assigns.band_id, socket.assigns.song_server)
+        songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
         {:noreply,
           socket
           |> assign(songs: songs, show_modal: false)
@@ -127,12 +128,12 @@ defmodule BandDbWeb.SongLive do
 
   @impl true
   def handle_event("search", %{"search" => %{"term" => term}}, socket) do
+    song_server = ServerLookup.get_song_server(socket.assigns.band_id)
     filtered_songs = if term == "" do
-      SongServer.list_songs_by_band(socket.assigns.band_id, socket.assigns.song_server)
+      SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
     else
       term = String.downcase(term)
-
-      SongServer.list_songs_by_band(socket.assigns.band_id, socket.assigns.song_server)
+      SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
       |> Enum.filter(fn song ->
         String.contains?(String.downcase(song.title), term) ||
         String.contains?(String.downcase(song.band_name), term) ||
@@ -163,7 +164,7 @@ defmodule BandDbWeb.SongLive do
 
     # Always get a fresh song_server reference
     song_server = ServerLookup.get_song_server(socket.assigns.band_id)
-    SongServer.update_song_status(title, String.to_existing_atom(new_status), song_server)
+    SongServer.update_song_status(title, String.to_existing_atom(new_status), socket.assigns.band_id, song_server)
     songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
 
     # Reset the updating flag
@@ -176,7 +177,7 @@ defmodule BandDbWeb.SongLive do
     socket = assign(socket, updating_song: title)
 
     song_server = ServerLookup.get_song_server(socket.assigns.band_id)
-    SongServer.update_song_tuning(title, String.to_existing_atom(new_tuning), song_server)
+    SongServer.update_song_tuning(title, String.to_existing_atom(new_tuning), socket.assigns.band_id, song_server)
     songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
 
     # Reset the updating flag
@@ -263,6 +264,7 @@ defmodule BandDbWeb.SongLive do
     end
 
     original_title = song_params["original_title"]
+    song_server = ServerLookup.get_song_server(socket.assigns.band_id)
 
     case SongServer.update_song(
       original_title,
@@ -275,17 +277,18 @@ defmodule BandDbWeb.SongLive do
         tuning: tuning,
         youtube_link: song_params["youtube_link"]
       },
-      socket.assigns.song_server
+      socket.assigns.band_id,
+      song_server
     ) do
       {:ok, _updated_song} ->
-        songs = SongServer.list_songs_by_band(socket.assigns.band_id, socket.assigns.song_server)
+        songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
         {:noreply,
           socket
           |> assign(songs: songs, show_edit_modal: false, editing_song: nil)
           |> put_flash(:info, "Song updated successfully")}
 
       :ok ->
-        songs = SongServer.list_songs_by_band(socket.assigns.band_id, socket.assigns.song_server)
+        songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
         {:noreply,
           socket
           |> assign(songs: songs, show_edit_modal: false, editing_song: nil)
