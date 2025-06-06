@@ -97,4 +97,15 @@ Hooks.SortableSongs = {
   }
 }
 
+Hooks.FlashAutoDismiss = {
+  mounted() {
+    setTimeout(() => {
+      // Only auto-dismiss if the element is still present
+      if (this.el) {
+        this.el.dispatchEvent(new Event('click', {bubbles: true}));
+      }
+    }, 4000); // 4 seconds
+  }
+}
+
 export default Hooks; 
