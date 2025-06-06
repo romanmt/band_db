@@ -3,6 +3,6 @@ defmodule BandDbWeb.PageControllerTest do
 
   test "GET /", %{conn: conn} do
     conn = get(conn, ~p"/")
-    assert redirected_to(conn) == "/users/log_in"
+    assert html_response(conn, 200) =~ "Welcome to BandDB"
   end
 end

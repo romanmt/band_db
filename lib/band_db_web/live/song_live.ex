@@ -161,11 +161,10 @@ defmodule BandDbWeb.SongLive do
     # Mark this song as updating to avoid race conditions
     socket = assign(socket, updating_song: title)
 
-    # Update the status
-    SongServer.update_song_status(title, String.to_existing_atom(new_status), socket.assigns.song_server)
-
-    # Get updated song list
-    songs = SongServer.list_songs_by_band(socket.assigns.band_id, socket.assigns.song_server)
+    # Always get a fresh song_server reference
+    song_server = ServerLookup.get_song_server(socket.assigns.band_id)
+    SongServer.update_song_status(title, String.to_existing_atom(new_status), song_server)
+    songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
 
     # Reset the updating flag
     {:noreply, assign(socket, songs: songs, updating_song: nil)}
@@ -176,11 +175,9 @@ defmodule BandDbWeb.SongLive do
     # Mark this song as updating to avoid race conditions
     socket = assign(socket, updating_song: title)
 
-    # Update the tuning
-    SongServer.update_song_tuning(title, String.to_existing_atom(new_tuning), socket.assigns.song_server)
-
-    # Get updated song list
-    songs = SongServer.list_songs_by_band(socket.assigns.band_id, socket.assigns.song_server)
+    song_server = ServerLookup.get_song_server(socket.assigns.band_id)
+    SongServer.update_song_tuning(title, String.to_existing_atom(new_tuning), song_server)
+    songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
 
     # Reset the updating flag
     {:noreply, assign(socket, songs: songs, updating_song: nil)}
@@ -188,7 +185,8 @@ defmodule BandDbWeb.SongLive do
 
   @impl true
   def handle_event("clear_search", _params, socket) do
-    {:noreply, assign(socket, songs: SongServer.list_songs_by_band(socket.assigns.band_id, socket.assigns.song_server), search_term: "", expanded_sections: %{})}
+    song_server = ServerLookup.get_song_server(socket.assigns.band_id)
+    {:noreply, assign(socket, songs: SongServer.list_songs_by_band(socket.assigns.band_id, song_server), search_term: "", expanded_sections: %{})}
   end
 
   @impl true
@@ -226,9 +224,10 @@ defmodule BandDbWeb.SongLive do
     # Modify the bulk import to add the current band's ID to each song
     bulk_import_text = socket.assigns.bulk_import_text
 
-    case SongServer.bulk_import_songs(bulk_import_text, socket.assigns.band_id, socket.assigns.song_server) do
+    song_server = ServerLookup.get_song_server(socket.assigns.band_id)
+    case SongServer.bulk_import_songs(bulk_import_text, socket.assigns.band_id, song_server) do
       {:ok, count} ->
-        songs = SongServer.list_songs_by_band(socket.assigns.band_id, socket.assigns.song_server)
+        songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
         {:noreply,
           socket
           |> assign(songs: songs, show_bulk_import_modal: false, bulk_import_text: "")
