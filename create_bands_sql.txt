@@ -1,0 +1,63 @@
+-- SQL commands to create bands for existing users and link them
+-- Run these commands directly in your PostgreSQL database
+
+-- First, create bands for each user without a band
+-- Run this command first to see what users would be affected
+SELECT id, email FROM users WHERE band_id IS NULL;
+
+-- For each user, create a band and update the user
+-- Replace {email_parts} with appropriate parts of each user's email (before @)
+-- Example: For user john.doe@example.com, you might use "John Doe's Band"
+
+-- For user 1:
+INSERT INTO bands (name, inserted_at, updated_at) 
+VALUES ('{User1}''s Band', NOW(), NOW()) 
+RETURNING id;
+-- Note the ID returned, then:
+UPDATE users SET band_id = {returned_id} WHERE id = {user_id};
+
+-- For user 2:
+INSERT INTO bands (name, inserted_at, updated_at) 
+VALUES ('{User2}''s Band', NOW(), NOW()) 
+RETURNING id;
+-- Note the ID returned, then:
+UPDATE users SET band_id = {returned_id} WHERE id = {user_id};
+
+-- Verify results
+SELECT u.id, u.email, b.id as band_id, b.name as band_name 
+FROM users u
+LEFT JOIN bands b ON u.band_id = b.id;
+
+-- Alternatively, here's a PL/pgSQL procedure that can do this in one step
+-- You'd need to run this in psql or another tool that supports PL/pgSQL
+DO $$
+DECLARE
+  user_row RECORD;
+  band_id INTEGER;
+  band_name TEXT;
+  email_prefix TEXT;
+BEGIN
+  FOR user_row IN SELECT * FROM users WHERE band_id IS NULL LOOP
+    -- Extract email prefix
+    email_prefix := split_part(user_row.email, '@', 1);
+    
+    -- Replace dots with spaces and capitalize
+    band_name := initcap(replace(email_prefix, '.', ' ')) || '''s Band';
+    
+    -- Check if band name exists
+    IF EXISTS (SELECT 1 FROM bands WHERE name = band_name) THEN
+      band_name := band_name || ' ' || floor(random() * 1000)::text;
+    END IF;
+    
+    -- Create band
+    INSERT INTO bands (name, inserted_at, updated_at)
+    VALUES (band_name, NOW(), NOW())
+    RETURNING id INTO band_id;
+    
+    -- Update user
+    UPDATE users SET band_id = band_id WHERE id = user_row.id;
+    
+    RAISE NOTICE 'Created band % (ID: %) for user % (ID: %)', 
+      band_name, band_id, user_row.email, user_row.id;
+  END LOOP;
+END $$; 

@@ -79,11 +79,21 @@ defmodule BandDbWeb.Router do
   end
 
   scope "/", BandDbWeb do
+    pipe_through [:browser]
+
+    live_session :current_user,
+      on_mount: [{BandDbWeb.UserAuth, :mount_current_user}] do
+      live "/", PageLive, :home
+      live "/users/confirm/:token", UserConfirmationLive, :edit
+      live "/users/confirm", UserConfirmationInstructionsLive, :new
+    end
+  end
+
+  scope "/", BandDbWeb do
     pipe_through [:browser, :require_authenticated_user]
 
     live_session :require_authenticated_user,
       on_mount: [{BandDbWeb.UserAuth, :ensure_authenticated}] do
-      live "/", PageLive, :home
       live "/songs", SongLive
       live "/suggested-songs", SuggestedSongsLive
       live "/rehearsal", RehearsalPlanLive
@@ -104,11 +114,5 @@ defmodule BandDbWeb.Router do
     pipe_through [:browser]
 
     delete "/users/log_out", UserSessionController, :delete
-
-    live_session :current_user,
-      on_mount: [{BandDbWeb.UserAuth, :mount_current_user}] do
-      live "/users/confirm/:token", UserConfirmationLive, :edit
-      live "/users/confirm", UserConfirmationInstructionsLive, :new
-    end
   end
 end
