@@ -46,6 +46,24 @@ defmodule BandDbWeb.PageLive do
           </.link>
         </div>
       </div>
+
+      <div class="mt-16 grid grid-cols-1 gap-8 md:grid-cols-3">
+        <div class="flex flex-col items-center text-center p-6 bg-white rounded-lg shadow-md">
+          <.icon name="hero-list-bullet" class="h-10 w-10 text-indigo-500 mb-4" />
+          <h3 class="text-lg font-semibold mb-2">Song Library</h3>
+          <p class="text-gray-600">Organize your band's entire repertoire, track song status, tunings, and notes. Quickly find and update songs as your band evolves.</p>
+        </div>
+        <div class="flex flex-col items-center text-center p-6 bg-white rounded-lg shadow-md">
+          <.icon name="hero-calendar-days" class="h-10 w-10 text-indigo-500 mb-4" />
+          <h3 class="text-lg font-semibold mb-2">Rehearsal Planning</h3>
+          <p class="text-gray-600">Generate and manage rehearsal plans, group songs by tuning, and keep everyone on the same page for your next practice.</p>
+        </div>
+        <div class="flex flex-col items-center text-center p-6 bg-white rounded-lg shadow-md">
+          <.icon name="hero-musical-note" class="h-10 w-10 text-indigo-500 mb-4" />
+          <h3 class="text-lg font-semibold mb-2">Set Lists</h3>
+          <p class="text-gray-600">Create, edit, and share set lists for gigs. Keep a history of past performances and easily build new sets from your library.</p>
+        </div>
+      </div>
     </div>
     """
   end
