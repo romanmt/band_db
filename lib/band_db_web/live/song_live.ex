@@ -17,6 +17,7 @@ defmodule BandDbWeb.SongLive do
         # Get songs filtered by band_id - use ServerLookup
         song_server = ServerLookup.get_song_server(band_id)
         songs = SongServer.list_songs_by_band(band_id, song_server)
+                |> Enum.reject(&(&1.status == :suggested))
 
         {:ok,
           socket
@@ -24,7 +25,6 @@ defmodule BandDbWeb.SongLive do
             songs: songs,
             search_term: "",
             show_modal: false,
-            expanded_sections: %{},
             updating_song: nil,
             show_edit_modal: false,
             editing_song: nil,
@@ -44,7 +44,6 @@ defmodule BandDbWeb.SongLive do
             songs: [],
             search_term: "",
             show_modal: false,
-            expanded_sections: %{},
             updating_song: nil,
             show_edit_modal: false,
             editing_song: nil,
@@ -54,18 +53,6 @@ defmodule BandDbWeb.SongLive do
           )
           |> push_navigate(to: "/")}
     end
-  end
-
-  @impl true
-  def handle_event("toggle_section", %{"status" => status}, socket) do
-    status = String.to_existing_atom(status)
-    expanded_sections = Map.update(
-      socket.assigns.expanded_sections,
-      status,
-      true,
-      &(not &1)
-    )
-    {:noreply, assign(socket, expanded_sections: expanded_sections)}
   end
 
   @impl true
@@ -114,6 +101,7 @@ defmodule BandDbWeb.SongLive do
     ) do
       {:ok, _song} ->
         songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
+                |> Enum.reject(&(&1.status == :suggested))
         {:noreply,
           socket
           |> assign(songs: songs, show_modal: false)
@@ -131,9 +119,11 @@ defmodule BandDbWeb.SongLive do
     song_server = ServerLookup.get_song_server(socket.assigns.band_id)
     filtered_songs = if term == "" do
       SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
+      |> Enum.reject(&(&1.status == :suggested))
     else
       term = String.downcase(term)
       SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
+      |> Enum.reject(&(&1.status == :suggested))
       |> Enum.filter(fn song ->
         String.contains?(String.downcase(song.title), term) ||
         String.contains?(String.downcase(song.band_name), term) ||
@@ -141,20 +131,7 @@ defmodule BandDbWeb.SongLive do
       end)
     end
 
-    # If there's a search term, automatically expand sections that have matching songs
-    expanded_sections = if term != "" do
-      filtered_songs
-      |> Enum.group_by(& &1.status)
-      |> Map.keys()
-      |> Enum.reduce(socket.assigns.expanded_sections, fn status, acc ->
-        Map.put(acc, status, true)
-      end)
-    else
-      # When search is cleared, collapse all sections
-      %{}
-    end
-
-    {:noreply, assign(socket, songs: filtered_songs, search_term: term, expanded_sections: expanded_sections)}
+    {:noreply, assign(socket, songs: filtered_songs, search_term: term)}
   end
 
   @impl true
@@ -166,6 +143,7 @@ defmodule BandDbWeb.SongLive do
     song_server = ServerLookup.get_song_server(socket.assigns.band_id)
     SongServer.update_song_status(title, String.to_existing_atom(new_status), socket.assigns.band_id, song_server)
     songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
+            |> Enum.reject(&(&1.status == :suggested))
 
     # Reset the updating flag
     {:noreply, assign(socket, songs: songs, updating_song: nil)}
@@ -179,6 +157,7 @@ defmodule BandDbWeb.SongLive do
     song_server = ServerLookup.get_song_server(socket.assigns.band_id)
     SongServer.update_song_tuning(title, String.to_existing_atom(new_tuning), socket.assigns.band_id, song_server)
     songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
+            |> Enum.reject(&(&1.status == :suggested))
 
     # Reset the updating flag
     {:noreply, assign(socket, songs: songs, updating_song: nil)}
@@ -187,7 +166,9 @@ defmodule BandDbWeb.SongLive do
   @impl true
   def handle_event("clear_search", _params, socket) do
     song_server = ServerLookup.get_song_server(socket.assigns.band_id)
-    {:noreply, assign(socket, songs: SongServer.list_songs_by_band(socket.assigns.band_id, song_server), search_term: "", expanded_sections: %{})}
+    songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
+            |> Enum.reject(&(&1.status == :suggested))
+    {:noreply, assign(socket, songs: songs, search_term: "")}
   end
 
   @impl true
@@ -229,6 +210,7 @@ defmodule BandDbWeb.SongLive do
     case SongServer.bulk_import_songs(bulk_import_text, socket.assigns.band_id, song_server) do
       {:ok, count} ->
         songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
+                |> Enum.reject(&(&1.status == :suggested))
         {:noreply,
           socket
           |> assign(songs: songs, show_bulk_import_modal: false, bulk_import_text: "")
@@ -282,6 +264,7 @@ defmodule BandDbWeb.SongLive do
     ) do
       {:ok, _updated_song} ->
         songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
+                |> Enum.reject(&(&1.status == :suggested))
         {:noreply,
           socket
           |> assign(songs: songs, show_edit_modal: false, editing_song: nil)
@@ -289,6 +272,7 @@ defmodule BandDbWeb.SongLive do
 
       :ok ->
         songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
+                |> Enum.reject(&(&1.status == :suggested))
         {:noreply,
           socket
           |> assign(songs: songs, show_edit_modal: false, editing_song: nil)
@@ -301,24 +285,7 @@ defmodule BandDbWeb.SongLive do
     end
   end
 
-  def section_expanded?(expanded_sections, status) do
-    Map.get(expanded_sections, status, false)
-  end
 
-  def group_songs_by_status(songs) do
-    songs
-    |> Enum.reject(&(&1.status == :suggested))  # Filter out suggested songs
-    |> Enum.group_by(& &1.status)
-    |> Enum.sort_by(fn {status, _} ->
-      case status do
-        :needs_learning -> 0
-        :needs_rehearsal -> 1
-        :ready -> 2
-        :performed -> 3
-        _ -> 4
-      end
-    end)
-  end
 
   def format_duration(nil), do: ""
   def format_duration(seconds) when is_integer(seconds) do
