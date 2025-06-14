@@ -75,7 +75,8 @@ defmodule BandDb.MixProject do
       # Override conflicting dependencies
       {:mime, "~> 2.0", override: true},
       {:mimerl, "~> 1.4", override: true},
-      {:certifi, "~> 2.15.0", override: true}
+      {:certifi, "~> 2.15.0", override: true},
+      {:plug, "~> 1.18", override: true}
     ]
   end
 
