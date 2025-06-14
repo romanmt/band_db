@@ -18,15 +18,15 @@ defmodule BandDbWeb.Components.PageHeader do
 
   def page_header(assigns) do
     ~H"""
-    <div class="mb-8">
-      <div class="flex justify-between items-center">
+    <div class="mb-4 sm:mb-8">
+      <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
         <div>
-          <h1 class="text-2xl font-bold tracking-wider uppercase text-gray-400"><%= @title %></h1>
+          <h1 class="text-lg sm:text-2xl font-bold tracking-wider uppercase text-gray-400"><%= @title %></h1>
           <%= if @subtitle do %>
             <p class="text-sm text-gray-500 mt-1"><%= @subtitle %></p>
           <% end %>
         </div>
-        <div class="flex items-center space-x-3">
+        <div class="flex items-center gap-2 sm:gap-3">
           <%= render_slot(@action) %>
         </div>
       </div>
