@@ -69,7 +69,7 @@ defmodule BandDb.MixProject do
       {:httpoison, "~> 2.0"},
       {:tzdata, "~> 1.1"},
       {:google_api_calendar, "~> 0.16.0"},
-      {:goth, "~> 1.3.0"},
+      {:goth, "~> 1.4.0"},
       {:plug_cowboy, "~> 2.5"},
       {:inflex, "~> 2.0"}
     ]

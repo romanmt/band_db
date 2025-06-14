@@ -235,15 +235,7 @@ defmodule BandDbWeb.SuggestedSongsLive do
     ]
   end
 
-  defp display_tuning(tuning) do
-    case tuning do
-      :standard -> "Standard"
-      :drop_d -> "Drop D"
-      :e_flat -> "E♭"
-      :drop_c_sharp -> "Drop C#"
-      _ -> "Standard"
-    end
-  end
+
 
   defp status_color(:needs_learning), do: "bg-yellow-100 text-yellow-800"
   defp status_color(:needs_rehearsing), do: "bg-orange-100 text-orange-800"
