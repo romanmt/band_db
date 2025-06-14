@@ -361,24 +361,7 @@ defmodule BandDbWeb.BandCalendarLive do
     Date.compare(date, Date.utc_today()) == :eq
   end
 
-  # Helper function to format time in 12-hour format
-  defp format_time_12h(time) do
-    hour = time.hour
-    minute = time.minute
 
-    {display_hour, period} = if hour == 0 do
-      {12, "AM"}
-    else
-      if hour <= 12 do
-        {hour, "AM"}
-      else
-        {hour - 12, "PM"}
-      end
-    end
-
-    minute_str = if minute < 10, do: "0#{minute}", else: "#{minute}"
-    "#{display_hour}:#{minute_str} #{period}"
-  end
 
   # Helper function to determine if a date is in the current month
   defp in_current_month?(date, current_date) do
