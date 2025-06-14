@@ -12,7 +12,7 @@ defmodule BandDbWeb.Components.SetListComponent do
     ~H"""
     <div id={@id} class="card fade-in">
       <%= if @show_header_actions do %>
-        <div class="card-header flex justify-between items-center">
+        <div class="card-header flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
           <div class="flex items-center space-x-4">
             <div class="flex items-center gap-2">
               <.icon name="hero-musical-note" class="h-5 w-5 text-primary-500" />
@@ -21,7 +21,7 @@ defmodule BandDbWeb.Components.SetListComponent do
               </h2>
             </div>
           </div>
-          <div class="flex items-center space-x-2">
+          <div class="flex items-center space-x-2 flex-wrap">
             <span class="badge-primary">
               <%= length(@set_list.sets) %> <%= Inflex.inflect("set", length(@set_list.sets)) %>
             </span>
@@ -36,56 +36,67 @@ defmodule BandDbWeb.Components.SetListComponent do
             <% end %>
             <button
               phx-click={JS.dispatch("print", to: "##{@id}")}
-              class="ml-2 text-gray-400 hover:text-gray-500 transition-colors"
+              class="ml-2 text-gray-400 hover:text-gray-500 transition-colors p-1"
               aria-label="Print"
             >
-              <.icon name="hero-printer" class="h-5 w-5" />
+              <.icon name="hero-printer" class="h-4 w-4 sm:h-5 sm:w-5" />
             </button>
           </div>
         </div>
       <% end %>
 
-      <div class="card-body">
-        <div class="space-y-6">
-          <%= if @show_calendar_details && Map.get(@set_list, :calendar_event_id) do %>
-            <div class="bg-blue-50 rounded-md p-4 border border-blue-100 slide-in">
-              <h3 class="text-lg font-semibold text-blue-800 flex items-center">
-                <.icon name="hero-calendar" class="h-5 w-5 mr-2" />
-                Scheduled Performance
-              </h3>
-              <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <div class="text-sm text-gray-500 font-medium">Date</div>
-                  <div class="text-gray-900"><%= if @set_list.date, do: Date.to_string(@set_list.date), else: "TBD" %></div>
-                </div>
-                <%= if @set_list.start_time && @set_list.end_time do %>
-                  <div>
-                    <div class="text-sm text-gray-500 font-medium">Time</div>
-                    <div class="text-gray-900">
-                      <%= Time.to_string(@set_list.start_time) %> - <%= Time.to_string(@set_list.end_time) %>
-                    </div>
-                  </div>
-                <% end %>
-                <%= if @set_list.location && @set_list.location != "" do %>
-                  <div class="md:col-span-2">
-                    <div class="text-sm text-gray-500 font-medium">Location</div>
-                    <div class="text-gray-900"><%= @set_list.location %></div>
-                  </div>
-                <% end %>
-              </div>
+      <%= if @show_calendar_details && @set_list.calendar_event_id do %>
+        <div class="bg-blue-50 border-l-4 border-blue-400 p-3 sm:p-4 mb-4 sm:mb-6">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <.icon name="hero-calendar" class="h-5 w-5 text-blue-400" />
             </div>
-          <% end %>
+            <div class="ml-3">
+              <p class="text-sm text-blue-700">
+                This set list is scheduled in your calendar.
+              </p>
+            </div>
+          </div>
+        </div>
+      <% end %>
 
+      <div class="card-body">
+        <div class="space-y-6 sm:space-y-8">
           <%= if is_list(@set_list.sets) do %>
             <%= for {set, index} <- Enum.with_index(@set_list.sets) do %>
               <div class="mb-6">
-                <h3 class="text-lg font-semibold text-gray-900 flex items-center border-b border-gray-200 pb-2">
-                  <.icon name="hero-musical-note" class="h-5 w-5 mr-2 text-primary-500" />
+                <h3 class="text-base sm:text-lg font-semibold text-gray-900 flex items-center border-b border-gray-200 pb-2 mb-4">
+                  <.icon name="hero-musical-note" class="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-primary-500" />
                   <%= set.name %>
                   <span class="ml-2 text-sm text-gray-500">(<%= format_duration(set.duration) %>)</span>
                 </h3>
 
-                <div class="mt-4 table-container">
+                <!-- Mobile: Card layout -->
+                <div class="sm:hidden space-y-2">
+                  <%= for {song, song_index} <- Enum.with_index(set.songs) do %>
+                    <div class="bg-gray-50 rounded-lg p-3">
+                      <div class="flex items-start justify-between">
+                        <div class="flex-1 min-w-0">
+                          <div class="flex items-center space-x-2 mb-1">
+                            <span class="text-sm font-medium text-gray-600"><%= song_index + 1 %>.</span>
+                            <div class="font-medium text-gray-900 text-sm truncate"><%= get_song_title(song) %></div>
+                          </div>
+                          <div class="flex items-center justify-between">
+                            <div class="text-xs text-gray-500">
+                              <%= get_song_tuning(song) %>
+                            </div>
+                            <div class="text-xs text-gray-500">
+                              <%= format_song_duration(song) %>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+
+                <!-- Desktop: Table layout -->
+                <div class="hidden sm:block mt-4 table-container">
                   <table class="table-default">
                     <thead>
                       <tr>
@@ -126,7 +137,7 @@ defmodule BandDbWeb.Components.SetListComponent do
             </div>
           <% end %>
 
-          <div class="card-footer flex justify-between items-center mt-6">
+          <div class="card-footer flex flex-col sm:flex-row sm:justify-between sm:items-center mt-6 space-y-2 sm:space-y-0">
             <div class="text-sm font-medium text-gray-700">Total Duration</div>
             <div class="text-lg font-semibold text-primary-700"><%= format_duration(@set_list.total_duration) %></div>
           </div>
@@ -148,9 +159,16 @@ defmodule BandDbWeb.Components.SetListComponent do
   defp get_song_title(song) when is_map(song), do: Map.get(song, :title, "Unknown Song")
   defp get_song_title(_), do: "Unknown Song"
 
-  defp get_song_tuning(%{tuning: tuning}) when not is_nil(tuning), do: tuning
+  defp get_song_tuning(%{tuning: tuning}) when not is_nil(tuning), do: display_tuning(tuning)
   defp get_song_tuning(%{tuning: _}), do: "Standard"
   defp get_song_tuning(_), do: "Standard"
+
+  defp display_tuning(:standard), do: "Standard"
+  defp display_tuning(:drop_d), do: "Drop D"
+  defp display_tuning(:e_flat), do: "Eb"
+  defp display_tuning(:drop_c_sharp), do: "Drop C#"
+  defp display_tuning(tuning) when is_atom(tuning), do: String.capitalize(to_string(tuning))
+  defp display_tuning(_), do: "Standard"
 
   defp format_song_duration(%{duration: duration}) when not is_nil(duration), do: format_duration(duration)
   defp format_song_duration(_), do: "00:00"
