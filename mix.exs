@@ -71,7 +71,11 @@ defmodule BandDb.MixProject do
       {:google_api_calendar, "~> 0.16.0"},
       {:goth, "~> 1.4.0"},
       {:plug_cowboy, "~> 2.5"},
-      {:inflex, "~> 2.0"}
+      {:inflex, "~> 2.0"},
+      # Override conflicting dependencies
+      {:mime, "~> 2.0", override: true},
+      {:mimerl, "~> 1.4", override: true},
+      {:certifi, "~> 2.15.0", override: true}
     ]
   end
 
