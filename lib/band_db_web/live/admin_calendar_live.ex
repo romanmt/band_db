@@ -61,17 +61,21 @@ defmodule BandDbWeb.AdminCalendarLive do
   end
 
   @impl true
-  def handle_event("create_calendar", %{"band_name" => band_name}, socket) do
+  def handle_event("create_calendar", _params, socket) do
     user = socket.assigns.current_user
+    band_name = user.band.name
 
     case Calendar.create_band_calendar(user, band_name) do
       {:ok, _calendar_id} ->
-        # Refresh the calendars list
-        calendars = get_calendars(user)
-
         # Update google_auth to get the new calendar_id
         google_auth = Calendar.get_google_auth(user)
         calendar_id = google_auth.calendar_id
+
+        # Get only the band calendar
+        band_calendar = case get_band_calendar(user, calendar_id) do
+          {:ok, calendar} -> [calendar]
+          _ -> []
+        end
 
         # Get shareable link for the new calendar
         shareable_link = get_shareable_link(calendar_id)
@@ -79,7 +83,7 @@ defmodule BandDbWeb.AdminCalendarLive do
         {:noreply, socket
           |> assign(
             show_create_calendar_modal: false,
-            calendars: calendars,
+            calendars: band_calendar,
             calendar_error: nil,
             google_auth: google_auth,
             shareable_link: shareable_link,
@@ -158,13 +162,6 @@ defmodule BandDbWeb.AdminCalendarLive do
       socket
       |> push_event("copy-to-clipboard", %{text: link})
       |> put_flash(:info, "Shareable link copied to clipboard")}
-  end
-
-  defp get_calendars(user) do
-    case Calendar.list_calendars(user) do
-      {:ok, calendars} -> calendars
-      {:error, _reason} -> []
-    end
   end
 
   defp get_calendar_shares(user, calendar_id) do
@@ -442,11 +439,16 @@ defmodule BandDbWeb.AdminCalendarLive do
 
           <form phx-submit="create_calendar" class="mt-5 sm:mt-6">
             <div>
-              <label for="band_name" class="block text-sm font-medium text-gray-700">
+              <label class="block text-sm font-medium text-gray-700">
                 Band Name
               </label>
               <div class="mt-1">
-                <input type="text" name="band_name" id="band_name" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md" placeholder="My Awesome Band" required />
+                <div class="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm text-gray-900">
+                  <%= @current_user.band.name %>
+                </div>
+                <p class="mt-1 text-xs text-gray-500">
+                  Calendar will be created for your band
+                </p>
               </div>
             </div>
 

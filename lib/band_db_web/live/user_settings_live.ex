@@ -175,17 +175,15 @@ defmodule BandDbWeb.UserSettingsLive do
 
             <form phx-submit="create_calendar">
               <div class="mb-4">
-                <label for="band_name" class="block text-sm font-medium text-gray-700 mb-1">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
                   Band Name
                 </label>
-                <input
-                  type="text"
-                  name="band_name"
-                  id="band_name"
-                  class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                  placeholder="My Awesome Band"
-                  required
-                />
+                <div class="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm text-gray-900">
+                  <%= @current_user.band.name %>
+                </div>
+                <p class="mt-1 text-xs text-gray-500">
+                  Calendar will be created for your band
+                </p>
               </div>
 
               <button
@@ -368,20 +366,24 @@ defmodule BandDbWeb.UserSettingsLive do
     {:noreply, assign(socket, active_tab: tab)}
   end
 
-  def handle_event("create_calendar", %{"band_name" => band_name}, socket) do
+  def handle_event("create_calendar", _params, socket) do
     user = socket.assigns.current_user
+    band_name = user.band.name
 
     case Calendar.create_band_calendar(user, band_name) do
       {:ok, _calendar_id} ->
-        # Refresh the calendars list
-        calendars = get_calendars(user)
-
         # Update google_auth to get the new calendar_id
         google_auth = Calendar.get_google_auth(user)
 
+        # Get only the band calendar
+        band_calendar = case get_band_calendar(user, google_auth.calendar_id) do
+          {:ok, calendar} -> [calendar]
+          _ -> []
+        end
+
         {:noreply, socket
           |> assign(
-            calendars: calendars,
+            calendars: band_calendar,
             calendar_error: nil,
             google_auth: google_auth,
             has_calendar: true
@@ -403,14 +405,6 @@ defmodule BandDbWeb.UserSettingsLive do
   defp has_band_calendar?(user) do
     google_auth = Calendar.get_google_auth(user)
     google_auth != nil && google_auth.calendar_id != nil
-  end
-
-  # Get the list of calendars for the user
-  defp get_calendars(user) do
-    case Calendar.list_calendars(user) do
-      {:ok, calendars} -> calendars
-      {:error, _} -> []
-    end
   end
 
   # Get only the band calendar by ID
