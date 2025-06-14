@@ -37,8 +37,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: deps
-          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
-          restore-keys: ${{ runner.os }}-mix-
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}-v2
+          restore-keys: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}-v2
       
       - name: Install dependencies
         run: mix deps.get
@@ -47,8 +47,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: _build
-          key: ${{ runner.os }}-build-${{ hashFiles('**/mix.lock') }}
-          restore-keys: ${{ runner.os }}-build-
+          key: ${{ runner.os }}-build-${{ hashFiles('**/mix.lock') }}-v2
+          restore-keys: ${{ runner.os }}-build-${{ hashFiles('**/mix.lock') }}-v2
       
       - name: Verify PostgreSQL is running
         run: |
