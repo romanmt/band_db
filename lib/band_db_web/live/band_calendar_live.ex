@@ -35,6 +35,7 @@ defmodule BandDbWeb.BandCalendarLive do
          show_event_modal: false,
          selected_event: nil,
          show_event_form: false,
+         show_day_events: false,
          selected_date: nil,
          event_form: %{
            title: "",
@@ -59,6 +60,7 @@ defmodule BandDbWeb.BandCalendarLive do
          has_calendar: has_calendar,
          show_event_modal: false,
          show_event_form: false,
+         show_day_events: false,
          calendars: calendars,
          band_name: "",
          google_auth: Calendar.get_google_auth(current_user)
@@ -234,6 +236,22 @@ defmodule BandDbWeb.BandCalendarLive do
   end
 
   @impl true
+  def handle_event("show_day_events", %{"date" => date_str}, socket) do
+    date = Date.from_iso8601!(date_str)
+
+    socket = socket
+      |> assign(:selected_date, date)
+      |> assign(:show_day_events, true)
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("close_day_events", _, socket) do
+    {:noreply, assign(socket, show_day_events: false)}
+  end
+
+  @impl true
   def handle_params(%{"year" => year, "month" => month}, _uri, socket) do
     year = String.to_integer(year)
     month = String.to_integer(month)
@@ -341,6 +359,25 @@ defmodule BandDbWeb.BandCalendarLive do
   # Helper function to determine if a date is today
   defp is_today?(date) do
     Date.compare(date, Date.utc_today()) == :eq
+  end
+
+  # Helper function to format time in 12-hour format
+  defp format_time_12h(time) do
+    hour = time.hour
+    minute = time.minute
+
+    {display_hour, period} = if hour == 0 do
+      {12, "AM"}
+    else
+      if hour <= 12 do
+        {hour, "AM"}
+      else
+        {hour - 12, "PM"}
+      end
+    end
+
+    minute_str = if minute < 10, do: "0#{minute}", else: "#{minute}"
+    "#{display_hour}:#{minute_str} #{period}"
   end
 
   # Helper function to determine if a date is in the current month

@@ -1,83 +1,83 @@
 <.page_header title="Band Calendar" subtitle="View and manage your band's rehearsals and performances">
 </.page_header>
 
-<div class="max-w-4xl mx-auto px-4">
+<div class="max-w-4xl mx-auto px-3 sm:px-4">
   <%= if !@connected do %>
     <!-- Onboarding screen for users without Google Calendar connection -->
-    <div class="bg-white rounded-lg shadow-md p-10 text-center">
-      <div class="mx-auto w-24 h-24 bg-indigo-100 rounded-full flex items-center justify-center mb-6">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+    <div class="bg-white rounded-lg shadow-md p-6 sm:p-10 text-center">
+      <div class="mx-auto w-16 h-16 sm:w-24 sm:h-24 bg-indigo-100 rounded-full flex items-center justify-center mb-4 sm:mb-6">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 sm:h-12 sm:w-12 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
       </div>
       
-      <h2 class="text-2xl font-bold text-gray-900 mb-4">Connect Your Band Calendar</h2>
+      <h2 class="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">Connect Your Band Calendar</h2>
       
-      <p class="text-gray-600 mb-8 max-w-md mx-auto">
+      <p class="text-gray-600 mb-6 sm:mb-8 max-w-md mx-auto text-sm sm:text-base">
         Link your Google Calendar to manage rehearsals and shows in one place, and automatically sync between BandDb and Google Calendar.
       </p>
       
-      <div class="grid md:grid-cols-3 gap-6 mb-8">
-        <div class="bg-gray-50 p-4 rounded-lg">
-          <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        <div class="bg-gray-50 p-3 sm:p-4 rounded-lg">
+          <div class="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2 sm:mb-3">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
           </div>
-          <h3 class="font-medium text-gray-900 mb-1">Create Events</h3>
-          <p class="text-gray-500 text-sm">Add rehearsals and shows directly to your Google Calendar</p>
+          <h3 class="font-medium text-gray-900 mb-1 text-sm sm:text-base">Create Events</h3>
+          <p class="text-gray-500 text-xs sm:text-sm">Add rehearsals and shows directly to your Google Calendar</p>
         </div>
         
-        <div class="bg-gray-50 p-4 rounded-lg">
-          <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="bg-gray-50 p-3 sm:p-4 rounded-lg">
+          <div class="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2 sm:mb-3">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
           </div>
-          <h3 class="font-medium text-gray-900 mb-1">Link Set Lists</h3>
-          <p class="text-gray-500 text-sm">Attach set lists to calendar events for easy access</p>
+          <h3 class="font-medium text-gray-900 mb-1 text-sm sm:text-base">Link Set Lists</h3>
+          <p class="text-gray-500 text-xs sm:text-sm">Attach set lists to calendar events for easy access</p>
         </div>
         
-        <div class="bg-gray-50 p-4 rounded-lg">
-          <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="bg-gray-50 p-3 sm:p-4 rounded-lg">
+          <div class="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2 sm:mb-3">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
             </svg>
           </div>
-          <h3 class="font-medium text-gray-900 mb-1">Share with Band</h3>
-          <p class="text-gray-500 text-sm">Everyone in your band can view the same calendar</p>
+          <h3 class="font-medium text-gray-900 mb-1 text-sm sm:text-base">Share with Band</h3>
+          <p class="text-gray-500 text-xs sm:text-sm">Everyone in your band can view the same calendar</p>
         </div>
       </div>
       
-      <.link href={~p"/auth/google"} class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+      <.link href={~p"/auth/google"} class="inline-flex items-center px-4 py-2 sm:px-6 sm:py-3 border border-transparent text-sm sm:text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
           <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd" />
         </svg>
         Connect Google Calendar
       </.link>
       
-      <p class="text-gray-500 text-sm mt-4">
+      <p class="text-gray-500 text-xs sm:text-sm mt-3 sm:mt-4">
         You'll be redirected to Google to authorize access.
       </p>
     </div>
   <% else %>
     <%= if !@has_calendar do %>
       <!-- User is connected to Google but doesn't have a band calendar set up -->
-      <div class="bg-white rounded-lg shadow-md p-10 text-center">
-        <div class="mx-auto w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mb-6">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div class="bg-white rounded-lg shadow-md p-6 sm:p-10 text-center">
+        <div class="mx-auto w-16 h-16 sm:w-20 sm:h-20 bg-yellow-100 rounded-full flex items-center justify-center mb-4 sm:mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 sm:h-10 sm:w-10 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
         </div>
         
-        <h2 class="text-2xl font-bold text-gray-900 mb-4">One More Step Needed</h2>
+        <h2 class="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">One More Step Needed</h2>
         
-        <p class="text-gray-600 mb-8 max-w-md mx-auto">
+        <p class="text-gray-600 mb-6 sm:mb-8 max-w-md mx-auto text-sm sm:text-base">
           Your Google account is connected, but you need to create a band calendar to start using this feature.
         </p>
         
-        <.link navigate={~p"/users/settings?tab=calendar"} class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <.link navigate={~p"/users/settings?tab=calendar"} class="inline-flex items-center px-4 py-2 sm:px-6 sm:py-3 border border-transparent text-sm sm:text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
           Create Band Calendar
@@ -85,8 +85,34 @@
       </div>
     <% else %>
       <!-- Regular calendar view for connected users with calendar -->
-      <div class="bg-white rounded-lg shadow-md p-6">
-        <div class="flex justify-between items-center mb-6">
+      <div class="bg-white rounded-lg shadow-md p-3 sm:p-6">
+        <!-- Mobile Navigation -->
+        <div class="sm:hidden flex items-center justify-between mb-4">
+          <button 
+            phx-click="prev_month"
+            class="flex items-center justify-center w-10 h-10 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          
+          <h2 class="text-lg font-semibold text-center">
+            <%= @month_name %><br/><span class="text-base text-gray-600"><%= @current_date.year %></span>
+          </h2>
+          
+          <button 
+            phx-click="next_month"
+            class="flex items-center justify-center w-10 h-10 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Desktop Navigation -->
+        <div class="hidden sm:flex justify-between items-center mb-6">
           <button 
             phx-click="prev_month"
             class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none"
@@ -106,53 +132,83 @@
           </button>
         </div>
         
-        <div class="grid grid-cols-7 gap-px bg-gray-200">
-          <div class="bg-gray-100 text-center py-2 font-medium">Mon</div>
-          <div class="bg-gray-100 text-center py-2 font-medium">Tue</div>
-          <div class="bg-gray-100 text-center py-2 font-medium">Wed</div>
-          <div class="bg-gray-100 text-center py-2 font-medium">Thu</div>
-          <div class="bg-gray-100 text-center py-2 font-medium">Fri</div>
-          <div class="bg-gray-100 text-center py-2 font-medium">Sat</div>
-          <div class="bg-gray-100 text-center py-2 font-medium">Sun</div>
+        <div class="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
+          <!-- Mobile Headers -->
+          <div class="sm:hidden bg-gray-100 text-center py-2 text-xs font-medium">M</div>
+          <div class="sm:hidden bg-gray-100 text-center py-2 text-xs font-medium">T</div>
+          <div class="sm:hidden bg-gray-100 text-center py-2 text-xs font-medium">W</div>
+          <div class="sm:hidden bg-gray-100 text-center py-2 text-xs font-medium">T</div>
+          <div class="sm:hidden bg-gray-100 text-center py-2 text-xs font-medium">F</div>
+          <div class="sm:hidden bg-gray-100 text-center py-2 text-xs font-medium">S</div>
+          <div class="sm:hidden bg-gray-100 text-center py-2 text-xs font-medium">S</div>
+          
+          <!-- Desktop Headers -->
+          <div class="hidden sm:block bg-gray-100 text-center py-2 font-medium">Mon</div>
+          <div class="hidden sm:block bg-gray-100 text-center py-2 font-medium">Tue</div>
+          <div class="hidden sm:block bg-gray-100 text-center py-2 font-medium">Wed</div>
+          <div class="hidden sm:block bg-gray-100 text-center py-2 font-medium">Thu</div>
+          <div class="hidden sm:block bg-gray-100 text-center py-2 font-medium">Fri</div>
+          <div class="hidden sm:block bg-gray-100 text-center py-2 font-medium">Sat</div>
+          <div class="hidden sm:block bg-gray-100 text-center py-2 font-medium">Sun</div>
           
           <%= for day <- calendar_days(@current_date.year, @current_date.month) do %>
-            <div class={if day == nil, do: "bg-white p-2 h-24 bg-gray-50", else: "bg-white p-2 h-24 relative"}>
+            <div class={if day == nil, do: "bg-white p-1 sm:p-2 h-16 sm:h-24 bg-gray-50", else: "bg-white p-1 sm:p-2 h-16 sm:h-24 relative"}>
               <%= if day != nil do %>
-                <div class="flex items-center justify-between">
-                  <div class={if is_today?(day.date), do: "bg-blue-100 rounded-full w-7 h-7 flex items-center justify-center", else: ""}>
-                    <%= day.day %>
+                <div class="flex items-center justify-between h-full">
+                  <div class="flex-1">
+                    <div class={if is_today?(day.date), do: "bg-blue-100 rounded-full w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center text-xs sm:text-sm", else: "text-xs sm:text-sm"}>
+                      <%= day.day %>
+                    </div>
+                    
+                    <!-- Mobile: Show event count -->
+                    <div class="sm:hidden mt-1">
+                      <%= if length(events_for_date(day.date, @events_by_date)) > 0 do %>
+                        <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <% end %>
+                    </div>
+
+                    <!-- Desktop: Show events -->
+                    <div class="hidden sm:block mt-1 text-xs">
+                      <%= for event <- events_for_date(day.date, @events_by_date) do %>
+                        <div 
+                          class={
+                            cond do
+                              event.event_type == "rehearsal" -> "bg-blue-500 text-white p-1 rounded mb-1 truncate cursor-pointer hover:bg-blue-600"
+                              event.event_type == "show" -> "bg-purple-500 text-white p-1 rounded mb-1 truncate cursor-pointer hover:bg-purple-600" 
+                              true -> "bg-gray-500 text-white p-1 rounded mb-1 truncate cursor-pointer hover:bg-gray-600"
+                            end
+                          }
+                          phx-click="show_event"
+                          phx-value-id={event.id}
+                        >
+                          <%= event.title %>
+                        </div>
+                      <% end %>
+                    </div>
                   </div>
                   
                   <%= if @has_calendar && in_current_month?(day.date, @current_date) do %>
                     <button 
-                      class="text-blue-500 hover:text-blue-700 text-xs focus:outline-none"
+                      class="text-blue-500 hover:text-blue-700 text-xs focus:outline-none p-1"
                       phx-click="new_event"
                       phx-value-date={Date.to_iso8601(day.date)}
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                       </svg>
                     </button>
                   <% end %>
                 </div>
-                
-                <div class="mt-1 text-xs">
-                  <%= for event <- events_for_date(day.date, @events_by_date) do %>
-                    <div 
-                      class={
-                        cond do
-                          event.event_type == "rehearsal" -> "bg-blue-500 text-white p-1 rounded mb-1 truncate cursor-pointer hover:bg-blue-600"
-                          event.event_type == "show" -> "bg-purple-500 text-white p-1 rounded mb-1 truncate cursor-pointer hover:bg-purple-600" 
-                          true -> "bg-gray-500 text-white p-1 rounded mb-1 truncate cursor-pointer hover:bg-gray-600"
-                        end
-                      }
-                      phx-click="show_event"
-                      phx-value-id={event.id}
-                    >
-                      <%= event.title %>
-                    </div>
-                  <% end %>
-                </div>
+
+                <!-- Mobile: Tap to view events -->
+                <%= if length(events_for_date(day.date, @events_by_date)) > 0 do %>
+                  <button 
+                    class="sm:hidden absolute inset-0 w-full h-full"
+                    phx-click="show_day_events"
+                    phx-value-date={Date.to_iso8601(day.date)}
+                  >
+                  </button>
+                <% end %>
               <% end %>
             </div>
           <% end %>
@@ -162,105 +218,158 @@
   <% end %>
 </div>
 
-<%= if @show_event_modal do %>
-  <div class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 max-w-lg w-full mx-4 shadow-xl">
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-xl font-bold"><%= @selected_event.title %></h2>
-        <button 
-          class="text-gray-500 hover:text-gray-800"
-          phx-click="close_modal"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+<!-- Mobile Day Events Modal -->
+<%= if @show_day_events do %>
+  <div class="sm:hidden fixed inset-0 bg-gray-500 bg-opacity-75 flex items-end justify-center z-50">
+    <div class="bg-white rounded-t-lg w-full max-h-96 overflow-y-auto">
+      <div class="p-4 border-b border-gray-200">
+        <div class="flex justify-between items-center">
+          <h3 class="text-lg font-medium">
+            <%= Date.to_string(@selected_date) %>
+          </h3>
+          <button 
+            class="text-gray-500 hover:text-gray-800"
+            phx-click="close_day_events"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
-      
-      <div class="space-y-4">
-        <div>
-          <div class="text-sm text-gray-500">Date</div>
-          <div><%= Date.to_string(@selected_event.date) %></div>
+      <div class="p-4 space-y-3">
+        <%= for event <- events_for_date(@selected_date, @events_by_date) do %>
+          <div 
+            class={
+              cond do
+                event.event_type == "rehearsal" -> "bg-blue-50 border-l-4 border-blue-500 p-3 rounded cursor-pointer"
+                event.event_type == "show" -> "bg-purple-50 border-l-4 border-purple-500 p-3 rounded cursor-pointer"
+                true -> "bg-gray-50 border-l-4 border-gray-500 p-3 rounded cursor-pointer"
+              end
+            }
+            phx-click="show_event"
+            phx-value-id={event.id}
+          >
+            <div class="font-medium text-gray-900"><%= event.title %></div>
+            <%= if event.start_time do %>
+              <div class="text-sm text-gray-600 mt-1">
+                <%= format_time_12h(event.start_time) %>
+                <%= if event.end_time do %>
+                  - <%= format_time_12h(event.end_time) %>
+                <% end %>
+              </div>
+            <% end %>
+            <%= if event.location do %>
+              <div class="text-sm text-gray-500 mt-1"><%= event.location %></div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+<%= if @show_event_modal do %>
+  <div class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg max-w-lg w-full shadow-xl max-h-screen overflow-y-auto">
+      <div class="p-4 sm:p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-lg sm:text-xl font-bold"><%= @selected_event.title %></h2>
+          <button 
+            class="text-gray-500 hover:text-gray-800 p-1"
+            phx-click="close_modal"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
         
-        <%= if @selected_event.start_time do %>
+        <div class="space-y-3 sm:space-y-4">
           <div>
-            <div class="text-sm text-gray-500">Time</div>
+            <div class="text-sm text-gray-500">Date</div>
+            <div class="text-sm sm:text-base"><%= Date.to_string(@selected_event.date) %></div>
+          </div>
+          
+          <%= if @selected_event.start_time do %>
             <div>
-              <%= format_time_12h(@selected_event.start_time) %> - 
-              <%= if @selected_event.end_time do %>
-                <%= format_time_12h(@selected_event.end_time) %>
-              <% end %>
+              <div class="text-sm text-gray-500">Time</div>
+              <div class="text-sm sm:text-base">
+                <%= format_time_12h(@selected_event.start_time) %> - 
+                <%= if @selected_event.end_time do %>
+                  <%= format_time_12h(@selected_event.end_time) %>
+                <% end %>
+              </div>
             </div>
-          </div>
-        <% end %>
-        
-        <%= if @selected_event.location do %>
-          <div>
-            <div class="text-sm text-gray-500">Location</div>
-            <div><%= @selected_event.location %></div>
-          </div>
-        <% end %>
-        
-        <%= if @selected_event.description do %>
-          <div>
-            <div class="text-sm text-gray-500">Description</div>
-            <div class="prose prose-sm"><%= @selected_event.description %></div>
-          </div>
-        <% end %>
-        
-        <div class="mt-6 flex flex-col gap-3">
-          <a 
-            href={@selected_event.html_link} 
-            target="_blank" 
-            class="text-blue-500 hover:text-blue-700 inline-flex items-center py-2 px-4 border border-blue-300 rounded"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-            </svg>
-            View in Google Calendar
-          </a>
-          
-          <%= if @selected_event.event_type == "rehearsal" && @selected_event.rehearsal_plan_id do %>
-            <.link 
-              navigate={~p"/rehearsal/plan/#{@selected_event.rehearsal_plan_id}"}
-              class="text-indigo-500 hover:text-indigo-700 inline-flex items-center py-2 px-4 border border-indigo-300 rounded"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              View Rehearsal Plan
-            </.link>
           <% end %>
           
-          <%= if @selected_event.event_type == "show" && @selected_event.set_list_name do %>
-            <.link 
-              navigate={~p"/set-list/#{@selected_event.set_list_name}"}
-              class="text-purple-500 hover:text-purple-700 inline-flex items-center py-2 px-4 border border-purple-300 rounded"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              View Set List
-            </.link>
+          <%= if @selected_event.location do %>
+            <div>
+              <div class="text-sm text-gray-500">Location</div>
+              <div class="text-sm sm:text-base"><%= @selected_event.location %></div>
+            </div>
           <% end %>
           
-          <div class="flex flex-col gap-2 mt-2">
-            <button 
-              phx-click="delete_event"
-              phx-value-id={@selected_event.id}
-              class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-              data-confirm="Are you sure you want to delete this event?"
+          <%= if @selected_event.description do %>
+            <div>
+              <div class="text-sm text-gray-500">Description</div>
+              <div class="prose prose-sm text-sm sm:text-base"><%= @selected_event.description %></div>
+            </div>
+          <% end %>
+          
+          <div class="mt-4 sm:mt-6 flex flex-col gap-2 sm:gap-3">
+            <a 
+              href={@selected_event.html_link} 
+              target="_blank" 
+              class="text-blue-500 hover:text-blue-700 inline-flex items-center py-2 px-3 sm:px-4 border border-blue-300 rounded text-sm"
             >
-              Delete
-            </button>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              View in Google Calendar
+            </a>
             
-            <button 
-              phx-click="close_modal"
-              class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-            >
-              Close
-            </button>
+            <%= if @selected_event.event_type == "rehearsal" && @selected_event.rehearsal_plan_id do %>
+              <.link 
+                navigate={~p"/rehearsal/plan/#{@selected_event.rehearsal_plan_id}"}
+                class="text-indigo-500 hover:text-indigo-700 inline-flex items-center py-2 px-3 sm:px-4 border border-indigo-300 rounded text-sm"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                View Rehearsal Plan
+              </.link>
+            <% end %>
+            
+                         <%= if @selected_event.event_type == "show" && @selected_event.set_list_name do %>
+               <.link 
+                 navigate={~p"/set-list/#{@selected_event.set_list_name}"}
+                 class="text-purple-500 hover:text-purple-700 inline-flex items-center py-2 px-3 sm:px-4 border border-purple-300 rounded text-sm"
+               >
+                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                 </svg>
+                 View Set List
+               </.link>
+             <% end %>
+            
+            <div class="flex flex-col gap-2 mt-2">
+              <button 
+                phx-click="delete_event"
+                phx-value-id={@selected_event.id}
+                class="px-3 py-2 sm:px-4 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+                data-confirm="Are you sure you want to delete this event?"
+              >
+                Delete
+              </button>
+              
+              <button 
+                phx-click="close_modal"
+                class="px-3 py-2 sm:px-4 bg-gray-200 rounded hover:bg-gray-300 text-sm"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -269,129 +378,131 @@
 <% end %>
 
 <%= if @show_event_form do %>
-  <div class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 max-w-lg w-full mx-4 shadow-xl">
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-xl font-bold">New Event</h2>
-        <button 
-          class="text-gray-500 hover:text-gray-800"
-          phx-click="close_form"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-      
-      <form phx-submit="save_event" phx-change="form_change">
-        <%= if @form_error do %>
-          <div class="bg-red-100 text-red-700 p-3 rounded mb-4">
-            <%= @form_error %>
-          </div>
-        <% end %>
-
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
-            <div class="text-gray-800 py-2 px-3 bg-gray-100 rounded">
-              <%= Date.to_string(@selected_date) %>
-            </div>
-          </div>
-          
-          <div>
-            <label for="event_title" class="block text-sm font-medium text-gray-700 mb-1">Title</label>
-            <input
-              type="text"
-              id="event_title"
-              name="event[title]"
-              value={@event_form.title}
-              placeholder="Event title"
-              class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-              required
-            />
-          </div>
-          
-          <div>
-            <label class="flex items-center">
-              <input 
-                type="checkbox" 
-                name="event[all_day]" 
-                value="true"
-                checked={@event_form.all_day}
-                phx-click="toggle_all_day"
-                class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 mr-2"
-              />
-              <span class="text-sm text-gray-700">All day event</span>
-            </label>
-          </div>
-          
-          <%= unless @event_form.all_day do %>
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label for="event_start_time" class="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
-                <input
-                  type="time"
-                  id="event_start_time"
-                  name="event[start_time]"
-                  value={@event_form.start_time}
-                  class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                />
-              </div>
-              
-              <div>
-                <label for="event_end_time" class="block text-sm font-medium text-gray-700 mb-1">End Time</label>
-                <input
-                  type="time"
-                  id="event_end_time"
-                  name="event[end_time]"
-                  value={@event_form.end_time}
-                  class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                />
-              </div>
+  <div class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg max-w-lg w-full shadow-xl max-h-screen overflow-y-auto">
+      <div class="p-4 sm:p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-lg sm:text-xl font-bold">New Event</h2>
+          <button 
+            class="text-gray-500 hover:text-gray-800 p-1"
+            phx-click="close_form"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <form phx-submit="save_event" phx-change="form_change">
+          <%= if @form_error do %>
+            <div class="bg-red-100 text-red-700 p-3 rounded mb-4 text-sm">
+              <%= @form_error %>
             </div>
           <% end %>
-          
-          <div>
-            <label for="event_location" class="block text-sm font-medium text-gray-700 mb-1">Location</label>
-            <input
-              type="text"
-              id="event_location"
-              name="event[location]"
-              value={@event_form.location}
-              placeholder="Location (optional)"
-              class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-            />
-          </div>
-          
-          <div>
-            <label for="event_description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea
-              id="event_description"
-              name="event[description]"
-              rows="3"
-              placeholder="Description (optional)"
-              class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-            ><%= @event_form.description %></textarea>
-          </div>
-          
-          <div class="mt-6 flex justify-end">
-            <button 
-              type="button"
-              phx-click="close_form"
-              class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 mr-2"
-            >
-              Cancel
-            </button>
+
+          <div class="space-y-3 sm:space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+              <div class="text-gray-800 py-2 px-3 bg-gray-100 rounded text-sm">
+                <%= Date.to_string(@selected_date) %>
+              </div>
+            </div>
             
-            <button 
-              type="submit"
-              class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              Create Event
-            </button>
+            <div>
+              <label for="event_title" class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+              <input
+                type="text"
+                id="event_title"
+                name="event[title]"
+                value={@event_form.title}
+                placeholder="Event title"
+                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 text-sm"
+                required
+              />
+            </div>
+            
+            <div>
+              <label class="flex items-center">
+                <input 
+                  type="checkbox" 
+                  name="event[all_day]" 
+                  value="true"
+                  checked={@event_form.all_day}
+                  phx-click="toggle_all_day"
+                  class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 mr-2"
+                />
+                <span class="text-sm text-gray-700">All day event</span>
+              </label>
+            </div>
+            
+            <%= unless @event_form.all_day do %>
+              <div class="grid grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <label for="event_start_time" class="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                  <input
+                    type="time"
+                    id="event_start_time"
+                    name="event[start_time]"
+                    value={@event_form.start_time}
+                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 text-sm"
+                  />
+                </div>
+                
+                <div>
+                  <label for="event_end_time" class="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                  <input
+                    type="time"
+                    id="event_end_time"
+                    name="event[end_time]"
+                    value={@event_form.end_time}
+                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 text-sm"
+                  />
+                </div>
+              </div>
+            <% end %>
+            
+            <div>
+              <label for="event_location" class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+              <input
+                type="text"
+                id="event_location"
+                name="event[location]"
+                value={@event_form.location}
+                placeholder="Location (optional)"
+                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 text-sm"
+              />
+            </div>
+            
+            <div>
+              <label for="event_description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea
+                id="event_description"
+                name="event[description]"
+                rows="3"
+                placeholder="Description (optional)"
+                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 text-sm"
+              ><%= @event_form.description %></textarea>
+            </div>
+            
+            <div class="mt-4 sm:mt-6 flex flex-col sm:flex-row gap-2 sm:justify-end">
+              <button 
+                type="button"
+                phx-click="close_form"
+                class="px-3 py-2 sm:px-4 bg-gray-200 rounded hover:bg-gray-300 text-sm order-2 sm:order-1 sm:mr-2"
+              >
+                Cancel
+              </button>
+              
+              <button 
+                type="submit"
+                class="px-3 py-2 sm:px-4 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm order-1 sm:order-2"
+              >
+                Create Event
+              </button>
+            </div>
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   </div>
 <% end %> 
