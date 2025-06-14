@@ -1,11 +1,13 @@
-<div id="rehearsal-history" phx-hook="RehearsalHistory" class="max-w-7xl mx-auto">
+<div id="rehearsal-history" phx-hook="RehearsalHistory" class="max-w-7xl mx-auto px-3 sm:px-6">
   <.page_header title="Rehearsal History">
     <:action>
       <.link
         navigate={~p"/rehearsal"}
-        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        class="inline-flex items-center px-2 py-1.5 sm:px-4 sm:py-2 border border-transparent text-xs sm:text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
       >
-        New Rehearsal Plan
+        <.icon name="hero-plus" class="h-4 w-4 sm:h-5 sm:w-5 sm:mr-2" />
+        <span class="hidden sm:inline">New Rehearsal Plan</span>
+        <span class="sm:hidden">New Plan</span>
       </.link>
     </:action>
   </.page_header>
@@ -26,7 +28,7 @@
       </div>
     </div>
   <% else %>
-    <div class="space-y-4">
+    <div class="space-y-3 sm:space-y-4">
       <%= if length(@plans) == 0 do %>
         <div class="bg-white shadow rounded-lg p-6">
           <p class="text-center text-gray-500">No rehearsal plans found. Create a new rehearsal plan to get started.</p>
@@ -35,51 +37,107 @@
       
       <%= for plan <- @plans do %>
         <div class="bg-white shadow rounded-lg overflow-hidden">
-          <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
-            <div class="flex items-center space-x-4">
+          <!-- Mobile Header -->
+          <div class="sm:hidden px-3 py-4">
+            <div class="flex items-center justify-between mb-3">
               <button
                 phx-click="toggle_plan"
                 phx-value-id={plan.date}
-                class="text-gray-400 hover:text-gray-500"
+                class="flex items-center space-x-2 text-gray-700"
               >
-                <.icon name={if plan.expanded, do: "hero-chevron-down", else: "hero-chevron-right"} class="h-5 w-5" />
-              </button>
-              <div class="flex items-center gap-2">
-                <.icon name="hero-calendar" class="h-5 w-5 text-gray-400" />
-                <span class="text-lg font-medium text-gray-900">
+                <.icon name={if plan.expanded, do: "hero-chevron-down", else: "hero-chevron-right"} class="h-4 w-4" />
+                <.icon name="hero-calendar" class="h-4 w-4 text-gray-400" />
+                <span class="text-base font-medium">
                   <%= Calendar.strftime(plan.date, "%B %d, %Y") %>
                 </span>
+              </button>
+              <div class="flex items-center space-x-1">
+                <.link
+                  navigate={~p"/rehearsal/plan/#{plan.id || Date.to_iso8601(plan.date)}"}
+                  class="p-1 text-blue-600 hover:text-blue-800"
+                >
+                  <.icon name="hero-arrow-top-right-on-square" class="h-4 w-4" />
+                </.link>
+                <button
+                  phx-click="print_plan"
+                  phx-value-id={plan.date}
+                  class="p-1 text-gray-400 hover:text-gray-500"
+                >
+                  <.icon name="hero-printer" class="h-4 w-4" />
+                </button>
               </div>
             </div>
-            <div class="flex items-center space-x-2">
-              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                <%= length(plan.rehearsal_songs) %> rehearsal songs
-              </span>
-              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                <%= length(plan.set_songs) %> set list songs
-              </span>
-              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                <%= format_duration(plan.duration) %>
-              </span>
-              <%= if plan.calendar_event_id do %>
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  <.icon name="hero-calendar" class="h-3 w-3 mr-1" />
-                  Scheduled
+            
+            <!-- Mobile badges - stacked -->
+            <div class="space-y-2">
+              <div class="flex flex-wrap gap-1">
+                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                  <%= length(plan.rehearsal_songs) %> rehearsal
                 </span>
-              <% end %>
-              <.link
-                navigate={~p"/rehearsal/plan/#{plan.id || Date.to_iso8601(plan.date)}"}
-                class="ml-2 text-blue-600 hover:text-blue-800"
-              >
-                <.icon name="hero-arrow-top-right-on-square" class="h-5 w-5" />
-              </.link>
-              <button
-                phx-click="print_plan"
-                phx-value-id={plan.date}
-                class="ml-2 text-gray-400 hover:text-gray-500"
-              >
-                <.icon name="hero-printer" class="h-5 w-5" />
-              </button>
+                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  <%= length(plan.set_songs) %> set list
+                </span>
+                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                  <%= format_duration(plan.duration) %>
+                </span>
+                <%= if plan.calendar_event_id do %>
+                  <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    <.icon name="hero-calendar" class="h-3 w-3 mr-1" />
+                    Scheduled
+                  </span>
+                <% end %>
+              </div>
+            </div>
+          </div>
+
+          <!-- Desktop Header -->
+          <div class="hidden sm:block px-4 py-5 sm:px-6">
+            <div class="flex justify-between items-center">
+              <div class="flex items-center space-x-4">
+                <button
+                  phx-click="toggle_plan"
+                  phx-value-id={plan.date}
+                  class="text-gray-400 hover:text-gray-500"
+                >
+                  <.icon name={if plan.expanded, do: "hero-chevron-down", else: "hero-chevron-right"} class="h-5 w-5" />
+                </button>
+                <div class="flex items-center gap-2">
+                  <.icon name="hero-calendar" class="h-5 w-5 text-gray-400" />
+                  <span class="text-lg font-medium text-gray-900">
+                    <%= Calendar.strftime(plan.date, "%B %d, %Y") %>
+                  </span>
+                </div>
+              </div>
+              <div class="flex items-center space-x-2">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                  <%= length(plan.rehearsal_songs) %> rehearsal songs
+                </span>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  <%= length(plan.set_songs) %> set list songs
+                </span>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                  <%= format_duration(plan.duration) %>
+                </span>
+                <%= if plan.calendar_event_id do %>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    <.icon name="hero-calendar" class="h-3 w-3 mr-1" />
+                    Scheduled
+                  </span>
+                <% end %>
+                <.link
+                  navigate={~p"/rehearsal/plan/#{plan.id || Date.to_iso8601(plan.date)}"}
+                  class="ml-2 text-blue-600 hover:text-blue-800"
+                >
+                  <.icon name="hero-arrow-top-right-on-square" class="h-5 w-5" />
+                </.link>
+                <button
+                  phx-click="print_plan"
+                  phx-value-id={plan.date}
+                  class="ml-2 text-gray-400 hover:text-gray-500"
+                >
+                  <.icon name="hero-printer" class="h-5 w-5" />
+                </button>
+              </div>
             </div>
           </div>
 
