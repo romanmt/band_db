@@ -100,6 +100,18 @@ if config_env() == :prod do
   #
   # See https://hexdocs.pm/swoosh/Swoosh.html#module-installation for details.
 
+  # Configure mailer for production
+  if gmail_username = System.get_env("GMAIL_USERNAME") do
+    config :band_db, BandDb.Mailer,
+      adapter: Swoosh.Adapters.SMTP,
+      relay: "smtp.gmail.com",
+      username: gmail_username,
+      password: System.get_env("GMAIL_PASSWORD"),
+      port: 587,
+      tls: :always,
+      auth: :always
+  end
+
   database_url =
     System.get_env("DATABASE_URL") ||
       raise """
