@@ -138,7 +138,7 @@ defmodule BandDbWeb.SuggestedSongsLive do
       {:noreply, socket |> put_flash(:error, "Please select a band first")}
     else
       socket = assign(socket, updating_song: title)
-      SongServer.update_song_status(title, String.to_existing_atom(new_status), socket.assigns.song_server)
+      SongServer.update_song_status(title, String.to_existing_atom(new_status), socket.assigns.band_id, socket.assigns.song_server)
       songs = SongServer.list_songs(socket.assigns.song_server)
       suggested_songs = Enum.filter(songs, & &1.status == :suggested)
       filtered_songs = filter_songs(suggested_songs, socket.assigns.search_term)
@@ -182,7 +182,7 @@ defmodule BandDbWeb.SuggestedSongsLive do
         status: status,
         tuning: tuning,
         youtube_link: song_params["youtube_link"]
-      }, socket.assigns.song_server) do
+      }, socket.assigns.band_id, socket.assigns.song_server) do
         {:ok, _song} ->
           songs = SongServer.list_songs(socket.assigns.song_server)
           suggested_songs = Enum.filter(songs, & &1.status == :suggested)
