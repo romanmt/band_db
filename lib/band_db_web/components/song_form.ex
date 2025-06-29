@@ -3,7 +3,7 @@ defmodule BandDbWeb.Components.SongForm do
 
   attr :title, :string, required: true, doc: "The title of the form"
   attr :song, :map, required: true, doc: "The song data to edit"
-  attr :original_title, :string, doc: "The original title of the song (for editing)"
+  attr :original_title, :string, default: nil, doc: "The original title of the song (for editing)"
   attr :on_submit, :string, required: true, doc: "The event to trigger on form submit"
   attr :on_close, :string, required: true, doc: "The event to trigger when closing the form"
   attr :submit_button_text, :string, required: true, doc: "The text to display on the submit button"
