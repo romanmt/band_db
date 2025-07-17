@@ -97,12 +97,20 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
           
-          # Install ChromeDriver
-          CHROME_VERSION=$(google-chrome --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-          CHROMEDRIVER_VERSION=$(curl -s https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${CHROME_VERSION%.*})
-          wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/${CHROMEDRIVER_VERSION}/chromedriver_linux64.zip"
+          # Install ChromeDriver using Chrome for Testing API
+          CHROME_VERSION=$(google-chrome --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')
+          CHROMEDRIVER_URL=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json" | \
+            jq -r ".versions[] | select(.version==\"$CHROME_VERSION\") | .downloads.chromedriver[] | select(.platform==\"linux64\") | .url")
+          
+          if [ -z "$CHROMEDRIVER_URL" ]; then
+            echo "No matching ChromeDriver found for Chrome $CHROME_VERSION, using latest stable"
+            CHROMEDRIVER_URL=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json" | \
+              jq -r ".channels.Stable.downloads.chromedriver[] | select(.platform==\"linux64\") | .url")
+          fi
+          
+          wget -O /tmp/chromedriver.zip "$CHROMEDRIVER_URL"
           unzip /tmp/chromedriver.zip -d /tmp
-          sudo mv /tmp/chromedriver /usr/local/bin/chromedriver
+          sudo mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver
           sudo chmod +x /usr/local/bin/chromedriver
           
           # Verify installation
