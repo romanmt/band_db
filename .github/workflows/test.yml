@@ -75,7 +75,7 @@ jobs:
           
           # Run unit tests first
           echo "Running unit tests..."
-          mix test --only unit
+          mix test --only unit --exclude e2e
         env:
           MIX_ENV: test
           DATABASE_URL: "ecto://postgres:postgres@localhost/band_db_test"
@@ -84,7 +84,36 @@ jobs:
         run: |
           # Run integration tests
           echo "Running integration tests..."
-          mix test --include db
+          mix test --include db --exclude e2e
+        env:
+          MIX_ENV: test
+          DATABASE_URL: "ecto://postgres:postgres@localhost/band_db_test"
+      
+      - name: Install Chrome and ChromeDriver for E2E tests
+        run: |
+          # Install Chrome
+          sudo wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          sudo echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+          
+          # Install ChromeDriver
+          CHROME_VERSION=$(google-chrome --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          CHROMEDRIVER_VERSION=$(curl -s https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${CHROME_VERSION%.*})
+          wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/${CHROMEDRIVER_VERSION}/chromedriver_linux64.zip"
+          unzip /tmp/chromedriver.zip -d /tmp
+          sudo mv /tmp/chromedriver /usr/local/bin/chromedriver
+          sudo chmod +x /usr/local/bin/chromedriver
+          
+          # Verify installation
+          google-chrome --version
+          chromedriver --version
+      
+      - name: Run E2E tests
+        run: |
+          # Run E2E tests with Chrome in headless mode
+          echo "Running E2E tests..."
+          WALLABY_SERVER=true mix test.e2e
         env:
           MIX_ENV: test
           DATABASE_URL: "ecto://postgres:postgres@localhost/band_db_test" 

@@ -12,7 +12,8 @@ defmodule BandDb.MixProject do
       deps: deps(),
       preferred_cli_env: [
         "test.unit": :test,
-        "test.all": :test
+        "test.all": :test,
+        "test.e2e": :test
       ]
     ]
   end
@@ -46,6 +47,7 @@ defmodule BandDb.MixProject do
       {:phoenix_live_view, "~> 1.0.0"},
       {:phoenix_ecto, "~> 4.0"},
       {:floki, ">= 0.30.0", only: :test},
+      {:wallaby, "~> 0.30", only: :test},
       {:phoenix_live_dashboard, "~> 0.8.3"},
       {:esbuild, "~> 0.8", runtime: Mix.env() == :dev},
       {:tailwind, "~> 0.2", runtime: Mix.env() == :dev},
@@ -94,6 +96,7 @@ defmodule BandDb.MixProject do
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
       "test.unit": ["test --exclude db"],
       "test.all": ["test --include db"],
+      "test.e2e": ["test --only e2e"],
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
       "assets.build": ["tailwind band_db", "esbuild band_db"],
       "assets.deploy": [

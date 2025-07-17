@@ -20,8 +20,15 @@ BandDb is a Phoenix LiveView application for managing band operations including 
 - `mix test` - Run all tests (with database setup)
 - `mix test.unit` - Run unit tests only (no database)
 - `mix test.all` - Run all tests including database tests
+- `WALLABY_SERVER=true mix test.e2e` - Run end-to-end tests with Wallaby
 - `./scripts/ci_unit_tests.sh` - Run unit tests in CI mode
 - `./scripts/ci_all_tests.sh` - Run all tests in CI mode
+
+### CI/CD Testing
+GitHub Actions automatically runs:
+1. Unit tests (`mix test --only unit --exclude e2e`)
+2. Integration tests (`mix test --include db --exclude e2e`)
+3. E2E tests (`WALLABY_SERVER=true mix test.e2e`) - requires Chrome installation in CI
 
 ### Assets
 - `mix assets.setup` - Install Tailwind and esbuild

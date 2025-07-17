@@ -11,7 +11,16 @@ config :band_db, :env, :test
 config :band_db, BandDbWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
   secret_key_base: "I0NEj6EBCnTnPReU5TgN/4QDr8Y85B7PZdtkRJcnBU321WroNbjkkicdIdjcuKbN",
-  server: false
+  server: System.get_env("WALLABY_SERVER") == "true"
+
+# Wallaby configuration
+config :wallaby,
+  otp_app: :band_db,
+  driver: Wallaby.Chrome,
+  base_url: "http://localhost:4002",
+  chromedriver: [
+    headless: true
+  ]
 
 # In test we don't send emails
 config :band_db, BandDb.Mailer, adapter: Swoosh.Adapters.Test
