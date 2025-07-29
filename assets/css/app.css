@@ -121,6 +121,17 @@
   background-color: rgb(249 250 251);
 }
 
+/* Style column menu button */
+.ag-theme-quartz .ag-header-cell-menu-button {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.ag-theme-quartz .ag-header-cell:hover .ag-header-cell-menu-button,
+.ag-theme-quartz .ag-header-cell-menu-button:hover {
+  opacity: 1;
+}
+
 /* Style the no-rows overlay */
 .ag-theme-quartz .ag-overlay-no-rows-center {
   padding: 2rem;

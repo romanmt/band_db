@@ -56,11 +56,59 @@
         <h3 class="text-base sm:text-lg leading-6 font-medium text-gray-900">
           Songs (<%= length(@songs) %>)
         </h3>
-        <%= if length(@songs) > 0 do %>
-          <div class="text-xs sm:text-sm text-gray-500">
-            Total time: <%= @songs |> Enum.map(& &1.duration) |> Enum.reject(&is_nil/1) |> Enum.sum() |> format_duration() %>
+        <div class="flex items-center gap-4">
+          <%= if length(@songs) > 0 do %>
+            <div class="text-xs sm:text-sm text-gray-500">
+              Total time: <%= @songs |> Enum.map(& &1.duration) |> Enum.reject(&is_nil/1) |> Enum.sum() |> format_duration() %>
+            </div>
+          <% end %>
+          
+          <!-- Settings Dropdown -->
+          <div class="relative" phx-click-away="close_settings_menu">
+            <button type="button" 
+                    phx-click="toggle_settings_menu"
+                    class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Settings
+            </button>
+            
+            <!-- Dropdown Menu -->
+            <%= if @show_settings_menu do %>
+              <div class="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                <div class="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
+                  <div class="px-4 py-2 text-sm font-medium text-gray-700 border-b border-gray-200">
+                    Show/Hide Columns
+                  </div>
+                  <div class="py-2">
+                    <label class="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                      <input type="checkbox" checked={@visible_columns["title"]} phx-click="toggle_column" phx-value-column="title" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3">
+                      <span class="text-sm text-gray-700">Title</span>
+                    </label>
+                    <label class="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                      <input type="checkbox" checked={@visible_columns["band_name"]} phx-click="toggle_column" phx-value-column="band_name" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3">
+                      <span class="text-sm text-gray-700">Band</span>
+                    </label>
+                    <label class="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                      <input type="checkbox" checked={@visible_columns["status"]} phx-click="toggle_column" phx-value-column="status" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3">
+                      <span class="text-sm text-gray-700">Status</span>
+                    </label>
+                    <label class="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                      <input type="checkbox" checked={@visible_columns["tuning"]} phx-click="toggle_column" phx-value-column="tuning" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3">
+                      <span class="text-sm text-gray-700">Tuning</span>
+                    </label>
+                    <label class="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                      <input type="checkbox" checked={@visible_columns["duration"]} phx-click="toggle_column" phx-value-column="duration" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3">
+                      <span class="text-sm text-gray-700">Duration</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            <% end %>
           </div>
-        <% end %>
+        </div>
       </div>
 
       <!-- AG Grid Container -->

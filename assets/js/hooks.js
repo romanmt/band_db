@@ -257,6 +257,22 @@ Hooks.AgGrid = {
           this.gridApi.setGridOption('quickFilterText', quickFilterText);
         }
       });
+      
+      // Listen for column visibility toggle
+      this.handleEvent("toggle-column", ({ column, visible }) => {
+        if (this.gridApi) {
+          this.gridApi.setColumnsVisible([column], visible);
+        }
+      });
+      
+      // Listen for column visibility updates (when switching tabs)
+      this.handleEvent("update-column-visibility", ({ columns }) => {
+        if (this.gridApi) {
+          Object.entries(columns).forEach(([column, visible]) => {
+            this.gridApi.setColumnsVisible([column], visible);
+          });
+        }
+      });
   },
   
   destroyed() {

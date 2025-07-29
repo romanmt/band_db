@@ -55,4 +55,14 @@ defmodule BandDb.Songs.SongPersistenceMock do
 
     {:ok, filtered_songs}
   end
+
+  def load_column_preferences do
+    Logger.debug("SongPersistenceMock.load_column_preferences called")
+    {:ok, %{}}
+  end
+
+  def persist_column_preferences(preferences) do
+    Logger.debug("SongPersistenceMock.persist_column_preferences called with #{map_size(preferences)} preferences")
+    :ok
+  end
 end

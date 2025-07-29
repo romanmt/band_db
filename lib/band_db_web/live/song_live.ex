@@ -20,6 +20,9 @@ defmodule BandDbWeb.SongLive do
         songs = SongServer.list_songs_by_band(band_id, song_server)
                 |> filter_songs_by_tab("accepted")
 
+        # Load column preferences for the default tab
+        visible_columns = SongServer.get_column_preferences(band_id, "accepted", song_server)
+
         socket = socket
           |> assign(
             songs: songs,
@@ -34,7 +37,9 @@ defmodule BandDbWeb.SongLive do
             band_id: band_id,
             band_name: band.name,
             song_server: song_server,
-            tab: "accepted"
+            tab: "accepted",
+            visible_columns: visible_columns,
+            show_settings_menu: false
           )
         
         # Schedule grid configuration after mount
@@ -67,10 +72,15 @@ defmodule BandDbWeb.SongLive do
     song_server = ServerLookup.get_song_server(socket.assigns.band_id)
     songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
             |> filter_songs_by_tab(tab)
+    
+    # Load column preferences for the new tab
+    visible_columns = SongServer.get_column_preferences(socket.assigns.band_id, tab, song_server)
+    
     {:noreply, 
       socket
-      |> assign(tab: tab, songs: songs, search_term: "")
-      |> push_event("update-grid-data", %{rowData: prepare_grid_data(songs)})}
+      |> assign(tab: tab, songs: songs, search_term: "", visible_columns: visible_columns)
+      |> push_event("update-grid-data", %{rowData: prepare_grid_data(songs)})
+      |> push_event("update-column-visibility", %{columns: visible_columns})}
   end
 
   @impl true
@@ -312,6 +322,30 @@ defmodule BandDbWeb.SongLive do
     end
   end
 
+  @impl true
+  def handle_event("toggle_column", %{"column" => column}, socket) do
+    visible_columns = Map.update!(socket.assigns.visible_columns, column, &(!&1))
+    
+    # Save the preferences for the current tab
+    song_server = ServerLookup.get_song_server(socket.assigns.band_id)
+    SongServer.save_column_preferences(socket.assigns.band_id, socket.assigns.tab, visible_columns, song_server)
+    
+    {:noreply,
+      socket
+      |> assign(visible_columns: visible_columns)
+      |> push_event("toggle-column", %{column: column, visible: visible_columns[column]})}
+  end
+
+  @impl true
+  def handle_event("toggle_settings_menu", _params, socket) do
+    {:noreply, assign(socket, show_settings_menu: !socket.assigns.show_settings_menu)}
+  end
+
+  @impl true
+  def handle_event("close_settings_menu", _params, socket) do
+    {:noreply, assign(socket, show_settings_menu: false)}
+  end
+
 
 
   def format_duration(nil), do: ""
@@ -376,7 +410,9 @@ defmodule BandDbWeb.SongLive do
   
   @impl true
   def handle_info(:configure_grid, socket) do
-    {:noreply, configure_ag_grid(socket, socket.assigns.songs)}
+    socket = configure_ag_grid(socket, socket.assigns.songs)
+    # Apply saved column visibility
+    {:noreply, push_event(socket, "update-column-visibility", %{columns: socket.assigns.visible_columns})}
   end
 
   defp configure_ag_grid(socket, songs) do
@@ -389,7 +425,8 @@ defmodule BandDbWeb.SongLive do
           sortable: true,
           resizable: true,
           flex: 2,
-          cellRenderer: "agAnimateShowChangeCellRenderer"
+          cellRenderer: "agAnimateShowChangeCellRenderer",
+          suppressMenu: false
         },
         %{
           field: "band_name",
