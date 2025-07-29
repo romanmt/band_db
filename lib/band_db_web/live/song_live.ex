@@ -20,8 +20,7 @@ defmodule BandDbWeb.SongLive do
         songs = SongServer.list_songs_by_band(band_id, song_server)
                 |> filter_songs_by_tab("accepted")
 
-        {:ok,
-          socket
+        socket = socket
           |> assign(
             songs: songs,
             search_term: "",
@@ -36,7 +35,12 @@ defmodule BandDbWeb.SongLive do
             band_name: band.name,
             song_server: song_server,
             tab: "accepted"
-          )}
+          )
+        
+        # Schedule grid configuration after mount
+        Process.send_after(self(), :configure_grid, 100)
+        
+        {:ok, socket}
 
       _ ->
         # Handle case where band is not loaded or user has no band
@@ -63,7 +67,10 @@ defmodule BandDbWeb.SongLive do
     song_server = ServerLookup.get_song_server(socket.assigns.band_id)
     songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
             |> filter_songs_by_tab(tab)
-    {:noreply, assign(socket, tab: tab, songs: songs, search_term: "")}
+    {:noreply, 
+      socket
+      |> assign(tab: tab, songs: songs, search_term: "")
+      |> push_event("update-grid-data", %{rowData: prepare_grid_data(songs)})}
   end
 
   @impl true
@@ -116,6 +123,7 @@ defmodule BandDbWeb.SongLive do
         {:noreply,
           socket
           |> assign(songs: songs, show_modal: false)
+          |> push_event("update-grid-data", %{rowData: prepare_grid_data(songs)})
           |> put_flash(:info, "Song added successfully")}
 
       {:error, :song_already_exists} ->
@@ -127,22 +135,11 @@ defmodule BandDbWeb.SongLive do
 
   @impl true
   def handle_event("search", %{"search" => %{"term" => term}}, socket) do
-    song_server = ServerLookup.get_song_server(socket.assigns.band_id)
-    filtered_songs = if term == "" do
-      SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
-      |> filter_songs_by_tab(socket.assigns.tab)
-    else
-      term = String.downcase(term)
-      SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
-      |> filter_songs_by_tab(socket.assigns.tab)
-      |> Enum.filter(fn song ->
-        String.contains?(String.downcase(song.title), term) ||
-        String.contains?(String.downcase(song.band_name), term) ||
-        (song.notes && String.contains?(String.downcase(song.notes), term))
-      end)
-    end
-
-    {:noreply, assign(socket, songs: filtered_songs, search_term: term)}
+    # With AG Grid, we use the quick filter for simple text search
+    {:noreply, 
+      socket
+      |> assign(search_term: term)
+      |> push_event("update-quick-filter", %{quickFilterText: term})}
   end
 
   @impl true
@@ -156,8 +153,11 @@ defmodule BandDbWeb.SongLive do
     songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
             |> filter_songs_by_tab(socket.assigns.tab)
 
-    # Reset the updating flag
-    {:noreply, assign(socket, songs: songs, updating_song: nil)}
+    # Reset the updating flag and update grid
+    {:noreply, 
+      socket
+      |> assign(songs: songs, updating_song: nil)
+      |> push_event("update-grid-data", %{rowData: prepare_grid_data(songs)})}
   end
 
   @impl true
@@ -179,7 +179,10 @@ defmodule BandDbWeb.SongLive do
     song_server = ServerLookup.get_song_server(socket.assigns.band_id)
     songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
             |> filter_songs_by_tab(socket.assigns.tab)
-    {:noreply, assign(socket, songs: songs, search_term: "")}
+    {:noreply, 
+      socket
+      |> assign(songs: songs, search_term: "")
+      |> push_event("update-quick-filter", %{quickFilterText: ""})}
   end
 
   @impl true
@@ -225,6 +228,7 @@ defmodule BandDbWeb.SongLive do
         {:noreply,
           socket
           |> assign(songs: songs, show_bulk_import_modal: false, bulk_import_text: "")
+          |> push_event("update-grid-data", %{rowData: prepare_grid_data(songs)})
           |> put_flash(:info, "Successfully imported #{count} songs")}
       {:error, reason} ->
         {:noreply,
@@ -279,6 +283,7 @@ defmodule BandDbWeb.SongLive do
         {:noreply,
           socket
           |> assign(songs: songs, show_edit_modal: false, editing_song: nil)
+          |> push_event("update-grid-data", %{rowData: prepare_grid_data(songs)})
           |> put_flash(:info, "Song updated successfully")}
 
       :ok ->
@@ -287,12 +292,23 @@ defmodule BandDbWeb.SongLive do
         {:noreply,
           socket
           |> assign(songs: songs, show_edit_modal: false, editing_song: nil)
+          |> push_event("update-grid-data", %{rowData: prepare_grid_data(songs)})
           |> put_flash(:info, "Song updated successfully")}
 
       {:error, :not_found} ->
         {:noreply,
           socket
           |> put_flash(:error, "Song not found")}
+    end
+  end
+
+  @impl true
+  def handle_event("row-clicked", %{"title" => title, "band_id" => band_id}, socket) do
+    case Enum.find(socket.assigns.songs, &(&1.title == title && &1.band_id == band_id)) do
+      nil ->
+        {:noreply, socket}
+      song ->
+        {:noreply, assign(socket, show_edit_modal: true, editing_song: song)}
     end
   end
 
@@ -355,5 +371,105 @@ defmodule BandDbWeb.SongLive do
   defp filter_songs_by_tab(songs, _) do
     # Default to "accepted" tab - show all non-suggested songs
     Enum.reject(songs, &(&1.status == :suggested))
+  end
+
+  
+  @impl true
+  def handle_info(:configure_grid, socket) do
+    {:noreply, configure_ag_grid(socket, socket.assigns.songs)}
+  end
+
+  defp configure_ag_grid(socket, songs) do
+    grid_options = %{
+      columnDefs: [
+        %{
+          field: "title",
+          headerName: "Title",
+          filter: true,
+          sortable: true,
+          resizable: true,
+          flex: 2,
+          cellRenderer: "agAnimateShowChangeCellRenderer"
+        },
+        %{
+          field: "band_name",
+          headerName: "Band",
+          filter: true,
+          sortable: true,
+          resizable: true,
+          flex: 1
+        },
+        %{
+          field: "status",
+          headerName: "Status",
+          filter: true,
+          sortable: true,
+          resizable: true,
+          width: 150,
+          cellRenderer: "statusCellRenderer"
+        },
+        %{
+          field: "tuning",
+          headerName: "Tuning",
+          filter: true,
+          sortable: true,
+          resizable: true,
+          width: 120,
+          valueFormatter: "tuningFormatter"
+        },
+        %{
+          field: "duration",
+          headerName: "Duration",
+          filter: true,
+          sortable: true,
+          resizable: true,
+          width: 100,
+          valueFormatter: "durationFormatter"
+        },
+        %{
+          field: "actions",
+          headerName: "Actions",
+          width: 120,
+          sortable: false,
+          filter: false,
+          cellRenderer: "actionsCellRenderer",
+          cellRendererParams: %{
+            hasNotes: true,
+            hasYoutubeLink: true
+          }
+        }
+      ],
+      rowData: prepare_grid_data(songs),
+      defaultColDef: %{
+        filter: true,
+        sortable: true,
+        resizable: true
+      },
+      animateRows: true,
+      rowSelection: "single",
+      enableCellTextSelection: true,
+      ensureDomOrder: true,
+      suppressRowClickSelection: true,
+      quickFilterText: "",
+      cacheQuickFilter: true,
+      onRowClicked: nil  # Will be set in JavaScript
+    }
+
+    push_event(socket, "load-grid", grid_options)
+  end
+
+  defp prepare_grid_data(songs) do
+    Enum.map(songs, fn song ->
+      %{
+        title: song.title,
+        band_name: song.band_name,
+        status: Atom.to_string(song.status),
+        tuning: Atom.to_string(song.tuning),
+        duration: song.duration,
+        notes: song.notes,
+        youtube_link: song.youtube_link,
+        band_id: song.band_id
+      }
+    end)
   end
 end

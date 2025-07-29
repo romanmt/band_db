@@ -23,6 +23,7 @@ BandDb is a Phoenix LiveView application for managing band operations including 
 - `WALLABY_SERVER=true mix test.e2e` - Run end-to-end tests with Wallaby
 - `./scripts/ci_unit_tests.sh` - Run unit tests in CI mode
 - `./scripts/ci_all_tests.sh` - Run all tests in CI mode
+- `WALLABY_SERVER=true mix test.all --trace` - Run all tests with Wallaby server and detailed trace output
 
 ### CI/CD Testing
 GitHub Actions automatically runs:
@@ -159,3 +160,4 @@ Requires Google Cloud project with Calendar API enabled:
 - Admin access controlled via `is_admin` user field
 - Band isolation enforced through server architecture
 - CSRF protection enabled for all forms
+```
