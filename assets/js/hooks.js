@@ -143,24 +143,62 @@ Hooks.AgGrid = {
         return `<span class="text-xs sm:text-sm rounded-full px-2 sm:px-3 py-1 font-medium ${colorClass}">${label}</span>`;
       };
       
+      // Helper function for proper HTML escaping
+      const escapeHtml = (unsafe) => {
+        return unsafe
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#x27;');
+      };
+
+      // Helper function to validate and sanitize URLs
+      const sanitizeUrl = (url) => {
+        if (!url) return null;
+        
+        try {
+          const urlObj = new URL(url);
+          // Only allow http and https protocols
+          if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+            return null;
+          }
+          // Return the properly formatted URL
+          return urlObj.toString();
+        } catch (e) {
+          // If URL parsing fails, return null
+          return null;
+        }
+      };
+
       const actionsCellRenderer = (params) => {
         const data = params.data;
         let actions = '<div class="flex items-center space-x-1 sm:space-x-2">';
         
         if (data.youtube_link) {
-          actions += `
-            <a href="${data.youtube_link}" target="_blank" class="text-indigo-600 hover:text-indigo-900 flex items-center p-1" title="Watch on YouTube">
-              <svg class="h-3 w-3 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-            </a>
-          `;
+          // Validate and sanitize the URL
+          const validUrl = sanitizeUrl(data.youtube_link);
+          if (validUrl) {
+            // Even though we validated, still escape for extra safety
+            const safeUrl = escapeHtml(validUrl);
+            actions += `
+              <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-900 flex items-center p-1" title="Watch on YouTube">
+                <svg class="h-3 w-3 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              </a>
+            `;
+          }
         }
         
-        const escapedTitle = data.title.replace(/'/g, "\\'").replace(/"/g, '\\"');
+        // Properly escape for HTML context, then for JavaScript string
+        const htmlSafeTitle = escapeHtml(data.title);
+        const jsSafeTitle = htmlSafeTitle.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        const safeBandId = parseInt(data.band_id, 10) || 0; // Ensure band_id is a number
+        
         actions += `
-          <button class="text-indigo-600 hover:text-indigo-900 p-1" title="Edit song" onclick="window.dispatchEvent(new CustomEvent('ag-grid-edit', {detail: {title: '${escapedTitle}', band_id: ${data.band_id}}}))">
+          <button class="text-indigo-600 hover:text-indigo-900 p-1" title="Edit song" onclick="window.dispatchEvent(new CustomEvent('ag-grid-edit', {detail: {title: '${jsSafeTitle}', band_id: ${safeBandId}}}))">
             <svg class="h-3 w-3 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
             </svg>
