@@ -405,7 +405,7 @@ defmodule BandDbWeb.SongLive do
           filter: true,
           sortable: true,
           resizable: true,
-          width: 150,
+          width: 180,
           cellRenderer: "statusCellRenderer"
         },
         %{
@@ -414,7 +414,7 @@ defmodule BandDbWeb.SongLive do
           filter: true,
           sortable: true,
           resizable: true,
-          width: 120,
+          width: 130,
           valueFormatter: "tuningFormatter"
         },
         %{
@@ -423,13 +423,13 @@ defmodule BandDbWeb.SongLive do
           filter: true,
           sortable: true,
           resizable: true,
-          width: 100,
+          width: 110,
           valueFormatter: "durationFormatter"
         },
         %{
           field: "actions",
           headerName: "Actions",
-          width: 120,
+          width: 140,
           sortable: false,
           filter: false,
           cellRenderer: "actionsCellRenderer",

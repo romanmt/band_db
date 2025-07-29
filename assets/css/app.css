@@ -8,6 +8,126 @@
 
 /* This file is for your main application CSS */
 
+/* AG Grid Custom Styles */
+.ag-theme-quartz {
+  --ag-cell-horizontal-padding: 16px;
+  --ag-header-cell-padding: 16px;
+  --ag-row-height: 52px;
+  --ag-header-height: 48px;
+  --ag-font-size: 14px;
+  --ag-font-family: inherit;
+}
+
+/* Add more spacing to cells */
+.ag-theme-quartz .ag-cell {
+  display: flex;
+  align-items: center;
+  line-height: 1.5;
+}
+
+/* Style the header */
+.ag-theme-quartz .ag-header-cell-label {
+  font-weight: 600;
+  color: rgb(55 65 81);
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+}
+
+/* Add hover effect to rows */
+.ag-theme-quartz .ag-row-hover {
+  background-color: rgb(249 250 251);
+}
+
+/* Improve cell borders */
+.ag-theme-quartz {
+  --ag-borders: none;
+  --ag-row-border-color: rgb(229 231 235);
+  --ag-row-border-style: solid;
+  --ag-row-border-width: 1px;
+}
+
+/* Add bottom border to rows */
+.ag-theme-quartz .ag-row {
+  border-bottom: 1px solid rgb(229 231 235);
+}
+
+/* Remove border from last row */
+.ag-theme-quartz .ag-row:last-child {
+  border-bottom: none;
+}
+
+/* Style the grid container */
+.ag-theme-quartz.ag-root-wrapper {
+  border: 1px solid rgb(229 231 235);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+/* Improve header appearance */
+.ag-theme-quartz .ag-header {
+  background-color: rgb(249 250 251);
+  border-bottom: 1px solid rgb(229 231 235);
+}
+
+/* Style status badges in cells */
+.ag-theme-quartz .ag-cell-value span[class*="bg-"] {
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 120px;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* Improve action buttons spacing */
+.ag-theme-quartz .ag-cell-value .flex {
+  gap: 0.5rem;
+}
+
+/* Make sure icons in cells are properly sized */
+.ag-theme-quartz .ag-cell-value svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 640px) {
+  .ag-theme-quartz {
+    --ag-cell-horizontal-padding: 10px;
+    --ag-header-cell-padding: 10px;
+    --ag-row-height: 48px;
+    --ag-header-height: 44px;
+    --ag-font-size: 13px;
+  }
+  
+  .ag-theme-quartz .ag-header-cell-label {
+    font-size: 11px;
+  }
+  
+  .ag-theme-quartz .ag-cell-value span[class*="bg-"] {
+    padding: 2px 8px;
+    font-size: 11px;
+    min-width: 100px;
+  }
+}
+
+/* Add alternating row colors for better readability */
+.ag-theme-quartz .ag-row-even {
+  background-color: rgb(249 250 251);
+}
+
+/* Style the no-rows overlay */
+.ag-theme-quartz .ag-overlay-no-rows-center {
+  padding: 2rem;
+  text-align: center;
+  color: rgb(107 114 128);
+}
+
 /* Import Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600;700&display=swap');
 
