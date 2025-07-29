@@ -305,24 +305,9 @@
       on_submit="update_song"
       on_close="hide_edit_modal"
       submit_button_text="Update Song"
-      status_options={[
-        {"Suggested", :suggested},
-        {"Needs Learning", :needs_learning},
-        {"Needs Rehearsing", :needs_rehearsing},
-        {"Ready", :ready},
-        {"Performed", :performed}
-      ]}
-      tuning_options={[
-        {"Standard", :standard},
-        {"Drop D", :drop_d},
-        {"E flat", :e_flat},
-        {"Drop C#", :drop_c_sharp}
-      ]}
-      format_duration={fn duration ->
-        minutes = div(duration, 60)
-        seconds = rem(duration, 60)
-        "#{minutes}:#{String.pad_leading(to_string(seconds), 2, "0")}"
-      end}
+      status_options={status_options()}
+      tuning_options={tuning_options()}
+      format_duration={&format_duration/1}
     />
   <% end %>
 
