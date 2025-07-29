@@ -52,19 +52,32 @@ defmodule BandDb.Songs.SongServer do
     GenServer.call(server, {:bulk_import_songs, song_text, band_id})
   end
 
+  def get_column_preferences(band_id, tab, server \\ __MODULE__) do
+    GenServer.call(server, {:get_column_preferences, band_id, tab})
+  end
+
+  def save_column_preferences(band_id, tab, preferences, server \\ __MODULE__) do
+    GenServer.call(server, {:save_column_preferences, band_id, tab, preferences})
+  end
+
   # Server Callbacks
 
   @impl true
   def init(_args) do
     # Load initial state from persistence using the configurable module
-    case persistence_module().load_songs() do
-      {:ok, songs} ->
-        schedule_backup()
-        {:ok, %{songs: songs}}
-      _ ->
-        schedule_backup()
-        {:ok, %{songs: []}}
+    songs = case persistence_module().load_songs() do
+      {:ok, songs} -> songs
+      _ -> []
     end
+    
+    # Load column preferences
+    column_prefs = case persistence_module().load_column_preferences() do
+      {:ok, prefs} -> prefs
+      _ -> %{}
+    end
+    
+    schedule_backup()
+    {:ok, %{songs: songs, column_preferences: column_prefs}}
   end
 
   @impl true
@@ -210,6 +223,25 @@ defmodule BandDb.Songs.SongServer do
   end
 
   @impl true
+  def handle_call({:get_column_preferences, band_id, tab}, _from, state) do
+    key = "#{band_id}_#{tab}"
+    preferences = Map.get(state.column_preferences, key, default_column_preferences())
+    {:reply, preferences, state}
+  end
+
+  @impl true
+  def handle_call({:save_column_preferences, band_id, tab, preferences}, _from, state) do
+    key = "#{band_id}_#{tab}"
+    new_column_preferences = Map.put(state.column_preferences, key, preferences)
+    new_state = %{state | column_preferences: new_column_preferences}
+    
+    # Persist the preferences
+    persistence_module().persist_column_preferences(new_column_preferences)
+    
+    {:reply, :ok, new_state}
+  end
+
+  @impl true
   def handle_info(:backup, state) do
     Logger.info("Backing up songs")
     persistence_module().persist_songs(state.songs)
@@ -224,5 +256,17 @@ defmodule BandDb.Songs.SongServer do
   # Get the configured persistence module
   defp persistence_module do
     Application.get_env(:band_db, :song_persistence, BandDb.Songs.SongPersistence)
+  end
+
+  defp default_column_preferences do
+    %{
+      "title" => true,
+      "band_name" => true,
+      "status" => true,
+      "tuning" => true,
+      "duration" => true,
+      "notes" => true,
+      "actions" => true
+    }
   end
 end

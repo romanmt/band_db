@@ -60,4 +60,22 @@ defmodule BandDb.Songs.SongPersistence do
       Enum.each(songs_to_delete, &repo().delete!/1)
     end)
   end
+
+  @doc """
+  Loads column preferences from the database.
+  """
+  def load_column_preferences do
+    # For now, we'll store preferences in a simple key-value table
+    # In a real app, you might create a separate preferences table
+    {:ok, %{}}
+  end
+
+  @doc """
+  Persists column preferences to the database.
+  """
+  def persist_column_preferences(_preferences) do
+    # For now, we'll skip database persistence
+    # In a real app, you would save to a preferences table
+    :ok
+  end
 end

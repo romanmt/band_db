@@ -12,6 +12,7 @@ defmodule BandDbWeb.E2E.SmokeTest do
   test "login page loads successfully", %{session: session} do
     session
     |> visit("/users/log_in")
+    |> wait_for_page_load()
     |> assert_has(css("h2", text: "Welcome back"))
     |> assert_has(css("input[name='user[email]']"))
     |> assert_has(css("input[name='user[password]']"))
@@ -21,6 +22,7 @@ defmodule BandDbWeb.E2E.SmokeTest do
   test "registration page loads successfully", %{session: session} do
     session
     |> visit("/users/register")
+    |> wait_for_page_load()
     |> assert_has(css("input[name='user[email]']"))
     |> assert_has(css("input[name='user[password]']"))
   end
@@ -29,8 +31,11 @@ defmodule BandDbWeb.E2E.SmokeTest do
   test "basic navigation works", %{session: session} do
     session
     |> visit("/")
+    |> wait_for_page_load()
     |> visit("/users/log_in")
+    |> wait_for_page_load()
     |> visit("/users/register")
+    |> wait_for_page_load()
     |> assert_has(css("input[name='user[email]']"))
   end
 end

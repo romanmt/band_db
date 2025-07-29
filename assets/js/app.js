@@ -21,7 +21,16 @@ import "phoenix_html"
 import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import topbar from "../vendor/topbar"
+import { ModuleRegistry, AllCommunityModule, createGrid } from "ag-grid-community"
 import Hooks from "./hooks"
+import "ag-grid-community/styles/ag-grid.css"
+import "ag-grid-community/styles/ag-theme-quartz.css"
+
+// Register AG Grid modules
+ModuleRegistry.registerModules([AllCommunityModule])
+
+// Make createGrid available globally for hooks
+window.createGrid = createGrid
 
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 let liveSocket = new LiveSocket("/live", Socket, {

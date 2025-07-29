@@ -39,6 +39,7 @@ defmodule BandDbWeb.E2E.SongManagementTest do
     |> login_user(user)
     |> visit("/songs")
     |> wait_for_page_load()
+    |> wait_for_ag_grid()
     |> click(css("button[phx-click=\"show_song_modal\"]", at: 0))
     |> assert_has(css("h3", text: "Add New Song"))
     |> assert_has(css("input[name='song[title]']"))
@@ -54,6 +55,7 @@ defmodule BandDbWeb.E2E.SongManagementTest do
     |> login_user(user)
     |> visit("/songs")
     |> wait_for_page_load()
+    |> wait_for_ag_grid()
     |> click(css("button[phx-click=\"show_song_modal\"]", at: 0))
     |> fill_in(css("input[name='song[title]']"), with: "Test Song")
     |> fill_in(css("input[name='song[band_name]']"), with: "Test Band")
@@ -63,8 +65,8 @@ defmodule BandDbWeb.E2E.SongManagementTest do
     |> fill_in(css("input[name='song[notes]']"), with: "Test notes for this song")
     |> fill_in(css("input[name='song[youtube_link]']"), with: "https://www.youtube.com/watch?v=test")
     |> click(css("button[type='submit']"))
-    |> assert_has(css("body"))  # Just verify page loads after submission
-    |> assert_has(css("td", text: "Test Song"))
+    |> wait_for_ag_grid()
+    |> assert_has(css(".ag-cell-value", text: "Test Song"))
   end
 
   @tag :e2e
@@ -76,6 +78,7 @@ defmodule BandDbWeb.E2E.SongManagementTest do
     |> login_user(user)
     |> visit("/songs")
     |> wait_for_page_load()
+    |> wait_for_ag_grid()
     |> click(css("button[phx-click=\"show_song_modal\"]", at: 0))
     |> fill_in(css("input[name='song[title]']"), with: "View Test Song")
     |> fill_in(css("input[name='song[band_name]']"), with: "View Test Band")
@@ -84,11 +87,12 @@ defmodule BandDbWeb.E2E.SongManagementTest do
     |> fill_in(css("input[name='song[duration]']"), with: "4:20")
     |> fill_in(css("input[name='song[notes]']"), with: "Ready to perform")
     |> click(css("button[type='submit']"))
+    |> wait_for_ag_grid()
 
     # Then verify it appears in the list with correct details
     session
-    |> assert_has(css("td", text: "View Test Song"))
-    |> assert_has(css("td", text: "4:20"))
+    |> assert_has(css(".ag-cell-value", text: "View Test Song"))
+    |> assert_has(css(".ag-cell-value", text: "04:20"))
   end
 
   @tag :e2e
@@ -100,6 +104,7 @@ defmodule BandDbWeb.E2E.SongManagementTest do
     |> login_user(user)
     |> visit("/songs")
     |> wait_for_page_load()
+    |> wait_for_ag_grid()
     |> click(css("button[phx-click=\"show_song_modal\"]", at: 0))
     |> fill_in(css("input[name='song[title]']"), with: "Learning Song")
     |> fill_in(css("input[name='song[band_name]']"), with: "Test Band")
@@ -108,7 +113,8 @@ defmodule BandDbWeb.E2E.SongManagementTest do
 
     # Verify the song was created
     session
-    |> assert_has(css("td", text: "Learning Song"))
+    |> wait_for_ag_grid()
+    |> assert_has(css(".ag-cell-value", text: "Learning Song"))
   end
 
   @tag :e2e
@@ -120,6 +126,7 @@ defmodule BandDbWeb.E2E.SongManagementTest do
     |> login_user(user)
     |> visit("/songs")
     |> wait_for_page_load()
+    |> wait_for_ag_grid()
     |> click(css("button[phx-click=\"show_song_modal\"]", at: 0))
     |> fill_in(css("input[name='song[title]']"), with: "Searchable Song")
     |> fill_in(css("input[name='song[band_name]']"), with: "Test Band")
@@ -136,9 +143,11 @@ defmodule BandDbWeb.E2E.SongManagementTest do
 
     # Search for specific song
     session
+    |> wait_for_ag_grid()
     |> fill_in(css("input[name='search[term]']"), with: "Searchable")
-    |> assert_has(css("td", text: "Searchable Song"))
-    |> refute_has(css("td", text: "Another Song"))
+    |> wait_for_ag_grid_filter()
+    |> assert_has(css(".ag-cell-value", text: "Searchable Song"))
+    |> refute_has(css(".ag-cell-value", text: "Another Song"))
   end
 
   @tag :e2e
@@ -150,6 +159,7 @@ defmodule BandDbWeb.E2E.SongManagementTest do
     |> login_user(user)
     |> visit("/songs")
     |> wait_for_page_load()
+    |> wait_for_ag_grid()
     |> click(css("button[phx-click=\"show_song_modal\"]", at: 0))
     |> fill_in(css("input[name='song[title]']"), with: "Status Test Song")
     |> fill_in(css("input[name='song[band_name]']"), with: "Test Band")
@@ -158,7 +168,8 @@ defmodule BandDbWeb.E2E.SongManagementTest do
 
     # Verify the song was created
     session
-    |> assert_has(css("td", text: "Status Test Song"))
+    |> wait_for_ag_grid()
+    |> assert_has(css(".ag-cell-value", text: "Status Test Song"))
   end
 
   @tag :e2e
@@ -170,6 +181,7 @@ defmodule BandDbWeb.E2E.SongManagementTest do
     |> login_user(user)
     |> visit("/songs")
     |> wait_for_page_load()
+    |> wait_for_ag_grid()
     |> click(css("button[phx-click=\"show_song_modal\"]", at: 0))
     |> fill_in(css("input[name='song[title]']"), with: "")
     |> fill_in(css("input[name='song[band_name]']"), with: "")
@@ -192,5 +204,19 @@ defmodule BandDbWeb.E2E.SongManagementTest do
     |> assert_has(css("h3", text: "Add New Song"))
     |> click(css("button[phx-click='hide_modal']"))
     |> refute_has(css("h3", text: "Add New Song"))
+  end
+
+  # Helper functions for AG Grid
+  defp wait_for_ag_grid(session) do
+    # Wait for AG Grid to be initialized
+    Process.sleep(500)
+    session
+    |> assert_has(css(".ag-root-wrapper"))
+  end
+
+  defp wait_for_ag_grid_filter(session) do
+    # Wait for AG Grid filter to apply
+    Process.sleep(200)
+    session
   end
 end
