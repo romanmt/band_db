@@ -67,7 +67,7 @@ defmodule BandDbWeb.SongLive do
   end
 
   @impl true
-  def handle_event("show_modal", _params, socket) do
+  def handle_event("show_song_modal", _params, socket) do
     {:noreply, assign(socket, show_modal: true)}
   end
 

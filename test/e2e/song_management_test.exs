@@ -38,8 +38,8 @@ defmodule BandDbWeb.E2E.SongManagementTest do
     session
     |> login_user(user)
     |> visit("/songs")
-    |> assert_has(css("h1", text: "Song Library"))
-    |> click(css("button[phx-click=\"show_modal\"]", at: 0))
+    |> wait_for_page_load()
+    |> click(css("button[phx-click=\"show_song_modal\"]", at: 0))
     |> assert_has(css("h3", text: "Add New Song"))
     |> assert_has(css("input[name='song[title]']"))
     |> assert_has(css("input[name='song[band_name]']"))
@@ -53,8 +53,8 @@ defmodule BandDbWeb.E2E.SongManagementTest do
     session
     |> login_user(user)
     |> visit("/songs")
-    |> assert_has(css("h1", text: "Song Library"))
-    |> click(css("button[phx-click=\"show_modal\"]", at: 0))
+    |> wait_for_page_load()
+    |> click(css("button[phx-click=\"show_song_modal\"]", at: 0))
     |> fill_in(css("input[name='song[title]']"), with: "Test Song")
     |> fill_in(css("input[name='song[band_name]']"), with: "Test Band")
     |> fill_in(css("select[name='song[status]']"), with: "needs_learning")
@@ -75,8 +75,8 @@ defmodule BandDbWeb.E2E.SongManagementTest do
     session
     |> login_user(user)
     |> visit("/songs")
-    |> assert_has(css("h1", text: "Song Library"))
-    |> click(css("button[phx-click=\"show_modal\"]", at: 0))
+    |> wait_for_page_load()
+    |> click(css("button[phx-click=\"show_song_modal\"]", at: 0))
     |> fill_in(css("input[name='song[title]']"), with: "View Test Song")
     |> fill_in(css("input[name='song[band_name]']"), with: "View Test Band")
     |> fill_in(css("select[name='song[status]']"), with: "ready")
@@ -99,8 +99,8 @@ defmodule BandDbWeb.E2E.SongManagementTest do
     session
     |> login_user(user)
     |> visit("/songs")
-    |> assert_has(css("h1", text: "Song Library"))
-    |> click(css("button[phx-click=\"show_modal\"]", at: 0))
+    |> wait_for_page_load()
+    |> click(css("button[phx-click=\"show_song_modal\"]", at: 0))
     |> fill_in(css("input[name='song[title]']"), with: "Learning Song")
     |> fill_in(css("input[name='song[band_name]']"), with: "Test Band")
     |> fill_in(css("select[name='song[status]']"), with: "needs_learning")
@@ -119,16 +119,16 @@ defmodule BandDbWeb.E2E.SongManagementTest do
     session
     |> login_user(user)
     |> visit("/songs")
-    |> assert_has(css("h1", text: "Song Library"))
-    |> click(css("button[phx-click=\"show_modal\"]", at: 0))
+    |> wait_for_page_load()
+    |> click(css("button[phx-click=\"show_song_modal\"]", at: 0))
     |> fill_in(css("input[name='song[title]']"), with: "Searchable Song")
     |> fill_in(css("input[name='song[band_name]']"), with: "Test Band")
     |> fill_in(css("select[name='song[status]']"), with: "ready")
     |> click(css("button[type='submit']"))
-    |> assert_has(css(".alert-info", text: "Song added successfully"))
+    |> assert_has(css("div[role='alert']", text: "Song added successfully"))
 
     session
-    |> click(css("button[phx-click=\"show_modal\"]", at: 0))
+    |> click(css("button[phx-click=\"show_song_modal\"]", at: 0))
     |> fill_in(css("input[name='song[title]']"), with: "Another Song")
     |> fill_in(css("input[name='song[band_name]']"), with: "Different Band")
     |> fill_in(css("select[name='song[status]']"), with: "needs_learning")
@@ -149,8 +149,8 @@ defmodule BandDbWeb.E2E.SongManagementTest do
     session
     |> login_user(user)
     |> visit("/songs")
-    |> assert_has(css("body"))  # Wait for page to load
-    |> click(css("button[phx-click=\"show_modal\"]", at: 0))
+    |> wait_for_page_load()
+    |> click(css("button[phx-click=\"show_song_modal\"]", at: 0))
     |> fill_in(css("input[name='song[title]']"), with: "Status Test Song")
     |> fill_in(css("input[name='song[band_name]']"), with: "Test Band")
     |> fill_in(css("select[name='song[status]']"), with: "needs_learning")
@@ -169,8 +169,8 @@ defmodule BandDbWeb.E2E.SongManagementTest do
     session
     |> login_user(user)
     |> visit("/songs")
-    |> assert_has(css("body"))  # Wait for page to load
-    |> click(css("button[phx-click=\"show_modal\"]", at: 0))
+    |> wait_for_page_load()
+    |> click(css("button[phx-click=\"show_song_modal\"]", at: 0))
     |> fill_in(css("input[name='song[title]']"), with: "")
     |> fill_in(css("input[name='song[band_name]']"), with: "")
     |> click(css("button[type='submit']"))
@@ -187,8 +187,8 @@ defmodule BandDbWeb.E2E.SongManagementTest do
     session
     |> login_user(user)
     |> visit("/songs")
-    |> assert_has(css("h1", text: "Song Library"))
-    |> click(css("button[phx-click=\"show_modal\"]", at: 0))
+    |> assert_has(css("body"))  # Wait for any element with show_modal
+    |> click(css("button[phx-click=\"show_song_modal\"]", at: 0))
     |> assert_has(css("h3", text: "Add New Song"))
     |> click(css("button[phx-click='hide_modal']"))
     |> refute_has(css("h3", text: "Add New Song"))

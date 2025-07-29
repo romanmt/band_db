@@ -95,7 +95,6 @@ defmodule BandDbWeb.Router do
     live_session :require_authenticated_user,
       on_mount: [{BandDbWeb.UserAuth, :ensure_authenticated}] do
       live "/songs", SongLive
-      live "/suggested-songs", SuggestedSongsLive
       live "/rehearsal", RehearsalPlanLive
       live "/rehearsal/history", RehearsalHistoryLive
       live "/rehearsal/plan/:id", RehearsalPlanViewLive
