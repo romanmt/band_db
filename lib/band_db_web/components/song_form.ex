@@ -66,7 +66,7 @@ defmodule BandDbWeb.Components.SongForm do
 
                     <div>
                       <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                      <select name="song[status]" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm sm:text-base py-2 px-3">
+                      <select name="song[status]" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm sm:text-base py-2 px-3">
                         <%= for {label, value} <- @status_options do %>
                           <option value={value} selected={value == @song.status}><%= label %></option>
                         <% end %>
@@ -75,7 +75,7 @@ defmodule BandDbWeb.Components.SongForm do
 
                     <div>
                       <label class="block text-sm font-medium text-gray-700 mb-1">Tuning</label>
-                      <select name="song[tuning]" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm sm:text-base py-2 px-3">
+                      <select name="song[tuning]" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm sm:text-base py-2 px-3">
                         <%= for {label, value} <- @tuning_options do %>
                           <option value={value} selected={value == @song.tuning}><%= label %></option>
                         <% end %>

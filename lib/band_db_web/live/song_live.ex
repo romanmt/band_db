@@ -3,6 +3,7 @@ defmodule BandDbWeb.SongLive do
   use BandDbWeb.Live.Lifecycle
   import BandDbWeb.Components.PageHeader
   import BandDbWeb.Components.SongForm
+  import BandDbWeb.CoreComponents
 
   alias BandDb.Songs.SongServer
   alias BandDb.ServerLookup
@@ -17,7 +18,7 @@ defmodule BandDbWeb.SongLive do
         # Get songs filtered by band_id - use ServerLookup
         song_server = ServerLookup.get_song_server(band_id)
         songs = SongServer.list_songs_by_band(band_id, song_server)
-                |> Enum.reject(&(&1.status == :suggested))
+                |> filter_songs_by_tab("accepted")
 
         {:ok,
           socket
@@ -33,7 +34,8 @@ defmodule BandDbWeb.SongLive do
             bulk_import_text: "",
             band_id: band_id,
             band_name: band.name,
-            song_server: song_server
+            song_server: song_server,
+            tab: "accepted"
           )}
 
       _ ->
@@ -49,14 +51,23 @@ defmodule BandDbWeb.SongLive do
             editing_song: nil,
             edit_changeset: nil,
             show_bulk_import_modal: false,
-            bulk_import_text: ""
+            bulk_import_text: "",
+            tab: "accepted"
           )
           |> push_navigate(to: "/")}
     end
   end
 
   @impl true
-  def handle_event("show_modal", _params, socket) do
+  def handle_event("switch_tab", %{"tab" => tab}, socket) do
+    song_server = ServerLookup.get_song_server(socket.assigns.band_id)
+    songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
+            |> filter_songs_by_tab(tab)
+    {:noreply, assign(socket, tab: tab, songs: songs, search_term: "")}
+  end
+
+  @impl true
+  def handle_event("show_song_modal", _params, socket) do
     {:noreply, assign(socket, show_modal: true)}
   end
 
@@ -101,7 +112,7 @@ defmodule BandDbWeb.SongLive do
     ) do
       {:ok, _song} ->
         songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
-                |> Enum.reject(&(&1.status == :suggested))
+                |> filter_songs_by_tab(socket.assigns.tab)
         {:noreply,
           socket
           |> assign(songs: songs, show_modal: false)
@@ -119,11 +130,11 @@ defmodule BandDbWeb.SongLive do
     song_server = ServerLookup.get_song_server(socket.assigns.band_id)
     filtered_songs = if term == "" do
       SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
-      |> Enum.reject(&(&1.status == :suggested))
+      |> filter_songs_by_tab(socket.assigns.tab)
     else
       term = String.downcase(term)
       SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
-      |> Enum.reject(&(&1.status == :suggested))
+      |> filter_songs_by_tab(socket.assigns.tab)
       |> Enum.filter(fn song ->
         String.contains?(String.downcase(song.title), term) ||
         String.contains?(String.downcase(song.band_name), term) ||
@@ -143,7 +154,7 @@ defmodule BandDbWeb.SongLive do
     song_server = ServerLookup.get_song_server(socket.assigns.band_id)
     SongServer.update_song_status(title, String.to_existing_atom(new_status), socket.assigns.band_id, song_server)
     songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
-            |> Enum.reject(&(&1.status == :suggested))
+            |> filter_songs_by_tab(socket.assigns.tab)
 
     # Reset the updating flag
     {:noreply, assign(socket, songs: songs, updating_song: nil)}
@@ -157,7 +168,7 @@ defmodule BandDbWeb.SongLive do
     song_server = ServerLookup.get_song_server(socket.assigns.band_id)
     SongServer.update_song_tuning(title, String.to_existing_atom(new_tuning), socket.assigns.band_id, song_server)
     songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
-            |> Enum.reject(&(&1.status == :suggested))
+            |> filter_songs_by_tab(socket.assigns.tab)
 
     # Reset the updating flag
     {:noreply, assign(socket, songs: songs, updating_song: nil)}
@@ -167,7 +178,7 @@ defmodule BandDbWeb.SongLive do
   def handle_event("clear_search", _params, socket) do
     song_server = ServerLookup.get_song_server(socket.assigns.band_id)
     songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
-            |> Enum.reject(&(&1.status == :suggested))
+            |> filter_songs_by_tab(socket.assigns.tab)
     {:noreply, assign(socket, songs: songs, search_term: "")}
   end
 
@@ -210,7 +221,7 @@ defmodule BandDbWeb.SongLive do
     case SongServer.bulk_import_songs(bulk_import_text, socket.assigns.band_id, song_server) do
       {:ok, count} ->
         songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
-                |> Enum.reject(&(&1.status == :suggested))
+                |> filter_songs_by_tab(socket.assigns.tab)
         {:noreply,
           socket
           |> assign(songs: songs, show_bulk_import_modal: false, bulk_import_text: "")
@@ -264,7 +275,7 @@ defmodule BandDbWeb.SongLive do
     ) do
       {:ok, _updated_song} ->
         songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
-                |> Enum.reject(&(&1.status == :suggested))
+                |> filter_songs_by_tab(socket.assigns.tab)
         {:noreply,
           socket
           |> assign(songs: songs, show_edit_modal: false, editing_song: nil)
@@ -272,7 +283,7 @@ defmodule BandDbWeb.SongLive do
 
       :ok ->
         songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
-                |> Enum.reject(&(&1.status == :suggested))
+                |> filter_songs_by_tab(socket.assigns.tab)
         {:noreply,
           socket
           |> assign(songs: songs, show_edit_modal: false, editing_song: nil)
@@ -337,4 +348,12 @@ defmodule BandDbWeb.SongLive do
     end)
   end
   def highlight_matches(text, _), do: text
+
+  defp filter_songs_by_tab(songs, "suggested") do
+    Enum.filter(songs, &(&1.status == :suggested))
+  end
+  defp filter_songs_by_tab(songs, _) do
+    # Default to "accepted" tab - show all non-suggested songs
+    Enum.reject(songs, &(&1.status == :suggested))
+  end
 end

@@ -741,4 +741,42 @@ defmodule BandDbWeb.CoreComponents do
   def translate_errors(errors, field) when is_list(errors) do
     for {^field, {msg, opts}} <- errors, do: translate_error({msg, opts})
   end
+
+  @doc """
+  Renders a tab navigation component.
+
+  ## Examples
+
+      <.tabs>
+        <:tab name="accepted" label="Accepted Songs" active={@tab == "accepted"} phx-click="switch_tab" phx-value-tab="accepted" />
+        <:tab name="suggested" label="Suggested Songs" active={@tab == "suggested"} phx-click="switch_tab" phx-value-tab="suggested" />
+      </.tabs>
+  """
+  slot :tab, required: true do
+    attr :name, :string, required: true
+    attr :label, :string, required: true
+    attr :active, :boolean
+  end
+
+  def tabs(assigns) do
+    ~H"""
+    <div class="border-b border-gray-200">
+      <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+        <button
+          :for={tab <- @tab}
+          type="button"
+          phx-click="switch_tab"
+          phx-value-tab={tab[:name]}
+          class={[
+            "whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm",
+            tab[:active] && "border-indigo-500 text-indigo-600",
+            !tab[:active] && "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+          ]}
+        >
+          <%= tab[:label] %>
+        </button>
+      </nav>
+    </div>
+    """
+  end
 end
