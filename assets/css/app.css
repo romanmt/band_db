@@ -12,7 +12,7 @@
 .ag-theme-quartz {
   --ag-cell-horizontal-padding: 16px;
   --ag-header-cell-padding: 16px;
-  --ag-row-height: 52px;
+  --ag-row-height: 56px;
   --ag-header-height: 48px;
   --ag-font-size: 14px;
   --ag-font-family: inherit;
@@ -100,7 +100,7 @@
   .ag-theme-quartz {
     --ag-cell-horizontal-padding: 10px;
     --ag-header-cell-padding: 10px;
-    --ag-row-height: 48px;
+    --ag-row-height: 52px;
     --ag-header-height: 44px;
     --ag-font-size: 13px;
   }
@@ -130,6 +130,17 @@
 .ag-theme-quartz .ag-header-cell:hover .ag-header-cell-menu-button,
 .ag-theme-quartz .ag-header-cell-menu-button:hover {
   opacity: 1;
+}
+
+/* Style for notes column */
+.ag-theme-quartz .ag-cell[col-id="notes"] {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgb(107 114 128);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
 }
 
 /* Style the no-rows overlay */

@@ -265,6 +265,7 @@ defmodule BandDb.Songs.SongServer do
       "status" => true,
       "tuning" => true,
       "duration" => true,
+      "notes" => true,
       "actions" => true
     }
   end

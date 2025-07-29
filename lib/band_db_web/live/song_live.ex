@@ -464,14 +464,23 @@ defmodule BandDbWeb.SongLive do
           valueFormatter: "durationFormatter"
         },
         %{
+          field: "notes",
+          headerName: "Notes",
+          filter: true,
+          sortable: true,
+          resizable: true,
+          flex: 2,
+          wrapText: true
+        },
+        %{
           field: "actions",
           headerName: "Actions",
-          width: 140,
+          width: 100,
           sortable: false,
           filter: false,
           cellRenderer: "actionsCellRenderer",
           cellRendererParams: %{
-            hasNotes: true,
+            hasNotes: false,
             hasYoutubeLink: true
           }
         }

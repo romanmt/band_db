@@ -103,6 +103,10 @@
                       <input type="checkbox" checked={@visible_columns["duration"]} phx-click="toggle_column" phx-value-column="duration" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3">
                       <span class="text-sm text-gray-700">Duration</span>
                     </label>
+                    <label class="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                      <input type="checkbox" checked={@visible_columns["notes"]} phx-click="toggle_column" phx-value-column="notes" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3">
+                      <span class="text-sm text-gray-700">Notes</span>
+                    </label>
                   </div>
                 </div>
               </div>
