@@ -6,6 +6,12 @@
           <img src={~p"/images/logo.png"} class="h-9 w-auto" />
           <span class="ml-2.5 text-xl font-display font-bold text-primary-700" style="letter-spacing: 0.5px; text-transform: uppercase;">Band Boss</span>
         </a>
+        <%= if @current_user && @current_user.band do %>
+          <div class="ml-6 pl-6 border-l border-gray-300 flex items-center gap-2">
+            <.icon name="hero-musical-note" class="h-5 w-5 text-gray-600" />
+            <span class="text-lg font-semibold text-gray-700"><%= @current_user.band.name %></span>
+          </div>
+        <% end %>
       </div>
       
       <div class="hidden md:block">
