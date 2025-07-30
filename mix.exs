@@ -97,7 +97,7 @@ defmodule BandDb.MixProject do
       "test.unit": ["test --exclude db"],
       "test.all": ["test --include db"],
       "test.e2e": ["test --only e2e"],
-      "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
+      "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing", "cmd --cd assets npm install"],
       "assets.build": ["tailwind band_db", "esbuild band_db"],
       "assets.deploy": [
         "tailwind band_db --minify",
