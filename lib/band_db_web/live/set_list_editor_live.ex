@@ -1,52 +1,79 @@
 defmodule BandDbWeb.SetListEditorLive do
   use BandDbWeb, :live_view
+  use BandDbWeb.Live.Lifecycle
   import BandDbWeb.Components.PageHeader
   alias BandDb.Songs.SongServer
   alias BandDb.SetLists.{SetListServer, SetList, Set}
+  alias BandDb.Accounts.ServerLifecycle
+  alias BandDb.ServerLookup
   require Logger
 
   @impl true
   def mount(_params, _session, socket) do
-    # Filter out suggested and needs_learning songs
-    songs = SongServer.list_songs()
-    |> Enum.filter(fn song ->
-      song.status in [:ready, :performed]
-    end)
+    user = socket.assigns.current_user
+    
+    case user do
+      %{band_id: band_id} when not is_nil(band_id) ->
+        # Start band servers if needed
+        ServerLifecycle.on_user_login(user)
+        setup_cleanup(user)
+        
+        # Get server references
+        song_server = ServerLookup.get_song_server(band_id)
+        set_list_server = ServerLookup.get_set_list_server(band_id)
+        
+        # Filter out suggested and needs_learning songs
+        songs = SongServer.list_songs(song_server)
+        |> Enum.filter(fn song ->
+          song.status in [:ready, :performed]
+        end)
 
-    set_lists = SetListServer.list_set_lists()
-    new_set_list = %SetList{
-      name: "",
-      sets: [
-        %Set{
-          name: "Set 1",
-          songs: [],
-          duration: 0,
-          break_duration: nil,
-          set_order: 1
+        set_lists = SetListServer.list_set_lists(set_list_server)
+        
+        new_set_list = %SetList{
+          name: "",
+          sets: [
+            %Set{
+              name: "Set 1",
+              songs: [],
+              duration: 0,
+              break_duration: nil,
+              set_order: 1
+            }
+          ],
+          total_duration: 0
         }
-      ],
-      total_duration: 0
-    }
 
-    {:ok, assign(socket,
-      songs: songs,
-      set_lists: set_lists,
-      new_set_list: new_set_list,
-      num_sets: 1,
-      show_song_selector: false,
-      selected_set_index: 0,
-      selected_song: nil,
-      show_break_duration: false,
-      break_duration: 0,
-      show_save_modal: false,
-      date: Date.utc_today(),
-      should_schedule: false,
-      start_time: ~T[19:00:00],
-      end_time: ~T[22:00:00],
-      location: "",
-      has_calendar: BandDb.Calendar.get_google_auth(socket.assigns.current_user) != nil,
-      show_calendar: false
-    )}
+        {:ok, assign(socket,
+          band_id: band_id,
+          song_server: song_server,
+          set_list_server: set_list_server,
+          songs: songs,
+          set_lists: set_lists,
+          new_set_list: new_set_list,
+          num_sets: 1,
+          show_song_selector: false,
+          selected_set_index: 0,
+          selected_song: nil,
+          show_break_duration: false,
+          break_duration: 0,
+          show_save_modal: false,
+          date: Date.utc_today(),
+          should_schedule: false,
+          start_time: ~T[19:00:00],
+          end_time: ~T[22:00:00],
+          location: "",
+          has_calendar: BandDb.Calendar.get_google_auth(socket.assigns.current_user) != nil,
+          show_calendar: false
+        )}
+        
+      _ ->
+        {:ok, 
+          socket
+          |> put_flash(:error, "You must be associated with a band to create set lists")
+          |> push_navigate(to: ~p"/")
+        }
+    end
   end
 
   @impl true
@@ -173,7 +200,7 @@ defmodule BandDbWeb.SetListEditorLive do
     song_title = if is_map(song_info), do: song_info.title, else: song_info
 
     # Find the full song data to get duration
-    song = Enum.find(SongServer.list_songs(), &(&1.title == song_title))
+    song = Enum.find(SongServer.list_songs(socket.assigns.song_server), &(&1.title == song_title))
     song_duration = if song, do: song.duration || 0, else: 0
 
     new_sets = List.update_at(socket.assigns.new_set_list.sets, set_index, fn set ->
@@ -288,7 +315,7 @@ defmodule BandDbWeb.SetListEditorLive do
       }
     end)
 
-    case SetListServer.add_set_list(new_set_list.name, sets) do
+    case SetListServer.add_set_list(socket.assigns.set_list_server, new_set_list.name, sets) do
       :ok ->
         # If scheduling is enabled and connected to Google Calendar, create calendar event
         if socket.assigns.should_schedule && socket.assigns.has_calendar do
@@ -341,7 +368,7 @@ defmodule BandDbWeb.SetListEditorLive do
             case BandDb.Calendar.create_event(user, google_auth.calendar_id, event_params) do
               {:ok, event_id} ->
                 # Update set list with event info (using a map with key as set list name)
-                SetListServer.update_set_list(new_set_list.name, %{
+                SetListServer.update_set_list(socket.assigns.set_list_server, new_set_list.name, %{
                   sets: sets,
                   date: socket.assigns.date,
                   start_time: socket.assigns.start_time,
@@ -531,7 +558,7 @@ defmodule BandDbWeb.SetListEditorLive do
 
   @impl true
   def handle_info(:update, socket) do
-    set_lists = SetListServer.list_set_lists()
+    set_lists = SetListServer.list_set_lists(socket.assigns.set_list_server)
 
     # Get all songs that are currently in any set
     used_song_titles = socket.assigns.new_set_list.sets
@@ -543,7 +570,7 @@ defmodule BandDbWeb.SetListEditorLive do
     |> MapSet.new()
 
     # Filter out songs that are already in sets
-    songs = SongServer.list_songs()
+    songs = SongServer.list_songs(socket.assigns.song_server)
     |> Enum.filter(fn song ->
       song.status in [:ready, :performed] and
       not MapSet.member?(used_song_titles, song.title)
