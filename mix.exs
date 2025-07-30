@@ -100,7 +100,7 @@ defmodule BandDb.MixProject do
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing", "cmd --cd assets npm install"],
       "assets.build": ["tailwind band_db", "esbuild band_db"],
       "assets.deploy": [
-        "tailwind band_db --minify",
+        "tailwind band_db",
         "esbuild band_db --minify",
         "phx.digest"
       ]

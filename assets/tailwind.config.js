@@ -8,17 +8,11 @@ const path = require("path")
 module.exports = {
   content: [
     "./js/**/*.js",
-    "../lib/**/*.ex",
-    "../lib/**/*.heex",
-    "../lib/**/*.leex",
-    "../lib/**/*.eex",
-    "../**/*.html.heex"
-  ],
-  safelist: [
-    'bg-gray-50',
-    'antialiased',
-    'text-gray-900',
-    'font-sans'
+    "../lib/band_db_web.ex",
+    "../lib/band_db_web/**/*.ex",
+    "../lib/band_db_web/**/*.heex",
+    "../lib/band_db_web/**/*.leex",
+    "../lib/band_db_web/**/*.eex"
   ],
   theme: {
     extend: {
