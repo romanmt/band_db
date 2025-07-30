@@ -22,7 +22,7 @@ defmodule BandDbWeb.Endpoint do
   plug Plug.Static,
     at: "/",
     from: :band_db,
-    gzip: false,
+    gzip: Application.get_env(:band_db, BandDbWeb.Endpoint)[:cache_static_manifest] != nil,
     only: BandDbWeb.StaticPaths.static_paths()
 
   # Code reloading can be explicitly enabled under the
