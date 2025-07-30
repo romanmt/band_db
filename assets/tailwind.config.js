@@ -11,7 +11,8 @@ module.exports = {
     "../lib/**/*.ex",
     "../lib/**/*.heex",
     "../lib/**/*.leex",
-    "../lib/**/*.eex"
+    "../lib/**/*.eex",
+    "../**/*.html.heex"
   ],
   safelist: [
     'bg-gray-50',

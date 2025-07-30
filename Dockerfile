@@ -60,11 +60,9 @@ COPY assets assets
 RUN cd assets && npm install
 
 # compile assets
-# Debug: Check what files exist and where we are
-RUN pwd && ls -la
-RUN find . -name "*.heex" -type f | head -20
-RUN find . -path "./lib/band_db_web/*" -name "*.ex" -o -name "*.heex" | head -20
-RUN cd assets && ls -la && cd ..
+# Debug: Run tailwind without minify first to see if it includes utilities
+RUN mix tailwind band_db
+RUN head -500 priv/static/assets/app.css | grep -E "(bg-gray|antialiased)" | head -10 || echo "No Tailwind utilities found"
 RUN mix assets.deploy
 
 # Compile the release
