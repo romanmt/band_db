@@ -95,4 +95,39 @@ defmodule BandDbWeb.E2ECase do
     # Give processes time to shut down
     Process.sleep(200)
   end
+
+  def create_test_songs(band, count) do
+    # Create a temporary user for the band to start servers
+    temp_user = %{id: 999999, band_id: band.id}
+    BandDb.Accounts.ServerLifecycle.on_user_login(temp_user)
+    
+    # Get the song server for this band
+    song_server = BandDb.ServerLookup.get_song_server(band.id)
+    
+    # Create test songs
+    Enum.map(1..count, fn i ->
+      BandDb.Songs.SongServer.add_song(
+        "Test Song #{i}",
+        :ready,
+        "Test Band",
+        180 + i * 10, # 3 minutes plus some variation
+        "Test song for e2e testing",
+        :standard,
+        nil,
+        band.id,
+        song_server
+      )
+    end)
+    
+    # Give the server time to process
+    Process.sleep(100)
+  end
+
+  def wait_for_setlist_editor(session) do
+    # Wait for the setlist editor to be fully loaded
+    Process.sleep(500)
+    session
+    |> Wallaby.Browser.has?(Wallaby.Query.css("h1", text: "SET LIST EDITOR"))
+    session
+  end
 end
