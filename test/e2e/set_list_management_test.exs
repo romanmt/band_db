@@ -131,40 +131,4 @@ defmodule BandDbWeb.E2E.SetListManagementTest do
     |> assert_has(css("div[role='alert']", text: "Set list saved successfully!"))
   end
 
-  # Skip this test for now - modal validation is tricky in e2e tests
-  @tag :skip
-  @tag :e2e
-  test "setlist name is required", %{session: session} do
-    %{user: user, band: band} = create_user_with_band()
-    create_test_songs(band, 3)
-    
-    session
-    |> login_user(user)
-    |> visit("/set-list/new")
-    |> wait_for_page_load()
-    # Add a song
-    |> click(css("button[phx-click='select_song'][phx-value-set-index='0']", at: 0))
-    |> wait_for_page_load()
-    # Try to save without a name
-    |> click(css("button[phx-click='show_save_modal']"))
-    |> wait_for_page_load()
-    
-    Process.sleep(500)  # Give modal time to render
-    
-    session
-    |> fill_in(css("input[name='name']"), with: "")
-    |> click(css("button[type='submit']"))
-    |> wait_for_page_load()
-    # Should still be on the modal (HTML5 validation prevents submission)
-    |> assert_has(css("h3", text: "Save Set List"))
-  end
-
-  # Skip this test for now as users must have bands in the current system
-  @tag :skip
-  @tag :e2e
-  test "user without band cannot access setlist features", %{session: _session} do
-    # This test is skipped because the current system requires all users to have bands
-    # and there's no easy way to create a user without a band for testing
-    :ok
-  end
 end
