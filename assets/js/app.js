@@ -17,9 +17,13 @@
 
 // Include phoenix_html to handle method=PUT/DELETE in forms and buttons.
 import "../vendor/phoenix_html"
-// Establish Phoenix Socket and LiveView configuration.
-import {Socket} from "../vendor/phoenix"
-import {LiveSocket} from "../vendor/phoenix_live_view"
+// Import Phoenix and LiveView - these files create global variables
+import Phoenix from "../vendor/phoenix"
+import LiveView from "../vendor/phoenix_live_view"
+
+// Extract the needed exports
+const {Socket} = Phoenix
+const {LiveSocket} = LiveView
 import topbar from "../vendor/topbar"
 import { ModuleRegistry, AllCommunityModule, createGrid } from "ag-grid-community"
 import Hooks from "./hooks"

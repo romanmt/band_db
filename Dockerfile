@@ -52,10 +52,10 @@ COPY lib lib
 COPY assets assets
 
 # Install npm dependencies and copy vendor files from deps
-RUN cd assets && npm ci --prefix . && cd .. && \
-    mix cmd --cd assets cp ../deps/phoenix/priv/static/phoenix.js ./vendor/ && \
-    mix cmd --cd assets cp ../deps/phoenix_html/priv/static/phoenix_html.js ./vendor/ && \
-    mix cmd --cd assets cp ../deps/phoenix_live_view/priv/static/phoenix_live_view.js ./vendor/
+RUN cd assets && npm install && cd .. && \
+    cp deps/phoenix/priv/static/phoenix.js assets/vendor/ && \
+    cp deps/phoenix_html/priv/static/phoenix_html.js assets/vendor/ && \
+    cp deps/phoenix_live_view/priv/static/phoenix_live_view.js assets/vendor/
 
 # compile assets
 RUN mix assets.deploy
