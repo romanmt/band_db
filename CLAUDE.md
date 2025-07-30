@@ -32,9 +32,11 @@ GitHub Actions automatically runs:
 3. E2E tests (`WALLABY_SERVER=true mix test.e2e`) - requires Chrome installation in CI
 
 ### Assets
-- `mix assets.setup` - Install Tailwind and esbuild
+- `mix assets.setup` - Install Tailwind, esbuild, and npm dependencies
 - `mix assets.build` - Build assets for development
 - `mix assets.deploy` - Build minified assets for production
+- `npm install --prefix assets <package>` - Add new JavaScript dependencies
+- `npm list --prefix assets` - List installed npm packages
 
 ### Custom Mix Tasks
 - `mix generate_reset_link` - Generate password reset links for users
@@ -66,6 +68,8 @@ Key files:
 - Authentication handled via `BandDbWeb.UserAuth`
 - Admin functionality separated with pipeline guards
 - Real-time updates using Phoenix PubSub
+- JavaScript dependencies managed via `assets/package.json`
+- ag-grid-community used for advanced data tables
 
 ### Data Layer
 - **Persistence**: Custom persistence layer with DETS/database abstraction
