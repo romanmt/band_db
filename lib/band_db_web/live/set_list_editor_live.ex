@@ -161,10 +161,11 @@ defmodule BandDbWeb.SetListEditorLive do
       # Extract the song duration for later use
       song_duration = song.duration || 0
 
-      # Store song info as a map with title and tuning
+      # Store song info as a map with title, tuning, and duration
       song_info = %{
         title: song.title,
-        tuning: song.tuning
+        tuning: song.tuning,
+        duration: song.duration
       }
 
       updated_sets = List.update_at(socket.assigns.new_set_list.sets, set_index, fn set ->
@@ -195,14 +196,15 @@ defmodule BandDbWeb.SetListEditorLive do
     set_index = String.to_integer(set_index)
     song_id = String.to_integer(song_id)
 
-    # Find the song's duration from the full song list
-    # Get the song title from the set first
+    # Get the song info from the set
     set = Enum.at(socket.assigns.new_set_list.sets, set_index)
     song_info = Enum.at(set.songs, song_id)
-    song_title = if is_map(song_info), do: song_info.title, else: song_info
-
-    # Get the song duration using the helper
-    song_duration = get_song_duration_from_title(song_title, socket.assigns.song_server)
+    
+    # Extract duration from stored song info
+    song_duration = case song_info do
+      %{duration: duration} when is_number(duration) -> duration || 0
+      _ -> 0  # Fallback for legacy data without duration
+    end
 
     new_sets = List.update_at(socket.assigns.new_set_list.sets, set_index, fn set ->
       # Remove song at the given index
@@ -670,17 +672,5 @@ defmodule BandDbWeb.SetListEditorLive do
     end)
 
     "Set List: #{set_list.name}\n\nTotal Duration: #{format_duration(set_list.total_duration)}\n\n#{sets_descriptions}"
-  end
-
-  defp find_song_by_title(song_title, song_server) do
-    songs = SongServer.list_songs(song_server)
-    Enum.find(songs, &(&1.title == song_title))
-  end
-
-  defp get_song_duration_from_title(song_title, song_server) do
-    case find_song_by_title(song_title, song_server) do
-      nil -> 0
-      song -> song.duration || 0
-    end
   end
 end
