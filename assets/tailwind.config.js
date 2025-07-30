@@ -9,7 +9,8 @@ module.exports = {
   content: [
     "./js/**/*.js",
     "../lib/band_db_web.ex",
-    "../lib/band_db_web/**/*.*ex"
+    "../lib/band_db_web/**/*.*ex",
+    "../lib/band_db_web/**/*.heex"
   ],
   theme: {
     extend: {

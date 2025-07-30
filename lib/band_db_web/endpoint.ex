@@ -22,8 +22,9 @@ defmodule BandDbWeb.Endpoint do
   plug Plug.Static,
     at: "/",
     from: :band_db,
-    gzip: Application.compile_env(:band_db, [BandDbWeb.Endpoint, :static_gzip], false),
-    only: BandDbWeb.StaticPaths.static_paths()
+    gzip: true,
+    only: BandDbWeb.StaticPaths.static_paths(),
+    headers: %{"cache-control" => "public, max-age=31536000, immutable"}
 
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.
