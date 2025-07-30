@@ -18,4 +18,8 @@
     "phoenix_live_view": "file:../deps/phoenix_live_view",
     "sortablejs": "^1.15.6"
   }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 8454445 (Implement code changes to enhance functionality and improve performance)
