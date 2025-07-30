@@ -8,6 +8,8 @@ defmodule BandDbWeb.SetListEditorLive do
   alias BandDb.ServerLookup
   require Logger
 
+  @default_break_duration 900  # 15 minutes in seconds
+
   @impl true
   def mount(_params, _session, socket) do
     user = socket.assigns.current_user
@@ -84,7 +86,7 @@ defmodule BandDbWeb.SetListEditorLive do
         # Update the last set to have a default break duration of 15 minutes if not already set
         List.update_at(socket.assigns.new_set_list.sets, socket.assigns.num_sets - 1, fn set ->
           if set.break_duration == nil do
-            %{set | break_duration: 900}  # 15 minutes = 900 seconds
+            %{set | break_duration: @default_break_duration}
           else
             set
           end
@@ -199,9 +201,8 @@ defmodule BandDbWeb.SetListEditorLive do
     song_info = Enum.at(set.songs, song_id)
     song_title = if is_map(song_info), do: song_info.title, else: song_info
 
-    # Find the full song data to get duration
-    song = Enum.find(SongServer.list_songs(socket.assigns.song_server), &(&1.title == song_title))
-    song_duration = if song, do: song.duration || 0, else: 0
+    # Get the song duration using the helper
+    song_duration = get_song_duration_from_title(song_title, socket.assigns.song_server)
 
     new_sets = List.update_at(socket.assigns.new_set_list.sets, set_index, fn set ->
       # Remove song at the given index
@@ -451,9 +452,6 @@ defmodule BandDbWeb.SetListEditorLive do
         socket.assigns.date
     end
 
-    # Remove or prefix the unused variable with underscore
-    _date = socket.assigns.date
-
     start_time = case params do
       %{"start_time" => time} when time != "" ->
         Time.from_iso8601!(time)
@@ -672,5 +670,17 @@ defmodule BandDbWeb.SetListEditorLive do
     end)
 
     "Set List: #{set_list.name}\n\nTotal Duration: #{format_duration(set_list.total_duration)}\n\n#{sets_descriptions}"
+  end
+
+  defp find_song_by_title(song_title, song_server) do
+    songs = SongServer.list_songs(song_server)
+    Enum.find(songs, &(&1.title == song_title))
+  end
+
+  defp get_song_duration_from_title(song_title, song_server) do
+    case find_song_by_title(song_title, song_server) do
+      nil -> 0
+      song -> song.duration || 0
+    end
   end
 end
