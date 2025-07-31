@@ -93,7 +93,7 @@ defmodule BandDbWeb.Components.SongForm do
                   <!-- YouTube URL - Full width -->
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">YouTube URL</label>
-                    <input type="url" name="song[youtube_link]" value={Map.get(@song, :youtube_link)} placeholder="https://www.youtube.com/watch?v=..."
+                    <input type="url" name="song[youtube_link]" value={Map.get(@song, :youtube_link)}
                       class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm sm:text-base py-2 px-3" />
                   </div>
                 </div>
