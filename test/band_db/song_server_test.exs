@@ -92,6 +92,49 @@ defmodule BandDb.Songs.SongServerTest do
       band_id = 1
       assert {:error, :not_found} = SongServer.update_song_status("Nonexistent Song", :ready, band_id, server)
     end
+
+    test "delete_song/2 deletes a song successfully", %{server: server} do
+      band_id = 1
+      {:ok, _} = SongServer.add_song("Test Song", :needs_learning, "Test Band", nil, "", :standard, nil, band_id, server)
+      assert :ok = SongServer.delete_song("Test Song", band_id, server)
+      
+      # Verify the song is deleted
+      assert {:error, :not_found} = SongServer.get_song("Test Song", band_id, server)
+      
+      # Verify it's not in the list
+      songs = SongServer.list_songs_by_band(band_id, server)
+      assert length(songs) == 0
+    end
+
+    test "delete_song/2 returns error when song not found", %{server: server} do
+      band_id = 1
+      assert {:error, :not_found} = SongServer.delete_song("Nonexistent Song", band_id, server)
+    end
+
+    test "delete_song/2 only deletes song for specific band", %{server: server} do
+      band_id_1 = 1
+      band_id_2 = 2
+      
+      # Add same song title for two different bands
+      {:ok, _} = SongServer.add_song("Test Song", :needs_learning, "Band 1", nil, "", :standard, nil, band_id_1, server)
+      {:ok, _} = SongServer.add_song("Test Song", :ready, "Band 2", nil, "", :standard, nil, band_id_2, server)
+      
+      # Delete song for band 1
+      assert :ok = SongServer.delete_song("Test Song", band_id_1, server)
+      
+      # Verify song is deleted for band 1
+      assert {:error, :not_found} = SongServer.get_song("Test Song", band_id_1, server)
+      
+      # Verify song still exists for band 2
+      assert {:ok, song} = SongServer.get_song("Test Song", band_id_2, server)
+      assert song.band_id == band_id_2
+      
+      # Verify lists
+      songs_band_1 = SongServer.list_songs_by_band(band_id_1, server)
+      songs_band_2 = SongServer.list_songs_by_band(band_id_2, server)
+      assert length(songs_band_1) == 0
+      assert length(songs_band_2) == 1
+    end
   end
 
   describe "persistence" do

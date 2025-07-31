@@ -39,7 +39,9 @@ defmodule BandDbWeb.SongLive do
             song_server: song_server,
             tab: "accepted",
             visible_columns: visible_columns,
-            show_settings_menu: false
+            show_settings_menu: false,
+            show_delete_modal: false,
+            deleting_song: nil
           )
         
         # Schedule grid configuration after mount
@@ -61,7 +63,9 @@ defmodule BandDbWeb.SongLive do
             edit_changeset: nil,
             show_bulk_import_modal: false,
             bulk_import_text: "",
-            tab: "accepted"
+            tab: "accepted",
+            show_delete_modal: false,
+            deleting_song: nil
           )
           |> push_navigate(to: "/")}
     end
@@ -344,6 +348,42 @@ defmodule BandDbWeb.SongLive do
   @impl true
   def handle_event("close_settings_menu", _params, socket) do
     {:noreply, assign(socket, show_settings_menu: false)}
+  end
+
+  @impl true
+  def handle_event("show_delete_modal", %{"title" => title}, socket) do
+    case Enum.find(socket.assigns.songs, &(&1.title == title)) do
+      nil ->
+        {:noreply, socket}
+      song ->
+        {:noreply, assign(socket, show_delete_modal: true, deleting_song: song)}
+    end
+  end
+
+  @impl true
+  def handle_event("hide_delete_modal", _params, socket) do
+    {:noreply, assign(socket, show_delete_modal: false, deleting_song: nil)}
+  end
+
+  @impl true
+  def handle_event("delete_song", %{"title" => title}, socket) do
+    song_server = ServerLookup.get_song_server(socket.assigns.band_id)
+    
+    case SongServer.delete_song(title, socket.assigns.band_id, song_server) do
+      :ok ->
+        songs = SongServer.list_songs_by_band(socket.assigns.band_id, song_server)
+                |> filter_songs_by_tab(socket.assigns.tab)
+        {:noreply,
+          socket
+          |> assign(songs: songs, show_delete_modal: false, deleting_song: nil)
+          |> push_event("update-grid-data", %{rowData: prepare_grid_data(songs)})
+          |> put_flash(:info, "Song deleted successfully")}
+      
+      {:error, :not_found} ->
+        {:noreply,
+          socket
+          |> put_flash(:error, "Song not found")}
+    end
   end
 
 

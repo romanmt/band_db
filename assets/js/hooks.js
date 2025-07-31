@@ -173,8 +173,32 @@ Hooks.AgGrid = {
 
       const actionsCellRenderer = (params) => {
         const data = params.data;
-        let actions = '<div class="flex items-center space-x-1 sm:space-x-2">';
+        let actions = '<div class="flex items-center space-x-0.25 sm:space-x-1">';
         
+        // Properly escape for HTML context, then for JavaScript string
+        const htmlSafeTitle = escapeHtml(data.title);
+        const jsSafeTitle = htmlSafeTitle.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        const safeBandId = parseInt(data.band_id, 10) || 0; // Ensure band_id is a number
+        
+        // Edit button
+        actions += `
+          <button class="text-indigo-600 hover:text-indigo-900 p-1" title="Edit song" onclick="window.dispatchEvent(new CustomEvent('ag-grid-edit', {detail: {title: '${jsSafeTitle}', band_id: ${safeBandId}}}))">
+            <svg class="h-3 w-3 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+            </svg>
+          </button>
+        `;
+        
+        // Delete button
+        actions += `
+          <button class="text-red-600 hover:text-red-900 p-1" title="Delete song" onclick="window.dispatchEvent(new CustomEvent('ag-grid-delete', {detail: {title: '${jsSafeTitle}', band_id: ${safeBandId}}}))">
+            <svg class="h-3 w-3 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+            </svg>
+          </button>
+        `;
+        
+        // YouTube play button (if link exists)
         if (data.youtube_link) {
           // Validate and sanitize the URL
           const validUrl = sanitizeUrl(data.youtube_link);
@@ -191,19 +215,6 @@ Hooks.AgGrid = {
             `;
           }
         }
-        
-        // Properly escape for HTML context, then for JavaScript string
-        const htmlSafeTitle = escapeHtml(data.title);
-        const jsSafeTitle = htmlSafeTitle.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-        const safeBandId = parseInt(data.band_id, 10) || 0; // Ensure band_id is a number
-        
-        actions += `
-          <button class="text-indigo-600 hover:text-indigo-900 p-1" title="Edit song" onclick="window.dispatchEvent(new CustomEvent('ag-grid-edit', {detail: {title: '${jsSafeTitle}', band_id: ${safeBandId}}}))">
-            <svg class="h-3 w-3 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-            </svg>
-          </button>
-        `;
         
         actions += '</div>';
         return actions;
@@ -232,6 +243,12 @@ Hooks.AgGrid = {
         this.pushEvent("row-clicked", event.detail);
       };
       window.addEventListener('ag-grid-edit', this.editHandler);
+      
+      // Listen for custom delete events
+      this.deleteHandler = (event) => {
+        this.pushEvent("show_delete_modal", event.detail);
+      };
+      window.addEventListener('ag-grid-delete', this.deleteHandler);
       
       // Listen for grid configuration from server
       this.handleEvent("load-grid", (gridOptions) => {
@@ -309,9 +326,12 @@ Hooks.AgGrid = {
       this.gridApi.destroy();
     }
     
-    // Remove event listener
+    // Remove event listeners
     if (this.editHandler) {
       window.removeEventListener('ag-grid-edit', this.editHandler);
+    }
+    if (this.deleteHandler) {
+      window.removeEventListener('ag-grid-delete', this.deleteHandler);
     }
   }
 }

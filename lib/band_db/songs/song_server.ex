@@ -52,6 +52,10 @@ defmodule BandDb.Songs.SongServer do
     GenServer.call(server, {:bulk_import_songs, song_text, band_id})
   end
 
+  def delete_song(title, band_id \\ nil, server \\ __MODULE__) do
+    GenServer.call(server, {:delete_song, title, band_id})
+  end
+
   def get_column_preferences(band_id, tab, server \\ __MODULE__) do
     GenServer.call(server, {:get_column_preferences, band_id, tab})
   end
@@ -239,6 +243,20 @@ defmodule BandDb.Songs.SongServer do
     persistence_module().persist_column_preferences(new_column_preferences)
     
     {:reply, :ok, new_state}
+  end
+
+  @impl true
+  def handle_call({:delete_song, title, band_id}, _from, state) do
+    case Enum.find(state.songs, fn song -> song.title == title && song.band_id == band_id end) do
+      nil ->
+        {:reply, {:error, :not_found}, state}
+      _song ->
+        updated_songs = Enum.reject(state.songs, fn song -> 
+          song.title == title && song.band_id == band_id 
+        end)
+        new_state = %{state | songs: updated_songs}
+        {:reply, :ok, new_state}
+    end
   end
 
   @impl true

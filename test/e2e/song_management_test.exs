@@ -206,6 +206,65 @@ defmodule BandDbWeb.E2E.SongManagementTest do
     |> refute_has(css("h3", text: "Add New Song"))
   end
 
+  @tag :e2e
+  test "user can delete a song with confirmation", %{session: session} do
+    %{user: user, band: _band} = create_user_with_band()
+
+    # First create a song to delete
+    session
+    |> login_user(user)
+    |> visit("/songs")
+    |> wait_for_page_load()
+    |> wait_for_ag_grid()
+    |> click(css("button[phx-click=\"show_song_modal\"]", at: 0))
+    |> fill_in(css("input[name='song[title]']"), with: "Song to Delete")
+    |> fill_in(css("input[name='song[band_name]']"), with: "Test Band")
+    |> fill_in(css("select[name='song[status]']"), with: "ready")
+    |> click(css("button[type='submit']"))
+    |> wait_for_ag_grid()
+    |> assert_has(css(".ag-cell-value", text: "Song to Delete"))
+
+    # Click the delete button
+    session
+    |> click(css("button[title='Delete song']", at: 0))
+    |> assert_has(css("h3", text: "Delete Song"))
+    |> assert_has(css("p", text: "Are you sure you want to delete \"Song to Delete\"?"))
+    
+    # Confirm deletion
+    session
+    |> click(css("button[phx-click='delete_song']"))
+    |> assert_has(css("div[role='alert']", text: "Song deleted successfully"))
+    |> wait_for_ag_grid()
+    |> refute_has(css(".ag-cell-value", text: "Song to Delete"))
+  end
+
+  @tag :e2e
+  test "user can cancel song deletion", %{session: session} do
+    %{user: user, band: _band} = create_user_with_band()
+
+    # First create a song
+    session
+    |> login_user(user)
+    |> visit("/songs")
+    |> wait_for_page_load()
+    |> wait_for_ag_grid()
+    |> click(css("button[phx-click=\"show_song_modal\"]", at: 0))
+    |> fill_in(css("input[name='song[title]']"), with: "Song to Keep")
+    |> fill_in(css("input[name='song[band_name]']"), with: "Test Band")
+    |> fill_in(css("select[name='song[status]']"), with: "ready")
+    |> click(css("button[type='submit']"))
+    |> wait_for_ag_grid()
+    |> assert_has(css(".ag-cell-value", text: "Song to Keep"))
+
+    # Click the delete button then cancel
+    session
+    |> click(css("button[title='Delete song']", at: 0))
+    |> assert_has(css("h3", text: "Delete Song"))
+    |> click(css("button[phx-click='hide_delete_modal']"))
+    |> refute_has(css("h3", text: "Delete Song"))
+    |> assert_has(css(".ag-cell-value", text: "Song to Keep"))
+  end
+
   # Helper functions for AG Grid
   defp wait_for_ag_grid(session) do
     # Wait for AG Grid to be initialized
