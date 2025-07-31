@@ -113,5 +113,15 @@ defmodule BandDbWeb.Router do
     pipe_through [:browser]
 
     delete "/users/log_out", UserSessionController, :delete
+    
+    # Calendar feed endpoint (no auth required, uses token)
+    get "/bands/:band_id/calendar.ics", CalendarFeedController, :show
+  end
+
+  # Health check endpoint
+  scope "/api", BandDbWeb do
+    pipe_through :api
+    
+    get "/health", HealthController, :index
   end
 end

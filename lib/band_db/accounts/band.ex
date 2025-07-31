@@ -9,6 +9,8 @@ defmodule BandDb.Accounts.Band do
   schema "bands" do
     field :name, :string
     field :description, :string
+    field :calendar_id, :string
+    field :ical_token, :string
 
     has_many :users, User
     has_many :songs, Song
@@ -23,8 +25,17 @@ defmodule BandDb.Accounts.Band do
   """
   def changeset(band, attrs) do
     band
-    |> cast(attrs, [:name, :description])
+    |> cast(attrs, [:name, :description, :calendar_id, :ical_token])
     |> validate_required([:name])
     |> unique_constraint(:name)
+    |> unique_constraint(:ical_token)
+  end
+
+  @doc """
+  Generates a secure token for iCal feeds.
+  """
+  def generate_ical_token do
+    :crypto.strong_rand_bytes(32)
+    |> Base.url_encode64(padding: false)
   end
 end

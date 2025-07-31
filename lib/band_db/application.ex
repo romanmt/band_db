@@ -41,8 +41,17 @@ defmodule BandDb.Application do
           children
         else
           Logger.info("Starting application with database support")
-          # Add the Repo
-          children ++ [BandDb.Repo]
+          # Add the Repo and conditionally add ServiceAccountManager
+          db_children = [BandDb.Repo]
+          
+          # Add ServiceAccountManager if we're not in test mode
+          db_children = if Application.get_env(:band_db, :env) != :test do
+            db_children ++ [{BandDb.Calendar.ServiceAccountManager, []}]
+          else
+            db_children
+          end
+          
+          children ++ db_children
         end
 
       # Explicitly initialize tzdata

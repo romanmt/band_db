@@ -164,4 +164,72 @@ Requires Google Cloud project with Calendar API enabled:
 - Admin access controlled via `is_admin` user field
 - Band isolation enforced through server architecture
 - CSRF protection enabled for all forms
-```
+
+## External API Testing Strategies
+
+### CI/CD-Includable Tests
+
+1. Mock/Stub Tests
+   - Test integration logic with mocked API responses
+   - Verify request formatting and data transformation
+   - Test error handling for various API failure scenarios
+   - Validate authentication/authorization flows with mocked tokens
+   - Test retry logic and timeout handling
+
+2. Contract Tests
+   - Verify your code sends correctly formatted requests
+   - Ensure response parsing handles all expected formats
+   - Test edge cases (empty responses, missing fields, etc.)
+
+3. Integration Tests with Test Doubles
+   - Use in-memory test doubles that simulate external service behavior
+   - Test complete user flows with predictable responses
+   - Verify state changes and side effects
+
+### CI/CD-Excludable Tests
+
+1. Real External API Calls
+   - Requires real credentials (security risk)
+   - Depends on external service availability
+   - Subject to rate limits and quotas
+   - Creates test data in production systems
+   - Network latency causes slow, flaky tests
+
+2. OAuth/SSO Flow Tests
+   - Requires real user interaction
+   - Needs actual user accounts
+   - Security concerns with storing credentials
+
+3. Webhook/Callback Tests
+   - Requires publicly accessible endpoints
+   - Difficult to control timing
+   - May need ngrok or similar tools
+
+### Best Practices
+
+1. Environment-Based Test Execution
+   ```elixir
+   @tag :external_api
+   test "real API call" do
+     # Test only runs when explicitly enabled
+   end
+   ```
+
+2. Feature Flags for External Services
+   - Use flags to disable external calls in test environment
+   - Allow local development with/without external services
+
+3. Separate Test Suites
+   - `mix test` - runs unit and integration tests with mocks
+   - `mix test.external` - runs tests requiring external services (manual/local only)
+
+4. Record and Replay
+   - Use tools like VCR to record real API responses
+   - Replay recorded responses in CI for consistency
+
+5. Health Check Tests
+   - Create separate smoke tests for production
+   - Run after deployment to verify external integrations
+   - Keep these minimal and non-destructive
+
+These testing strategies ensure fast, reliable CI/CD pipelines while maintaining confidence in external integrations.

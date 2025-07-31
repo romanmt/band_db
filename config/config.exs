@@ -9,7 +9,9 @@ import Config
 
 config :band_db,
   ecto_repos: [BandDb.Repo],
-  generators: [timestamp_type: :utc_datetime]
+  generators: [timestamp_type: :utc_datetime],
+  # Feature flags
+  use_service_account: System.get_env("USE_SERVICE_ACCOUNT", "true") == "true"
 
 # Google Calendar API configuration
 config :band_db, :google_api,
