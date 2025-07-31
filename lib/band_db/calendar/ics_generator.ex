@@ -161,9 +161,10 @@ defmodule BandDb.Calendar.ICSGenerator do
   
   @doc """
   Validates that a band has a valid iCal token.
+  Uses secure comparison to prevent timing attacks.
   """
-  def validate_token(%Band{ical_token: token}, provided_token) when is_binary(token) do
-    token == provided_token
+  def validate_token(%Band{ical_token: token}, provided_token) when is_binary(token) and is_binary(provided_token) do
+    Plug.Crypto.secure_compare(token, provided_token)
   end
   def validate_token(_, _), do: false
 end
