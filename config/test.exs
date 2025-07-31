@@ -60,3 +60,7 @@ else
     pool: Ecto.Adapters.SQL.Sandbox,
     pool_size: 10
 end
+
+# Configure the encryption vault for tests
+config :band_db, BandDb.Vault,
+  key: "test_key_32_bytes_long_for_tests"

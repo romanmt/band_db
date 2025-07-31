@@ -22,6 +22,8 @@ defmodule BandDb.Application do
       children = [
         # Start the Telemetry supervisor
         BandDbWeb.Telemetry,
+        # Start the encryption vault
+        BandDb.Vault,
         # Start the DNS cluster
         {DNSCluster, query: Application.get_env(:band_db, :dns_cluster_query) || :ignore},
         # Start the PubSub system

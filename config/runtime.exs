@@ -126,4 +126,16 @@ if config_env() == :prod do
     url: database_url,
     pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
     socket_options: maybe_ipv6
+
+  # Configure encryption vault in production
+  # The key should be set as an environment variable
+  cloak_key =
+    System.get_env("CLOAK_KEY") ||
+      raise """
+      environment variable CLOAK_KEY is missing.
+      You can generate one by calling: mix phx.gen.secret 32
+      """
+
+  config :band_db, BandDb.Vault,
+    key: cloak_key
 end

@@ -30,6 +30,8 @@ defmodule BandDb.Calendar.ServiceAccountManager do
   def start_link(_opts \\ []) do
     case get_active_service_account() do
       {:ok, service_account} ->
+        # The credentials are already decrypted when loaded from the database
+        # through the Cloak.Ecto.Binary type, so they come as a JSON string
         credentials = Jason.decode!(service_account.credentials)
         
         config = [

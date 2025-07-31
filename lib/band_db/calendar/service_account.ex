@@ -4,7 +4,7 @@ defmodule BandDb.Calendar.ServiceAccount do
 
   schema "service_accounts" do
     field :name, :string
-    field :credentials, :string
+    field :credentials, BandDb.Encrypted.Binary
     field :project_id, :string
     field :active, :boolean, default: true
 
