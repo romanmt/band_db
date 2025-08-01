@@ -65,7 +65,7 @@ defmodule BandDbWeb.SetListEditorLive do
           start_time: ~T[19:00:00],
           end_time: ~T[22:00:00],
           location: "",
-          has_calendar: BandDb.Calendar.get_google_auth(socket.assigns.current_user) != nil,
+          has_calendar: BandDb.Calendar.calendar_available?(socket.assigns.current_user),
           show_calendar: false
         )}
         
@@ -320,13 +320,11 @@ defmodule BandDbWeb.SetListEditorLive do
 
     case SetListServer.add_set_list(socket.assigns.set_list_server, new_set_list.name, sets) do
       :ok ->
-        # If scheduling is enabled and connected to Google Calendar, create calendar event
+        # If scheduling is enabled and connected to calendar, create calendar event
         if socket.assigns.should_schedule && socket.assigns.has_calendar do
           user = socket.assigns.current_user
-          google_auth = BandDb.Calendar.get_google_auth(user)
 
-          if google_auth && google_auth.calendar_id do
-            # Create calendar event with deep link to this specific set list
+          # Create calendar event with deep link to this specific set list
             app_url = BandDbWeb.Endpoint.url()
             set_list_url = "#{app_url}/set-list/#{URI.encode(new_set_list.name)}"
 
@@ -364,11 +362,10 @@ defmodule BandDbWeb.SetListEditorLive do
               source_title: "View Set List in BandDb"
             }
 
-            # Log the calendar ID and event params
-            Logger.debug("Using calendar_id: #{google_auth.calendar_id}")
+            # Log the event params
             Logger.debug("Create event with params: #{inspect(event_params)}")
 
-            case BandDb.Calendar.create_event(user, google_auth.calendar_id, event_params) do
+            case BandDb.Calendar.create_calendar_event(user, event_params) do
               {:ok, event_id} ->
                 # Update set list with event info (using a map with key as set list name)
                 SetListServer.update_set_list(socket.assigns.set_list_server, new_set_list.name, %{
@@ -392,12 +389,6 @@ defmodule BandDbWeb.SetListEditorLive do
                   |> put_flash(:error, "Set list saved but calendar event failed: #{reason}")
                   |> push_navigate(to: ~p"/set-list")}
             end
-          else
-            {:noreply,
-              socket
-              |> put_flash(:info, "Set list saved successfully!")
-              |> push_navigate(to: ~p"/set-list")}
-          end
         else
           {:noreply,
             socket
@@ -493,19 +484,9 @@ defmodule BandDbWeb.SetListEditorLive do
     user = socket.assigns.current_user
     set_list = socket.assigns.new_set_list
 
-    # Check if user has Google Calendar connected
-    case BandDb.Calendar.get_google_auth(user) do
-      nil ->
-        Logger.error("User doesn't have Google Calendar connected")
-        {:noreply, socket |> put_flash(:error, "You need to connect your Google Calendar first")}
-
-      auth ->
-        # Check if calendar_id exists
-        if is_nil(auth.calendar_id) do
-          Logger.error("No calendar_id found in auth record: #{inspect(auth)}")
-          {:noreply, socket |> put_flash(:error, "No calendar has been set up. Please go to Settings and set up your band calendar first.")}
-        else
-          # Format the date for Google Calendar
+    # Check if user has calendar available
+    if BandDb.Calendar.calendar_available?(user) do
+      # Format the date for Google Calendar
           date_str = socket.assigns.date
           {:ok, date} = if is_binary(date_str), do: Date.from_iso8601(date_str), else: {:ok, date_str}
 
@@ -537,12 +518,11 @@ defmodule BandDbWeb.SetListEditorLive do
             source_title: "View Set List in BandDb"
           }
 
-          # Log the calendar ID and event params
-          Logger.debug("Using calendar_id: #{auth.calendar_id}")
+          # Log the event params
           Logger.debug("Create event with params: #{inspect(event_params)}")
           Logger.debug("Event includes set_list_name: #{event_params.set_list_name}")
 
-          case BandDb.Calendar.create_event(user, auth.calendar_id, event_params) do
+          case BandDb.Calendar.create_calendar_event(user, event_params) do
             {:ok, _event} ->
               {:noreply, socket
                 |> assign(:show_calendar, false)
@@ -552,7 +532,8 @@ defmodule BandDbWeb.SetListEditorLive do
               Logger.error("Failed to add event to calendar: #{inspect(reason)}")
               {:noreply, socket |> put_flash(:error, "Failed to add event to calendar.")}
           end
-        end
+    else
+      {:noreply, socket |> put_flash(:error, "No calendar configured. Please set up your calendar first.")}
     end
   end
 

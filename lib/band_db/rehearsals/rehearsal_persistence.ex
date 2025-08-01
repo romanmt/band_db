@@ -125,7 +125,8 @@ defmodule BandDb.Rehearsals.RehearsalPersistence do
           start_time: Map.get(plan, :start_time),
           end_time: Map.get(plan, :end_time),
           location: Map.get(plan, :location),
-          calendar_event_id: Map.get(plan, :calendar_event_id)
+          calendar_event_id: Map.get(plan, :calendar_event_id),
+          band_id: plan.band_id
         }
 
         if MapSet.member?(existing_dates, plan.date) do

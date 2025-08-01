@@ -1,7 +1,10 @@
 defmodule BandDb.Calendar.GoogleAPI do
   @moduledoc """
   Handles API calls to Google Calendar.
+  Supports both OAuth2 (legacy) and Service Account authentication.
   """
+
+  alias BandDb.Calendar.ServiceAccountManager
 
   # URLs for Google API
   @token_url "https://oauth2.googleapis.com/token"
@@ -11,6 +14,81 @@ defmodule BandDb.Calendar.GoogleAPI do
   defp client_id, do: System.get_env("GOOGLE_CLIENT_ID") || Application.get_env(:band_db, :google_api)[:client_id]
   defp client_secret, do: System.get_env("GOOGLE_CLIENT_SECRET") || Application.get_env(:band_db, :google_api)[:client_secret]
   defp redirect_uri, do: System.get_env("GOOGLE_REDIRECT_URI") || Application.get_env(:band_db, :google_api)[:redirect_uri] || "http://localhost:4000/auth/google/callback"
+  
+  # Service Account Authentication Functions
+  
+  @doc """
+  Gets an access token using service account credentials.
+  Returns {:ok, token} or {:error, reason}
+  """
+  def get_service_account_token do
+    ServiceAccountManager.get_access_token()
+  end
+  
+  @doc """
+  Creates a calendar using service account authentication.
+  Returns {:ok, calendar_id} or {:error, reason}
+  """
+  def create_calendar_with_service_account(name, description \\ nil) do
+    case get_service_account_token() do
+      {:ok, access_token} ->
+        create_calendar(access_token, name, description)
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+  
+  @doc """
+  Creates an event using service account authentication.
+  Returns {:ok, event_id} or {:error, reason}
+  """
+  def create_event_with_service_account(calendar_id, event) do
+    case get_service_account_token() do
+      {:ok, access_token} ->
+        create_event(access_token, calendar_id, event)
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+  
+  @doc """
+  Lists events using service account authentication.
+  Returns {:ok, events} or {:error, reason}
+  """
+  def list_events_with_service_account(calendar_id, start_date, end_date) do
+    case get_service_account_token() do
+      {:ok, access_token} ->
+        list_events(access_token, calendar_id, start_date, end_date)
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+  
+  @doc """
+  Shares a calendar using service account authentication.
+  Returns :ok or {:error, reason}
+  """
+  def share_calendar_with_service_account(calendar_id, email, role \\ "reader") do
+    case get_service_account_token() do
+      {:ok, access_token} ->
+        share_calendar(access_token, calendar_id, email, role)
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+  
+  @doc """
+  Deletes an event using service account authentication.
+  Returns :ok or {:error, reason}
+  """
+  def delete_event_with_service_account(calendar_id, event_id) do
+    case get_service_account_token() do
+      {:ok, access_token} ->
+        delete_event(access_token, calendar_id, event_id)
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
 
   # Calendar API related functions
 

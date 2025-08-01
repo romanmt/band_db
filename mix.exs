@@ -74,6 +74,7 @@ defmodule BandDb.MixProject do
       {:goth, "~> 1.4.0"},
       {:plug_cowboy, "~> 2.5"},
       {:inflex, "~> 2.0"},
+      {:cloak_ecto, "~> 1.3"},
       # Override conflicting dependencies
       {:mime, "~> 2.0", override: true},
       {:mimerl, "~> 1.4", override: true},

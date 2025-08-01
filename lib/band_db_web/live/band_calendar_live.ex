@@ -1,5 +1,6 @@
 defmodule BandDbWeb.BandCalendarLive do
   use BandDbWeb, :live_view
+  use BandDbWeb.Live.Lifecycle
   import BandDbWeb.Components.PageHeader
   alias BandDb.Calendar
 
@@ -9,62 +10,127 @@ defmodule BandDbWeb.BandCalendarLive do
   def mount(_params, _session, socket) do
     # Use the current_user that was already assigned by the on_mount callback
     current_user = socket.assigns.current_user
-
-    # Check Google Calendar connection status
-    connected = has_valid_google_auth?(current_user)
-
-    # Check if user has a band calendar configured
-    has_calendar = connected && has_band_calendar?(current_user)
-
-    # Get calendars list if connected
-    calendars = if connected, do: get_calendars(current_user), else: []
-
-    if connected && has_calendar do
-      # Only fetch calendar data if we have a valid connection and calendar
-      current_date = Date.utc_today()
-      {:ok, events} = fetch_events(current_user, current_date)
-      events_by_date = group_events_by_date(events)
-
-      {:ok,
-       assign(socket,
-         current_date: current_date,
-         month_name: month_name(current_date.month),
-         year: current_date.year,
-         events: events,
-         events_by_date: events_by_date,
-         show_event_modal: false,
-         selected_event: nil,
-         show_event_form: false,
-         show_day_events: false,
-         selected_date: nil,
-         event_form: %{
-           title: "",
-           all_day: false,
-           start_time: "",
-           end_time: "",
-           location: "",
-           description: ""
-         },
-         form_error: nil,
-         connected: connected,
-         has_calendar: has_calendar,
-         calendars: calendars,
-         band_name: "",
-         google_auth: Calendar.get_google_auth(current_user)
-       )}
+    band = current_user.band
+    
+    # Check if we're using service account mode
+    use_service_account = Calendar.use_service_account?()
+    
+    if use_service_account do
+      # Service Account Mode
+      service_account_configured = Calendar.service_account_available?()
+      has_calendar = band && band.calendar_id != nil
+      
+      if service_account_configured && has_calendar do
+        # Fetch calendar data using service account
+        current_date = Date.utc_today()
+        events = case Calendar.list_band_events(band, current_date |> Date.beginning_of_month(), current_date |> Date.end_of_month()) do
+          {:ok, events} -> events
+          {:error, _} -> []
+        end
+        events_by_date = group_events_by_date(events)
+        
+        {:ok,
+         assign(socket,
+           current_date: current_date,
+           month_name: month_name(current_date.month),
+           year: current_date.year,
+           events: events,
+           events_by_date: events_by_date,
+           show_event_modal: false,
+           selected_event: nil,
+           show_event_form: false,
+           show_day_events: false,
+           selected_date: nil,
+           event_form: %{
+             title: "",
+             all_day: false,
+             start_time: "",
+             end_time: "",
+             location: "",
+             description: ""
+           },
+           form_error: nil,
+           use_service_account: true,
+           service_account_configured: service_account_configured,
+           has_calendar: has_calendar,
+           band: band,
+           connected: true,
+           calendars: [],
+           band_name: band && band.name,
+           google_auth: nil
+         )}
+      else
+        # Service account not configured or no calendar
+        {:ok,
+         assign(socket,
+           use_service_account: true,
+           service_account_configured: service_account_configured,
+           has_calendar: has_calendar,
+           band: band,
+           connected: false,
+           show_event_modal: false,
+           show_event_form: false,
+           show_day_events: false,
+           calendars: [],
+           band_name: band && band.name,
+           google_auth: nil
+         )}
+      end
     else
-      # If not connected or no calendar, just set basic assigns
-      {:ok,
-       assign(socket,
-         connected: connected,
-         has_calendar: has_calendar,
-         show_event_modal: false,
-         show_event_form: false,
-         show_day_events: false,
-         calendars: calendars,
-         band_name: "",
-         google_auth: Calendar.get_google_auth(current_user)
-       )}
+      # Legacy OAuth Mode
+      connected = has_valid_google_auth?(current_user)
+      has_calendar = connected && has_band_calendar?(current_user)
+      calendars = if connected, do: get_calendars(current_user), else: []
+      
+      if connected && has_calendar do
+        # Only fetch calendar data if we have a valid connection and calendar
+        current_date = Date.utc_today()
+        {:ok, events} = fetch_events(current_user, current_date)
+        events_by_date = group_events_by_date(events)
+        
+        {:ok,
+         assign(socket,
+           current_date: current_date,
+           month_name: month_name(current_date.month),
+           year: current_date.year,
+           events: events,
+           events_by_date: events_by_date,
+           show_event_modal: false,
+           selected_event: nil,
+           show_event_form: false,
+           show_day_events: false,
+           selected_date: nil,
+           event_form: %{
+             title: "",
+             all_day: false,
+             start_time: "",
+             end_time: "",
+             location: "",
+             description: ""
+           },
+           form_error: nil,
+           use_service_account: false,
+           connected: connected,
+           has_calendar: has_calendar,
+           calendars: calendars,
+           band_name: "",
+           google_auth: Calendar.get_google_auth(current_user)
+         )}
+      else
+        # If not connected or no calendar, just set basic assigns
+        {:ok,
+         assign(socket,
+           use_service_account: false,
+           connected: connected,
+           has_calendar: has_calendar,
+           show_event_modal: false,
+           show_event_form: false,
+           show_day_events: false,
+           calendars: calendars,
+           band_name: "",
+           google_auth: Calendar.get_google_auth(current_user)
+         )}
+      end
     end
   end
 
@@ -115,20 +181,34 @@ defmodule BandDbWeb.BandCalendarLive do
 
   @impl true
   def handle_event("delete_event", %{"id" => event_id}, socket) do
-    user = socket.assigns.current_user
-    google_auth = Calendar.get_google_auth(user)
-    calendar_id = google_auth.calendar_id
+    if socket.assigns.use_service_account do
+      # Service Account Mode
+      band = socket.assigns.band
+      case Calendar.delete_event_with_service_account(band.calendar_id, event_id) do
+        :ok ->
+          # Refresh calendar data
+          socket = update_calendar(socket, socket.assigns.current_date)
+          {:noreply, assign(socket, show_event_modal: false)}
 
-    case Calendar.delete_event(user, calendar_id, event_id) do
-      :ok ->
-        # Refresh calendar data
-        socket = update_calendar(socket, socket.assigns.current_date)
+        {:error, reason} ->
+          {:noreply, put_flash(socket, :error, "Failed to delete event: #{reason}")}
+      end
+    else
+      # Legacy OAuth Mode
+      user = socket.assigns.current_user
+      google_auth = Calendar.get_google_auth(user)
+      calendar_id = google_auth.calendar_id
 
-        {:noreply, assign(socket, show_event_modal: false)}
+      case Calendar.delete_event(user, calendar_id, event_id) do
+        :ok ->
+          # Refresh calendar data
+          socket = update_calendar(socket, socket.assigns.current_date)
+          {:noreply, assign(socket, show_event_modal: false)}
 
-      {:error, reason} ->
-        # Show error but keep modal open
-        {:noreply, put_flash(socket, :error, "Failed to delete event: #{reason}")}
+        {:error, reason} ->
+          # Show error but keep modal open
+          {:noreply, put_flash(socket, :error, "Failed to delete event: #{reason}")}
+      end
     end
   end
 
@@ -198,19 +278,33 @@ defmodule BandDbWeb.BandCalendarLive do
         if event_data.title == "" do
           {:noreply, assign(socket, form_error: "Title is required")}
         else
-          user = socket.assigns.current_user
-          google_auth = Calendar.get_google_auth(user)
-          calendar_id = google_auth.calendar_id
+          if socket.assigns.use_service_account do
+            # Service Account Mode
+            band = socket.assigns.band
+            case Calendar.create_event_with_service_account(band.calendar_id, event_data) do
+              {:ok, _event_id} ->
+                # Refresh calendar data
+                socket = update_calendar(socket, socket.assigns.current_date)
+                {:noreply, assign(socket, show_event_form: false, form_error: nil)}
 
-          case Calendar.create_event(user, calendar_id, event_data) do
-            {:ok, _event_id} ->
-              # Refresh calendar data
-              socket = update_calendar(socket, socket.assigns.current_date)
+              {:error, reason} ->
+                {:noreply, assign(socket, form_error: "Failed to create event: #{reason}")}
+            end
+          else
+            # Legacy OAuth Mode
+            user = socket.assigns.current_user
+            google_auth = Calendar.get_google_auth(user)
+            calendar_id = google_auth.calendar_id
 
-              {:noreply, assign(socket, show_event_form: false, form_error: nil)}
+            case Calendar.create_event(user, calendar_id, event_data) do
+              {:ok, _event_id} ->
+                # Refresh calendar data
+                socket = update_calendar(socket, socket.assigns.current_date)
+                {:noreply, assign(socket, show_event_form: false, form_error: nil)}
 
-            {:error, reason} ->
-              {:noreply, assign(socket, form_error: "Failed to create event: #{reason}")}
+              {:error, reason} ->
+                {:noreply, assign(socket, form_error: "Failed to create event: #{reason}")}
+            end
           end
         end
     end
@@ -271,59 +365,87 @@ defmodule BandDbWeb.BandCalendarLive do
 
   # Helper function to update the calendar data
   defp update_calendar(socket, date) do
-    user = socket.assigns.current_user
-    google_auth = Calendar.get_google_auth(user)
-    has_calendar = socket.assigns.connected && google_auth && google_auth.calendar_id != nil
-
-    # Generate calendar data for the selected month
-    first_day = Date.beginning_of_month(date)
-    last_day = Date.end_of_month(date)
-    days_in_month = Date.days_in_month(date)
-
-    # Generate the days of the month
-    days = for day <- 1..days_in_month do
-      Date.new!(date.year, date.month, day)
-    end
-
-    # Get the starting weekday (1 = Monday, 7 = Sunday)
-    first_day_weekday = Date.day_of_week(first_day)
-
-    # Add padding days at the beginning (for days from the previous month)
-    padding_start = for i <- 1..(first_day_weekday - 1) do
-      Date.add(first_day, -i)
-    end
-
-    # Add padding days at the end (for days from the next month)
-    last_day_weekday = Date.day_of_week(last_day)
-    days_to_add = 7 - last_day_weekday
-    padding_end = for i <- 1..days_to_add do
-      Date.add(last_day, i)
-    end
-
-    # Combine all days
-    all_days = padding_start ++ days ++ padding_end
-
-    # Group days into weeks
-    weeks = Enum.chunk_every(all_days, 7)
-
-    # Get events if connected to Google Calendar
-    events = if has_calendar do
-      fetch_calendar_events(user, google_auth.calendar_id, first_day, Date.add(last_day, days_to_add))
+    if socket.assigns.use_service_account do
+      # Service Account Mode
+      band = socket.assigns.band
+      has_calendar = band && band.calendar_id != nil
+      
+      # Fetch events using service account
+      events = if has_calendar do
+        case Calendar.list_band_events(band, Date.beginning_of_month(date), Date.end_of_month(date)) do
+          {:ok, events} -> events
+          {:error, _} -> []
+        end
+      else
+        []
+      end
+      
+      events_by_date = group_events_by_date(events)
+      
+      assign(socket,
+        current_date: date,
+        month_name: month_name(date.month),
+        year: date.year,
+        events: events,
+        events_by_date: events_by_date,
+        show_event_modal: false
+      )
     else
-      []
+      # Legacy OAuth Mode
+      user = socket.assigns.current_user
+      google_auth = Calendar.get_google_auth(user)
+      has_calendar = socket.assigns.connected && google_auth && google_auth.calendar_id != nil
+
+      # Generate calendar data for the selected month
+      first_day = Date.beginning_of_month(date)
+      last_day = Date.end_of_month(date)
+      days_in_month = Date.days_in_month(date)
+
+      # Generate the days of the month
+      days = for day <- 1..days_in_month do
+        Date.new!(date.year, date.month, day)
+      end
+
+      # Get the starting weekday (1 = Monday, 7 = Sunday)
+      first_day_weekday = Date.day_of_week(first_day)
+
+      # Add padding days at the beginning (for days from the previous month)
+      padding_start = for i <- 1..(first_day_weekday - 1) do
+        Date.add(first_day, -i)
+      end
+
+      # Add padding days at the end (for days from the next month)
+      last_day_weekday = Date.day_of_week(last_day)
+      days_to_add = 7 - last_day_weekday
+      padding_end = for i <- 1..days_to_add do
+        Date.add(last_day, i)
+      end
+
+      # Combine all days
+      all_days = padding_start ++ days ++ padding_end
+
+      # Group days into weeks
+      weeks = Enum.chunk_every(all_days, 7)
+
+      # Get events if connected to Google Calendar
+      events = if has_calendar do
+        fetch_calendar_events(user, google_auth.calendar_id, first_day, Date.add(last_day, days_to_add))
+      else
+        []
+      end
+
+      # Group events by date
+      events_by_date = Enum.group_by(events, & &1.date)
+
+      assign(socket,
+        current_date: date,
+        weeks: weeks,
+        month_name: month_name(date.month),
+        events: events,
+        events_by_date: events_by_date,
+        show_event_modal: false
+      )
     end
-
-    # Group events by date
-    events_by_date = Enum.group_by(events, & &1.date)
-
-    assign(socket,
-      current_date: date,
-      weeks: weeks,
-      month_name: month_name(date.month),
-      events: events,
-      events_by_date: events_by_date,
-      show_event_modal: false
-    )
   end
 
   # Helper function to fetch calendar events

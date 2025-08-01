@@ -88,3 +88,7 @@ config :band_db, BandDb.Repo,
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10
+
+# Configure the encryption vault
+config :band_db, BandDb.Vault,
+  key: "GMRqrB95Jyyr2QHh7ompuzU1XjcnsSRW"

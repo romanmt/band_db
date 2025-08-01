@@ -11,13 +11,14 @@ defmodule BandDb.Rehearsals.RehearsalServer do
     GenServer.start_link(__MODULE__, [], name: name)
   end
 
-  def start_link({:via, Registry, {_registry, _}} = name) do
-    GenServer.start_link(__MODULE__, [], name: name)
+  def start_link({:via, Registry, {_registry, {band_id, _module}}} = name) do
+    GenServer.start_link(__MODULE__, band_id, name: name)
   end
 
   def start_link(opts) when is_list(opts) do
     name = Keyword.get(opts, :name, __MODULE__)
-    GenServer.start_link(__MODULE__, [], name: name)
+    band_id = Keyword.get(opts, :band_id)
+    GenServer.start_link(__MODULE__, band_id, name: name)
   end
 
   def save_plan(date, rehearsal_songs, set_songs, duration, band_id \\ nil, server \\ __MODULE__) do
@@ -51,15 +52,21 @@ defmodule BandDb.Rehearsals.RehearsalServer do
   # Server Callbacks
 
   @impl true
-  def init(_args) do
+  def init(band_id) do
     # Load initial state from persistence
     case persistence_module().load_plans() do
       {:ok, plans} ->
+        # Filter plans for this band if band_id is provided
+        filtered_plans = if band_id do
+          Enum.filter(plans, &(&1.band_id == band_id))
+        else
+          plans
+        end
         schedule_backup()
-        {:ok, %{plans: plans}}
+        {:ok, %{plans: filtered_plans, band_id: band_id}}
       _ ->
         schedule_backup()
-        {:ok, %{plans: []}}
+        {:ok, %{plans: [], band_id: band_id}}
     end
   end
 
@@ -102,7 +109,14 @@ defmodule BandDb.Rehearsals.RehearsalServer do
 
             # Convert UUIDs to full song objects
             song_uuids = MapSet.new(rehearsal_songs ++ set_songs)
-            songs_by_uuid = BandDb.Songs.SongServer.list_songs()
+            # Get the correct song server for this band
+            song_server = if state.band_id do
+              BandDb.ServerLookup.get_song_server(state.band_id)
+            else
+              # Fallback for backwards compatibility
+              BandDb.Songs.SongServer
+            end
+            songs_by_uuid = BandDb.Songs.SongServer.list_songs(song_server)
                             |> Enum.filter(&(&1.uuid in song_uuids))
                             |> Enum.reduce(%{}, fn song, acc -> Map.put(acc, song.uuid, song) end)
 
