@@ -21,64 +21,51 @@ defmodule BandDb.Calendar do
   # Private helper function to ensure tzdata is initialized before using timezone functions
   # Returns :ok if successful, or {:error, reason} if tzdata cannot be initialized
   defp ensure_tzdata do
-    try do
-      # Force tzdata to be loaded
-      case Application.ensure_all_started(:tzdata) do
-        {:ok, _apps} ->
-          # Explicitly check if the timezone database is working
-          case DateTime.now("America/New_York") do
-            {:ok, _} ->
-              # Timezone database is working correctly
-              :ok
-            {:error, reason} ->
-              require Logger
-              Logger.error("Timezone database error after loading tzdata: #{inspect(reason)}")
-              # Try forcing a reload by stopping and restarting tzdata
-              try do
-                :ok = Application.stop(:tzdata)
-                {:ok, _apps} = Application.ensure_all_started(:tzdata)
-                :ok
-              rescue
-                e ->
-                  Logger.error("Failed to restart tzdata: #{inspect(e)}")
-                  {:error, :tzdata_reload_failed}
-              end
-          end
-        {:error, reason} ->
-          require Logger
-          Logger.error("Failed to start tzdata: #{inspect(reason)}")
-          {:error, :tzdata_start_failed}
-      end
-    rescue
-      e ->
+    # Simple check - if tzdata is not available, fail fast with clear message
+    case DateTime.now("America/New_York") do
+      {:ok, _} ->
+        :ok
+      {:error, :utc_only_time_zone_database} ->
         require Logger
-        Logger.error("Exception ensuring tzdata is started: #{inspect(e)}")
-        {:error, :tzdata_start_failed}
+        Logger.error("""
+        Timezone database (tzdata) is not properly configured.
+        
+        To fix this:
+        1. Ensure tzdata is in your dependencies in mix.exs
+        2. Run: mix deps.get && mix deps.compile
+        3. Restart your application
+        
+        Events will use UTC times until this is fixed.
+        """)
+        {:error, :tzdata_not_configured}
+      {:error, reason} ->
+        require Logger
+        Logger.error("Timezone database error: #{inspect(reason)}")
+        {:error, reason}
     end
   end
 
   @doc """
   Convert a naive datetime to a datetime with timezone information.
-  Falls back to UTC if the timezone database is not available or an error occurs.
+  
+  Returns {:ok, datetime} with proper timezone, or {:error, :using_utc_fallback, utc_datetime}
+  to explicitly indicate when UTC fallback is being used.
   """
   def convert_to_timezone(naive_dt, timezone \\ "America/New_York") do
-    # Try to ensure tzdata is available
-    tzdata_result = ensure_tzdata()
-
-    # Make conversion attempt
     case DateTime.from_naive(naive_dt, timezone) do
       {:ok, datetime} ->
         {:ok, datetime}
       {:error, :utc_only_time_zone_database} ->
-        require Logger
-        Logger.error("Timezone database not configured properly. Tzdata check result: #{inspect(tzdata_result)}")
-        # Fall back to UTC time
-        {:ok, DateTime.from_naive!(naive_dt, "Etc/UTC")}
+        # Check if tzdata is configured
+        ensure_tzdata()
+        
+        # Return UTC time but make it explicit that we're using a fallback
+        utc_datetime = DateTime.from_naive!(naive_dt, "Etc/UTC")
+        {:error, :using_utc_fallback, utc_datetime}
       {:error, reason} ->
         require Logger
-        Logger.error("Error creating datetime: #{inspect(reason)}")
-        # Fall back to UTC time
-        {:ok, DateTime.from_naive!(naive_dt, "Etc/UTC")}
+        Logger.error("Error creating datetime with timezone #{timezone}: #{inspect(reason)}")
+        {:error, reason}
     end
   end
   
@@ -336,11 +323,22 @@ defmodule BandDb.Calendar do
         
         # Create a datetime in the America/New_York timezone
         timezone = "America/New_York"
-        {:ok, ny_datetime} = convert_to_timezone(naive_dt, timezone)
         
-        # Format for Google Calendar API
-        datetime_str = ny_datetime |> DateTime.to_iso8601()
-        Map.put(event, "start", %{"dateTime" => datetime_str, "timeZone" => timezone})
+        case convert_to_timezone(naive_dt, timezone) do
+          {:ok, ny_datetime} ->
+            # Format for Google Calendar API with proper timezone
+            datetime_str = ny_datetime |> DateTime.to_iso8601()
+            Map.put(event, "start", %{"dateTime" => datetime_str, "timeZone" => timezone})
+          {:error, :using_utc_fallback, utc_datetime} ->
+            require Logger
+            Logger.warning("Using UTC fallback for event start time. Install tzdata for proper timezone support.")
+            # Use UTC time but still specify the intended timezone so Google Calendar can display it correctly
+            datetime_str = utc_datetime |> DateTime.to_iso8601()
+            Map.put(event, "start", %{"dateTime" => datetime_str, "timeZone" => "Etc/UTC"})
+          {:error, reason} ->
+            Logger.error("Failed to convert start time: #{inspect(reason)}")
+            event
+        end
       _ ->
         # No date provided, this is an error
         event
