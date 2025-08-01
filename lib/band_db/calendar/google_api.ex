@@ -1,19 +1,13 @@
 defmodule BandDb.Calendar.GoogleAPI do
   @moduledoc """
   Handles API calls to Google Calendar.
-  Supports both OAuth2 (legacy) and Service Account authentication.
+  Supports Service Account authentication.
   """
 
   alias BandDb.Calendar.ServiceAccountManager
 
   # URLs for Google API
-  @token_url "https://oauth2.googleapis.com/token"
   @calendar_api_url "https://www.googleapis.com/calendar/v3"
-
-  # Get credentials from environment at runtime
-  defp client_id, do: System.get_env("GOOGLE_CLIENT_ID") || Application.get_env(:band_db, :google_api)[:client_id]
-  defp client_secret, do: System.get_env("GOOGLE_CLIENT_SECRET") || Application.get_env(:band_db, :google_api)[:client_secret]
-  defp redirect_uri, do: System.get_env("GOOGLE_REDIRECT_URI") || Application.get_env(:band_db, :google_api)[:redirect_uri] || "http://localhost:4000/auth/google/callback"
   
   # Service Account Authentication Functions
   
@@ -91,81 +85,6 @@ defmodule BandDb.Calendar.GoogleAPI do
   end
 
   # Calendar API related functions
-
-  @doc """
-  Generates the URL for OAuth authorization.
-  """
-  def authorize_url do
-    params = %{
-      client_id: client_id(),
-      redirect_uri: redirect_uri(),
-      response_type: "code",
-      scope: "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events",
-      access_type: "offline",
-      prompt: "consent" # Always ask for consent to ensure we get a refresh token
-    }
-
-    query = URI.encode_query(params)
-    "https://accounts.google.com/o/oauth2/v2/auth?#{query}"
-  end
-
-  @doc """
-  Exchanges an authorization code for tokens.
-  Returns {:ok, %{access_token, refresh_token, expires_in}} or {:error, reason}
-  """
-  def exchange_code_for_token(code) do
-    params = %{
-      client_id: client_id(),
-      client_secret: client_secret(),
-      code: code,
-      grant_type: "authorization_code",
-      redirect_uri: redirect_uri()
-    }
-
-    case HTTPoison.post(@token_url, URI.encode_query(params), [{"Content-Type", "application/x-www-form-urlencoded"}]) do
-      {:ok, %{status_code: 200, body: body}} ->
-        token_data = Jason.decode!(body)
-        {:ok, %{
-          access_token: token_data["access_token"],
-          refresh_token: token_data["refresh_token"],
-          expires_in: token_data["expires_in"]
-        }}
-
-      {:ok, %{status_code: status_code, body: body}} ->
-        {:error, "Failed to get token: HTTP #{status_code} - #{body}"}
-
-      {:error, %{reason: reason}} ->
-        {:error, "Network error: #{reason}"}
-    end
-  end
-
-  @doc """
-  Refreshes an access token using a refresh token.
-  Returns {:ok, %{access_token, expires_in}} or {:error, reason}
-  """
-  def refresh_access_token(refresh_token) do
-    params = %{
-      client_id: client_id(),
-      client_secret: client_secret(),
-      refresh_token: refresh_token,
-      grant_type: "refresh_token"
-    }
-
-    case HTTPoison.post(@token_url, URI.encode_query(params), [{"Content-Type", "application/x-www-form-urlencoded"}]) do
-      {:ok, %{status_code: 200, body: body}} ->
-        token_data = Jason.decode!(body)
-        {:ok, %{
-          access_token: token_data["access_token"],
-          expires_in: token_data["expires_in"]
-        }}
-
-      {:ok, %{status_code: status_code, body: body}} ->
-        {:error, "Failed to refresh token: HTTP #{status_code} - #{body}"}
-
-      {:error, %{reason: reason}} ->
-        {:error, "Network error: #{reason}"}
-    end
-  end
 
   @doc """
   Lists all calendars for the user.
@@ -419,19 +338,15 @@ defmodule BandDb.Calendar.GoogleAPI do
       # Safely parse the ISO 8601 datetime strings
       start_dt = case DateTime.from_iso8601(start_datetime) do
         {:ok, dt, _} ->
-          # Fix for Google Calendar UTC times
-          # We need to manually convert from UTC to local time
-          if String.ends_with?(start_datetime, "Z") && (start_timezone == "America/New_York") do
-            # For EDT (UTC-4), subtract 4 hours from the UTC time
-            local_hour = dt.hour - 4
-
-            # Handle day changes if needed
-            if local_hour < 0 do
-              # If hour becomes negative, adjust to previous day
-              prev_day = Date.add(dt, -1)
-              %DateTime{dt | year: prev_day.year, month: prev_day.month, day: prev_day.day, hour: local_hour + 24}
-            else
-              %DateTime{dt | hour: local_hour}
+          # Convert UTC times to the specified timezone properly
+          if String.ends_with?(start_datetime, "Z") && start_timezone do
+            case DateTime.shift_zone(dt, start_timezone) do
+              {:ok, shifted_dt} ->
+                shifted_dt
+              {:error, _reason} ->
+                # Fallback: try manual conversion if timezone database is not available
+                Logger.warning("Timezone conversion failed for #{start_timezone}, using UTC time")
+                dt
             end
           else
             dt
@@ -443,18 +358,15 @@ defmodule BandDb.Calendar.GoogleAPI do
 
       end_dt = case DateTime.from_iso8601(end_datetime) do
         {:ok, dt, _} ->
-          # Same conversion for end time
-          if String.ends_with?(end_datetime, "Z") && (end_timezone == "America/New_York") do
-            # For EDT (UTC-4), subtract 4 hours from the UTC time
-            local_hour = dt.hour - 4
-
-            # Handle day changes if needed
-            if local_hour < 0 do
-              # If hour becomes negative, adjust to previous day
-              prev_day = Date.add(dt, -1)
-              %DateTime{dt | year: prev_day.year, month: prev_day.month, day: prev_day.day, hour: local_hour + 24}
-            else
-              %DateTime{dt | hour: local_hour}
+          # Convert UTC times to the specified timezone properly
+          if String.ends_with?(end_datetime, "Z") && end_timezone do
+            case DateTime.shift_zone(dt, end_timezone) do
+              {:ok, shifted_dt} ->
+                shifted_dt
+              {:error, _reason} ->
+                # Fallback: try manual conversion if timezone database is not available
+                Logger.warning("Timezone conversion failed for #{end_timezone}, using UTC time")
+                dt
             end
           else
             dt

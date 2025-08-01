@@ -60,8 +60,8 @@ defmodule Mix.Tasks.MigrateToServiceAccount do
         |> Map.get(:users, [])
         |> Enum.filter(& &1.is_admin)
         |> Enum.map(fn user ->
-          auth = Calendar.get_google_auth(user)
-          {user, auth}
+          # OAuth has been removed - skip this user
+          {user, nil}
         end)
         |> Enum.filter(fn {_user, auth} -> auth != nil && auth.calendar_id != nil end)
       

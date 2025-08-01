@@ -46,11 +46,7 @@ defmodule BandDbWeb.CalendarView do
                 </div>
               </div>
 
-              <div class="mt-5">
-                <.link href={~p"/auth/google/disconnect"} class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                  Disconnect from Google Calendar
-                </.link>
-              </div>
+              <!-- Service account authentication is used - no disconnect option needed -->
             <% else %>
               <div class="rounded-md bg-blue-50 p-4">
                 <div class="flex">
@@ -68,12 +64,7 @@ defmodule BandDbWeb.CalendarView do
                 </div>
               </div>
 
-              <div class="mt-5">
-                <.link href={~p"/auth/google"} class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                  <.icon name="hero-calendar" class="h-5 w-5 mr-2" />
-                  Connect Google Calendar
-                </.link>
-              </div>
+              <!-- Service account authentication is used - no manual connection needed -->
             <% end %>
           </div>
 

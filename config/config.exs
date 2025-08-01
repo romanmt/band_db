@@ -13,11 +13,6 @@ config :band_db,
   # Feature flags
   use_service_account: System.get_env("USE_SERVICE_ACCOUNT", "true") == "true"
 
-# Google Calendar API configuration
-config :band_db, :google_api,
-  client_id: System.get_env("GOOGLE_CLIENT_ID"),
-  client_secret: System.get_env("GOOGLE_CLIENT_SECRET"),
-  redirect_uri: System.get_env("GOOGLE_REDIRECT_URI", "http://localhost:4000/auth/google/callback")
 
 # Configures the endpoint
 config :band_db, BandDbWeb.Endpoint,

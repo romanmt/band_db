@@ -2,7 +2,7 @@ defmodule BandDbWeb.UserSettingsLive do
   use BandDbWeb, :live_view
 
   alias BandDb.Accounts
-  alias BandDb.Calendar
+  alias BandDb.Repo
 
   @impl true
   def render(assigns) do
@@ -118,11 +118,7 @@ defmodule BandDbWeb.UserSettingsLive do
               </div>
             </div>
 
-            <div class="mt-4">
-              <.link href={~p"/auth/google/disconnect"} class="text-red-600 hover:text-red-900 text-sm">
-                Disconnect from Google Calendar
-              </.link>
-            </div>
+            <!-- Service account authentication is used - no disconnect option needed -->
           <% else %>
             <div class="rounded-md bg-blue-50 p-4 mb-4">
               <div class="flex">
@@ -139,9 +135,7 @@ defmodule BandDbWeb.UserSettingsLive do
               </div>
             </div>
 
-            <.link href={~p"/auth/google"} class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-              Connect Google Calendar
-            </.link>
+            <!-- Service account authentication is used - calendar managed by admin -->
           <% end %>
         </div>
 
@@ -255,21 +249,14 @@ defmodule BandDbWeb.UserSettingsLive do
     # Check Google Calendar connection status
     connected = has_valid_google_auth?(user)
 
-    # Get Google Auth
-    google_auth = Calendar.get_google_auth(user)
+    # OAuth has been removed
+    google_auth = nil
 
     # Check if user has a band calendar configured
     has_calendar = connected && has_band_calendar?(user)
 
-    # Get only the band calendar instead of all calendars
-    band_calendar = if connected && has_calendar do
-      case get_band_calendar(user, google_auth.calendar_id) do
-        {:ok, calendar} -> [calendar]
-        _ -> []
-      end
-    else
-      []
-    end
+    # OAuth has been removed - calendars no longer accessible via user settings
+    band_calendar = []
 
     # Get active tab from params
     active_tab = if Map.has_key?(socket.assigns, :active_tab), do: socket.assigns.active_tab, else: "account"
@@ -367,53 +354,24 @@ defmodule BandDbWeb.UserSettingsLive do
   end
 
   def handle_event("create_calendar", _params, socket) do
-    user = socket.assigns.current_user
-    band_name = user.band.name
-
-    case Calendar.create_band_calendar(user, band_name) do
-      {:ok, _calendar_id} ->
-        # Update google_auth to get the new calendar_id
-        google_auth = Calendar.get_google_auth(user)
-
-        # Get only the band calendar
-        band_calendar = case get_band_calendar(user, google_auth.calendar_id) do
-          {:ok, calendar} -> [calendar]
-          _ -> []
-        end
-
-        {:noreply, socket
-          |> assign(
-            calendars: band_calendar,
-            calendar_error: nil,
-            google_auth: google_auth,
-            has_calendar: true
-          )
-          |> put_flash(:info, "Calendar created successfully!")}
-
-      {:error, reason} ->
-        {:noreply, assign(socket, calendar_error: reason)}
-    end
+    # OAuth has been removed - calendar creation should be done via admin interface
+    {:noreply, 
+      socket
+      |> assign(calendar_error: "Calendar creation must be done through the admin interface")
+      |> put_flash(:error, "Please contact your band admin to create a calendar")}
   end
 
   # Helper function to check if a user has valid Google Auth
-  defp has_valid_google_auth?(user) do
-    google_auth = Calendar.get_google_auth(user)
-    google_auth != nil && !Calendar.is_expired?(google_auth)
+  # OAuth has been removed, always return false
+  defp has_valid_google_auth?(_user) do
+    false
   end
 
   # Helper function to check if a user has a band calendar
+  # OAuth has been removed, check band's calendar_id instead  
   defp has_band_calendar?(user) do
-    google_auth = Calendar.get_google_auth(user)
-    google_auth != nil && google_auth.calendar_id != nil
+    user = Repo.preload(user, :band)
+    user.band && user.band.calendar_id != nil
   end
 
-  # Get only the band calendar by ID
-  defp get_band_calendar(user, calendar_id) do
-    case Calendar.get_access_token(user) do
-      {:ok, access_token} ->
-        Calendar.get_calendar(access_token, calendar_id)
-      {:error, _reason} ->
-        {:error, "Failed to get access token"}
-    end
-  end
 end
