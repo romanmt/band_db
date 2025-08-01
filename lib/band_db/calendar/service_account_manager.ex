@@ -62,7 +62,7 @@ defmodule BandDb.Calendar.ServiceAccountManager do
         # Also verify that the Goth process is running
         case Registry.lookup(Goth.Registry, @goth_name) do
           [] -> 
-            Logger.warn("Goth process not running, attempting to restart...")
+            Logger.warning("Goth process not running, attempting to restart...")
             # Try to restart the Goth process if it's not running
             start_link()
             # Check again after attempted restart
@@ -120,7 +120,7 @@ defmodule BandDb.Calendar.ServiceAccountManager do
         if service_account.credentials do
           Logger.debug("Service account has credentials (length: #{String.length(service_account.credentials)})")
         else
-          Logger.warn("Service account has nil credentials!")
+          Logger.warning("Service account has nil credentials!")
         end
         {:ok, service_account}
     end
