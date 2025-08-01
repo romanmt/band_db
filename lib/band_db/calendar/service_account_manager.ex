@@ -52,22 +52,35 @@ defmodule BandDb.Calendar.ServiceAccountManager do
   Checks if a service account is configured and active in the database.
   """
   def service_account_configured? do
+    require Logger
+    
     # Check if there's an active service account in the database
     case get_active_service_account() do
-      {:ok, _service_account} -> 
+      {:ok, service_account} -> 
+        Logger.debug("Found active service account: #{service_account.name}")
+        
         # Also verify that the Goth process is running
         case Registry.lookup(Goth.Registry, @goth_name) do
           [] -> 
+            Logger.warn("Goth process not running, attempting to restart...")
             # Try to restart the Goth process if it's not running
             start_link()
             # Check again after attempted restart
             case Registry.lookup(Goth.Registry, @goth_name) do
-              [] -> false
-              _ -> true
+              [] -> 
+                Logger.error("Failed to restart Goth process")
+                false
+              _ -> 
+                Logger.info("Goth process restarted successfully")
+                true
             end
+          [{pid, _}] -> 
+            Logger.debug("Goth process is running with PID: #{inspect(pid)}")
+            true
           _ -> true
         end
       {:error, :no_active_service_account} -> 
+        Logger.debug("No active service account found in database")
         false
     end
   end
@@ -95,9 +108,21 @@ defmodule BandDb.Calendar.ServiceAccountManager do
   Returns {:ok, service_account} or {:error, reason}
   """
   def get_active_service_account do
+    require Logger
+    
     case Repo.get_by(ServiceAccount, active: true) do
-      nil -> {:error, :no_active_service_account}
-      service_account -> {:ok, service_account}
+      nil -> 
+        Logger.debug("No active service account found")
+        {:error, :no_active_service_account}
+      service_account -> 
+        Logger.debug("Found active service account: #{service_account.name}, id: #{service_account.id}")
+        # Check if credentials are present
+        if service_account.credentials do
+          Logger.debug("Service account has credentials (length: #{String.length(service_account.credentials)})")
+        else
+          Logger.warn("Service account has nil credentials!")
+        end
+        {:ok, service_account}
     end
   end
   
@@ -105,9 +130,21 @@ defmodule BandDb.Calendar.ServiceAccountManager do
   Creates a new service account record in the database.
   """
   def create_service_account(attrs) do
-    %ServiceAccount{}
+    require Logger
+    Logger.info("Creating service account with name: #{attrs["name"] || attrs[:name]}")
+    
+    result = %ServiceAccount{}
     |> ServiceAccount.changeset(attrs)
     |> Repo.insert()
+    
+    case result do
+      {:ok, service_account} ->
+        Logger.info("Service account created successfully with id: #{service_account.id}")
+        {:ok, service_account}
+      {:error, changeset} ->
+        Logger.error("Failed to create service account: #{inspect(changeset.errors)}")
+        {:error, changeset}
+    end
   end
   
   @doc """

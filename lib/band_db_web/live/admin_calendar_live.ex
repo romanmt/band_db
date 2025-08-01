@@ -10,15 +10,20 @@ defmodule BandDbWeb.AdminCalendarLive do
 
   @impl true
   def mount(_params, _session, socket) do
+    require Logger
     user = socket.assigns.current_user
     band = user.band
     
     # Check if service account mode is enabled and configured
     use_service_account = Calendar.use_service_account?()
+    Logger.info("Admin calendar mount - use_service_account: #{use_service_account}")
+    
     service_account_configured = use_service_account && Calendar.service_account_available?()
+    Logger.info("Admin calendar mount - service_account_configured: #{service_account_configured}")
     
     # Check if band has a calendar
     has_calendar = band && band.calendar_id != nil
+    Logger.info("Admin calendar mount - has_calendar: #{has_calendar}, band_calendar_id: #{inspect(band && band.calendar_id)}")
     
     # Get calendar shares if we have a calendar and service account is configured
     calendar_shares = if has_calendar && service_account_configured do
@@ -28,6 +33,13 @@ defmodule BandDbWeb.AdminCalendarLive do
       end
     else
       []
+    end
+    
+    # Debug: Get all service accounts for display
+    all_service_accounts = ServiceAccountManager.list_service_accounts()
+    Logger.info("All service accounts in database: #{length(all_service_accounts)}")
+    for sa <- all_service_accounts do
+      Logger.info("Service Account: #{sa.name}, active: #{sa.active}, has_credentials: #{not is_nil(sa.credentials)}")
     end
     
     # Generate calendar URLs
@@ -199,34 +211,52 @@ defmodule BandDbWeb.AdminCalendarLive do
   
   @impl true
   def handle_event("save_service_account", %{"name" => name, "credentials" => credentials}, socket) do
+    require Logger
+    Logger.info("Attempting to save service account with name: #{name}")
+    
     case ServiceAccountManager.create_service_account(%{name: name, credentials: credentials}) do
       {:ok, service_account} ->
+        Logger.info("Service account created, attempting to activate...")
+        
         # Activate the new service account
         case ServiceAccountManager.activate_service_account(service_account) do
           {:ok, _} ->
+            Logger.info("Service account activated successfully")
+            
             # Stop the existing Goth process if it exists
             case Registry.lookup(Goth.Registry, BandDb.Goth) do
-              [{pid, _}] -> GenServer.stop(pid)
-              _ -> :ok
+              [{pid, _}] -> 
+                Logger.info("Stopping existing Goth process: #{inspect(pid)}")
+                GenServer.stop(pid)
+              _ -> 
+                Logger.info("No existing Goth process to stop")
+                :ok
             end
             
             # Restart the process with new credentials
+            Logger.info("Starting new Goth process...")
             ServiceAccountManager.start_link([])
+            
+            # Verify it's actually configured now
+            is_configured = ServiceAccountManager.service_account_configured?()
+            Logger.info("Service account configured check after save: #{is_configured}")
             
             {:noreply, socket
               |> assign(
                 show_service_account_modal: false,
-                service_account_configured: true,
+                service_account_configured: is_configured,
                 service_account_error: nil
               )
               |> put_flash(:info, "Service account configured successfully!")}
               
           {:error, reason} ->
+            Logger.error("Failed to activate service account: #{inspect(reason)}")
             {:noreply, assign(socket, service_account_error: "Failed to activate: #{inspect(reason)}")}
         end
         
       {:error, changeset} ->
         errors = Ecto.Changeset.traverse_errors(changeset, fn {msg, _} -> msg end)
+        Logger.error("Failed to create service account: #{inspect(errors)}")
         {:noreply, assign(socket, service_account_error: "Failed to save: #{inspect(errors)}")}
     end
   end
