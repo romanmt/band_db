@@ -49,14 +49,26 @@ defmodule BandDb.Calendar.ServiceAccountManager do
   end
   
   @doc """
-  Checks if the Goth server is running with valid credentials.
+  Checks if a service account is configured and active in the database.
   """
   def service_account_configured? do
-    # Goth registers processes via Registry, not Process.register
-    case Registry.lookup(Goth.Registry, @goth_name) do
-      [] -> false
-      [{_pid, _}] -> true
-      _ -> true
+    # Check if there's an active service account in the database
+    case get_active_service_account() do
+      {:ok, _service_account} -> 
+        # Also verify that the Goth process is running
+        case Registry.lookup(Goth.Registry, @goth_name) do
+          [] -> 
+            # Try to restart the Goth process if it's not running
+            start_link()
+            # Check again after attempted restart
+            case Registry.lookup(Goth.Registry, @goth_name) do
+              [] -> false
+              _ -> true
+            end
+          _ -> true
+        end
+      {:error, :no_active_service_account} -> 
+        false
     end
   end
   

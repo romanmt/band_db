@@ -204,8 +204,13 @@ defmodule BandDbWeb.AdminCalendarLive do
         # Activate the new service account
         case ServiceAccountManager.activate_service_account(service_account) do
           {:ok, _} ->
-            # Restart the Goth process with new credentials
-            Process.whereis(BandDb.Goth) && GenServer.stop(BandDb.Goth)
+            # Stop the existing Goth process if it exists
+            case Registry.lookup(Goth.Registry, BandDb.Goth) do
+              [{pid, _}] -> GenServer.stop(pid)
+              _ -> :ok
+            end
+            
+            # Restart the process with new credentials
             ServiceAccountManager.start_link([])
             
             {:noreply, socket
