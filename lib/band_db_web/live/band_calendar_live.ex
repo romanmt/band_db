@@ -12,125 +12,55 @@ defmodule BandDbWeb.BandCalendarLive do
     current_user = socket.assigns.current_user
     band = current_user.band
     
-    # Check if we're using service account mode
-    use_service_account = Calendar.use_service_account?()
+    # Service Account Mode only
+    service_account_configured = Calendar.service_account_available?()
+    has_calendar = band && band.calendar_id != nil
     
-    if use_service_account do
-      # Service Account Mode
-      service_account_configured = Calendar.service_account_available?()
-      has_calendar = band && band.calendar_id != nil
-      
-      if service_account_configured && has_calendar do
-        # Fetch calendar data using service account
-        current_date = Date.utc_today()
-        events = case Calendar.list_band_events(band, current_date |> Date.beginning_of_month(), current_date |> Date.end_of_month()) do
-          {:ok, events} -> events
-          {:error, _} -> []
-        end
-        events_by_date = group_events_by_date(events)
-        
-        {:ok,
-         assign(socket,
-           current_date: current_date,
-           month_name: month_name(current_date.month),
-           year: current_date.year,
-           events: events,
-           events_by_date: events_by_date,
-           show_event_modal: false,
-           selected_event: nil,
-           show_event_form: false,
-           show_day_events: false,
-           selected_date: nil,
-           event_form: %{
-             title: "",
-             all_day: false,
-             start_time: "",
-             end_time: "",
-             location: "",
-             description: ""
-           },
-           form_error: nil,
-           use_service_account: true,
-           service_account_configured: service_account_configured,
-           has_calendar: has_calendar,
-           band: band,
-           connected: true,
-           calendars: [],
-           band_name: band && band.name,
-           google_auth: nil
-         )}
-      else
-        # Service account not configured or no calendar
-        {:ok,
-         assign(socket,
-           use_service_account: true,
-           service_account_configured: service_account_configured,
-           has_calendar: has_calendar,
-           band: band,
-           connected: false,
-           show_event_modal: false,
-           show_event_form: false,
-           show_day_events: false,
-           calendars: [],
-           band_name: band && band.name,
-           google_auth: nil
-         )}
+    if service_account_configured && has_calendar do
+      # Fetch calendar data using service account
+      current_date = Date.utc_today()
+      events = case Calendar.list_band_events(band, current_date |> Date.beginning_of_month(), current_date |> Date.end_of_month()) do
+        {:ok, events} -> events
+        {:error, _} -> []
       end
+      events_by_date = group_events_by_date(events)
+      
+      {:ok,
+       assign(socket,
+         current_date: current_date,
+         month_name: month_name(current_date.month),
+         year: current_date.year,
+         events: events,
+         events_by_date: events_by_date,
+         show_event_modal: false,
+         selected_event: nil,
+         show_event_form: false,
+         show_day_events: false,
+         selected_date: nil,
+         event_form: %{
+           title: "",
+           all_day: false,
+           start_time: "",
+           end_time: "",
+           location: "",
+           description: ""
+         },
+         form_error: nil,
+         has_calendar: has_calendar,
+         service_account_configured: service_account_configured,
+         band: band
+       )}
     else
-      # Legacy OAuth Mode
-      connected = has_valid_google_auth?(current_user)
-      has_calendar = connected && has_band_calendar?(current_user)
-      calendars = if connected, do: get_calendars(current_user), else: []
-      
-      if connected && has_calendar do
-        # Only fetch calendar data if we have a valid connection and calendar
-        current_date = Date.utc_today()
-        {:ok, events} = fetch_events(current_user, current_date)
-        events_by_date = group_events_by_date(events)
-        
-        {:ok,
-         assign(socket,
-           current_date: current_date,
-           month_name: month_name(current_date.month),
-           year: current_date.year,
-           events: events,
-           events_by_date: events_by_date,
-           show_event_modal: false,
-           selected_event: nil,
-           show_event_form: false,
-           show_day_events: false,
-           selected_date: nil,
-           event_form: %{
-             title: "",
-             all_day: false,
-             start_time: "",
-             end_time: "",
-             location: "",
-             description: ""
-           },
-           form_error: nil,
-           use_service_account: false,
-           connected: connected,
-           has_calendar: has_calendar,
-           calendars: calendars,
-           band_name: "",
-           google_auth: Calendar.get_google_auth(current_user)
-         )}
-      else
-        # If not connected or no calendar, just set basic assigns
-        {:ok,
-         assign(socket,
-           use_service_account: false,
-           connected: connected,
-           has_calendar: has_calendar,
-           show_event_modal: false,
-           show_event_form: false,
-           show_day_events: false,
-           calendars: calendars,
-           band_name: "",
-           google_auth: Calendar.get_google_auth(current_user)
-         )}
-      end
+      # If no service account or no calendar
+      {:ok,
+       assign(socket,
+         has_calendar: has_calendar,
+         service_account_configured: service_account_configured,
+         show_event_modal: false,
+         show_event_form: false,
+         show_day_events: false,
+         band: band
+       )}
     end
   end
 
@@ -163,458 +93,324 @@ defmodule BandDbWeb.BandCalendarLive do
   end
 
   @impl true
-  def handle_event("show_event", %{"id" => event_id}, socket) do
-    # Find the event from the list
-    event = Enum.find(socket.assigns.events, &(&1.id == event_id))
-
-    socket = socket
-      |> assign(:selected_event, event)
-      |> assign(:show_event_modal, true)
-
-    {:noreply, socket}
-  end
-
-  @impl true
-  def handle_event("close_modal", _, socket) do
-    {:noreply, assign(socket, show_event_modal: false)}
+  def handle_event("today", _params, socket) do
+    today = Date.utc_today()
+    {:noreply, push_patch(socket, to: ~p"/calendar/#{today.year}/#{today.month}")}
   end
 
   @impl true
   def handle_event("delete_event", %{"id" => event_id}, socket) do
-    if socket.assigns.use_service_account do
-      # Service Account Mode
-      band = socket.assigns.band
-      case Calendar.delete_event_with_service_account(band.calendar_id, event_id) do
-        :ok ->
-          # Refresh calendar data
-          socket = update_calendar(socket, socket.assigns.current_date)
-          {:noreply, assign(socket, show_event_modal: false)}
-
-        {:error, reason} ->
-          {:noreply, put_flash(socket, :error, "Failed to delete event: #{reason}")}
-      end
-    else
-      # Legacy OAuth Mode
-      user = socket.assigns.current_user
-      google_auth = Calendar.get_google_auth(user)
-      calendar_id = google_auth.calendar_id
-
-      case Calendar.delete_event(user, calendar_id, event_id) do
-        :ok ->
-          # Refresh calendar data
-          socket = update_calendar(socket, socket.assigns.current_date)
-          {:noreply, assign(socket, show_event_modal: false)}
-
-        {:error, reason} ->
-          # Show error but keep modal open
-          {:noreply, put_flash(socket, :error, "Failed to delete event: #{reason}")}
-      end
-    end
-  end
-
-  @impl true
-  def handle_event("new_event", %{"date" => date_str}, socket) do
-    date = Date.from_iso8601!(date_str)
-
-    socket = socket
-      |> assign(:selected_date, date)
-      |> assign(:show_event_form, true)
-      |> assign(:event_form, %{
-        title: "",
-        description: "",
-        location: "",
-        all_day: true,
-        start_time: ~T[09:00:00],
-        end_time: ~T[10:00:00]
-      })
-
-    {:noreply, socket}
-  end
-
-  @impl true
-  def handle_event("close_form", _, socket) do
-    {:noreply, assign(socket, show_event_form: false, form_error: nil)}
-  end
-
-  @impl true
-  def handle_event("save_event", %{"event" => event_params}, socket) do
-    # Convert form params to our expected format
-    event_data = %{
-      title: event_params["title"],
-      description: event_params["description"],
-      location: event_params["location"],
-      date: socket.assigns.selected_date
-    }
-
-    # Add time info if not an all-day event
-    event_data =
-      if event_params["all_day"] == "true" do
-        event_data
-      else
-        try do
-          # Ensure time strings are properly formatted with seconds
-          start_time_str = ensure_time_has_seconds(event_params["start_time"])
-          end_time_str = ensure_time_has_seconds(event_params["end_time"])
-
-          start_time = Time.from_iso8601!(start_time_str)
-          end_time = Time.from_iso8601!(end_time_str)
-          event_data
-          |> Map.put(:start_time, start_time)
-          |> Map.put(:end_time, end_time)
-        rescue
-          e in ArgumentError ->
-            require Logger
-            Logger.error("Time parsing error: #{inspect(e)}, start_time=#{inspect(event_params["start_time"])}, end_time=#{inspect(event_params["end_time"])}")
-            {:error, "Invalid time format. Please use HH:MM format."}
-        end
-      end
-
-    # Handle errors or continue with validation
-    case event_data do
+    # Service Account Mode
+    band = socket.assigns.band
+    case Calendar.delete_event_with_service_account(band.calendar_id, event_id) do
+      :ok ->
+        # Refresh calendar data
+        {:noreply, update_calendar(socket, socket.assigns.current_date)}
       {:error, reason} ->
-        {:noreply, assign(socket, form_error: reason)}
-      _ ->
-        # Validate form
-        if event_data.title == "" do
-          {:noreply, assign(socket, form_error: "Title is required")}
-        else
-          if socket.assigns.use_service_account do
-            # Service Account Mode
-            band = socket.assigns.band
-            case Calendar.create_event_with_service_account(band.calendar_id, event_data) do
-              {:ok, _event_id} ->
-                # Refresh calendar data
-                socket = update_calendar(socket, socket.assigns.current_date)
-                {:noreply, assign(socket, show_event_form: false, form_error: nil)}
-
-              {:error, reason} ->
-                {:noreply, assign(socket, form_error: "Failed to create event: #{reason}")}
-            end
-          else
-            # Legacy OAuth Mode
-            user = socket.assigns.current_user
-            google_auth = Calendar.get_google_auth(user)
-            calendar_id = google_auth.calendar_id
-
-            case Calendar.create_event(user, calendar_id, event_data) do
-              {:ok, _event_id} ->
-                # Refresh calendar data
-                socket = update_calendar(socket, socket.assigns.current_date)
-                {:noreply, assign(socket, show_event_form: false, form_error: nil)}
-
-              {:error, reason} ->
-                {:noreply, assign(socket, form_error: "Failed to create event: #{reason}")}
-            end
-          end
-        end
+        {:noreply, put_flash(socket, :error, "Failed to delete event: #{reason}")}
     end
   end
 
   @impl true
-  def handle_event("toggle_all_day", _params, socket) do
-    # Toggle the current value
-    current_all_day = socket.assigns.event_form.all_day
-    event_form = Map.put(socket.assigns.event_form, :all_day, !current_all_day)
+  def handle_event("show_day_events", %{"date" => date_string}, socket) do
+    date = Date.from_iso8601!(date_string)
+    events = Map.get(socket.assigns.events_by_date, date, [])
+
+    {:noreply,
+     socket
+     |> assign(selected_date: date)
+     |> assign(day_events: events)
+     |> assign(show_day_events: true)}
+  end
+
+  @impl true
+  def handle_event("close_day_events", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(show_day_events: false)
+     |> assign(selected_date: nil)
+     |> assign(day_events: [])}
+  end
+
+  @impl true
+  def handle_event("toggle_event_modal", %{"id" => event_id}, socket) do
+    event = Enum.find(socket.assigns.events, &(&1.id == event_id))
+    {:noreply, assign(socket, show_event_modal: true, selected_event: event)}
+  end
+
+  @impl true
+  def handle_event("close_event_modal", _params, socket) do
+    {:noreply, assign(socket, show_event_modal: false, selected_event: nil)}
+  end
+
+  @impl true
+  def handle_event("show_event_form", %{"date" => date_string}, socket) do
+    date = Date.from_iso8601!(date_string)
+    
+    # Set default times for the form
+    event_form = %{
+      title: "",
+      all_day: false,
+      start_time: "19:00",  # Default to 7:00 PM
+      end_time: "22:00",    # Default to 10:00 PM
+      location: "",
+      description: "",
+      date: date
+    }
+    
+    {:noreply,
+     socket
+     |> assign(show_event_form: true)
+     |> assign(event_form: event_form)
+     |> assign(form_error: nil)}
+  end
+
+  @impl true
+  def handle_event("close_event_form", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(show_event_form: false)
+     |> assign(event_form: %{})
+     |> assign(form_error: nil)}
+  end
+
+  @impl true
+  def handle_event("update_event_form", %{"event" => event_params}, socket) do
+    event_form = Map.merge(socket.assigns.event_form, event_params)
+    
+    # Convert string "true"/"false" to boolean for all_day
+    event_form = Map.put(event_form, "all_day", event_params["all_day"] == "true")
+    
     {:noreply, assign(socket, event_form: event_form)}
   end
 
   @impl true
-  def handle_event("form_change", %{"event" => event_params}, socket) do
-    # Update the form data in the socket
-    event_form = socket.assigns.event_form
-      |> Map.put(:title, event_params["title"] || "")
-      |> Map.put(:description, event_params["description"] || "")
-      |> Map.put(:location, event_params["location"] || "")
-
-    {:noreply, assign(socket, event_form: event_form, form_error: nil)}
-  end
-
-  @impl true
-  def handle_event("show_day_events", %{"date" => date_str}, socket) do
-    date = Date.from_iso8601!(date_str)
-
-    socket = socket
-      |> assign(:selected_date, date)
-      |> assign(:show_day_events, true)
-
-    {:noreply, socket}
-  end
-
-  @impl true
-  def handle_event("close_day_events", _, socket) do
-    {:noreply, assign(socket, show_day_events: false)}
-  end
-
-  @impl true
-  def handle_params(%{"year" => year, "month" => month}, _uri, socket) do
-    year = String.to_integer(year)
-    month = String.to_integer(month)
-
-    # Ensure the date is valid
-    day = min(socket.assigns.current_date.day, Date.days_in_month(Date.new!(year, month, 1)))
-    date = Date.new!(year, month, day)
-
-    socket = update_calendar(socket, date)
-    {:noreply, socket}
-  end
-
-  @impl true
-  def handle_params(_params, _uri, socket) do
-    {:noreply, socket}
-  end
-
-  # Helper function to update the calendar data
-  defp update_calendar(socket, date) do
-    if socket.assigns.use_service_account do
-      # Service Account Mode
-      band = socket.assigns.band
-      has_calendar = band && band.calendar_id != nil
+  def handle_event("create_event", %{"event" => event_params}, socket) do
+    # Parse the form data
+    date = socket.assigns.event_form.date
+    all_day = event_params["all_day"] == "true"
+    
+    # Build event data
+    event_data = %{
+      title: event_params["title"],
+      date: date,
+      location: event_params["location"],
+      description: event_params["description"],
+      event_type: "general"
+    }
+    
+    # Add time information if not all-day
+    event_data = if all_day do
+      event_data
+    else
+      # Parse times
+      start_time = parse_time(event_params["start_time"])
+      end_time = parse_time(event_params["end_time"])
       
-      # Fetch events using service account
-      events = if has_calendar do
-        case Calendar.list_band_events(band, Date.beginning_of_month(date), Date.end_of_month(date)) do
-          {:ok, events} -> events
-          {:error, _} -> []
+      Map.merge(event_data, %{
+        start_time: start_time,
+        end_time: end_time
+      })
+    end
+    
+    # Validate required fields
+    cond do
+      String.trim(event_data.title) == "" ->
+        {:noreply, assign(socket, form_error: "Title is required")}
+      
+      !all_day && (is_nil(event_data.start_time) || is_nil(event_data.end_time)) ->
+        {:noreply, assign(socket, form_error: "Invalid time format")}
+      
+      true ->
+        # Service Account Mode
+        band = socket.assigns.band
+        case Calendar.create_event_with_service_account(band.calendar_id, event_data) do
+          {:ok, _event_id} ->
+            # Refresh calendar data
+            {:noreply,
+             socket
+             |> update_calendar(socket.assigns.current_date)
+             |> assign(show_event_form: false)
+             |> assign(event_form: %{})
+             |> assign(form_error: nil)
+             |> put_flash(:info, "Event created successfully")}
+          
+          {:error, reason} ->
+            {:noreply, assign(socket, form_error: "Failed to create event: #{reason}")}
         end
-      else
-        []
-      end
-      
+    end
+  end
+
+  @impl true
+  def handle_params(%{"year" => year_str, "month" => month_str}, _uri, socket) do
+    year = String.to_integer(year_str)
+    month = String.to_integer(month_str)
+    
+    # Create a date for the requested month
+    {:ok, date} = Date.new(year, month, 1)
+    
+    {:noreply, update_calendar(socket, date)}
+  end
+
+  def handle_params(_params, _uri, socket) do
+    # Default to current month if no params
+    if Map.has_key?(socket.assigns, :current_date) do
+      {:noreply, socket}
+    else
+      current_date = Date.utc_today()
+      {:noreply, update_calendar(socket, current_date)}
+    end
+  end
+
+  # Update calendar data based on the given date
+  defp update_calendar(socket, date) do
+    band = socket.assigns.band
+    has_calendar = band && band.calendar_id != nil
+    
+    if has_calendar do
+      # Fetch events for the month
+      events = fetch_events(band, date)
       events_by_date = group_events_by_date(events)
       
-      assign(socket,
-        current_date: date,
-        month_name: month_name(date.month),
-        year: date.year,
-        events: events,
-        events_by_date: events_by_date,
-        show_event_modal: false
-      )
+      socket
+      |> assign(current_date: date)
+      |> assign(month_name: month_name(date.month))
+      |> assign(year: date.year)
+      |> assign(events: events)
+      |> assign(events_by_date: events_by_date)
     else
-      # Legacy OAuth Mode
-      user = socket.assigns.current_user
-      google_auth = Calendar.get_google_auth(user)
-      has_calendar = socket.assigns.connected && google_auth && google_auth.calendar_id != nil
-
-      # Generate calendar data for the selected month
-      first_day = Date.beginning_of_month(date)
-      last_day = Date.end_of_month(date)
-      days_in_month = Date.days_in_month(date)
-
-      # Generate the days of the month
-      days = for day <- 1..days_in_month do
-        Date.new!(date.year, date.month, day)
-      end
-
-      # Get the starting weekday (1 = Monday, 7 = Sunday)
-      first_day_weekday = Date.day_of_week(first_day)
-
-      # Add padding days at the beginning (for days from the previous month)
-      padding_start = for i <- 1..(first_day_weekday - 1) do
-        Date.add(first_day, -i)
-      end
-
-      # Add padding days at the end (for days from the next month)
-      last_day_weekday = Date.day_of_week(last_day)
-      days_to_add = 7 - last_day_weekday
-      padding_end = for i <- 1..days_to_add do
-        Date.add(last_day, i)
-      end
-
-      # Combine all days
-      all_days = padding_start ++ days ++ padding_end
-
-      # Group days into weeks
-      weeks = Enum.chunk_every(all_days, 7)
-
-      # Get events if connected to Google Calendar
-      events = if has_calendar do
-        fetch_calendar_events(user, google_auth.calendar_id, first_day, Date.add(last_day, days_to_add))
-      else
-        []
-      end
-
-      # Group events by date
-      events_by_date = Enum.group_by(events, & &1.date)
-
-      assign(socket,
-        current_date: date,
-        weeks: weeks,
-        month_name: month_name(date.month),
-        events: events,
-        events_by_date: events_by_date,
-        show_event_modal: false
-      )
+      socket
+      |> assign(current_date: date)
+      |> assign(month_name: month_name(date.month))
+      |> assign(year: date.year)
+      |> assign(events: [])
+      |> assign(events_by_date: %{})
     end
   end
 
-  # Helper function to fetch calendar events
-  defp fetch_calendar_events(user, calendar_id, start_date, end_date) do
-    case Calendar.get_access_token(user) do
-      {:ok, access_token} ->
-        case Calendar.list_events(access_token, calendar_id, start_date, end_date) do
-          {:ok, events} -> events
-          {:error, _} -> []
-        end
-      {:error, _} -> []
-    end
-  end
-
-  # Helper function to get month name
-  defp month_name(month) do
-    case month do
-      1 -> "January"
-      2 -> "February"
-      3 -> "March"
-      4 -> "April"
-      5 -> "May"
-      6 -> "June"
-      7 -> "July"
-      8 -> "August"
-      9 -> "September"
-      10 -> "October"
-      11 -> "November"
-      12 -> "December"
-    end
-  end
-
-  # Helper function to determine if a date is today
-  defp is_today?(date) do
-    Date.compare(date, Date.utc_today()) == :eq
-  end
-
-
-
-  # Helper function to determine if a date is in the current month
-  defp in_current_month?(date, current_date) do
-    date.year == current_date.year && date.month == current_date.month
-  end
-
-  # Helper function to get events for a specific date
-  defp events_for_date(date, events_by_date) do
-    Map.get(events_by_date, date, [])
-  end
-
-  # Helper function to generate calendar days for a month
-  defp calendar_days(year, month) do
-    # Create a date for the first day of the month
-    first_day = Date.new!(year, month, 1)
-    # Determine the last day of the month
-    last_day = Date.end_of_month(first_day)
-    # Number of days in the month
-    days_in_month = Date.days_in_month(first_day)
-
-    # Get the starting weekday (1 = Monday, 7 = Sunday)
-    first_day_weekday = Date.day_of_week(first_day)
-
-    # Add padding days at the beginning (for days from the previous month)
-    padding_start = for _ <- 1..(first_day_weekday - 1), do: nil
-
-    # Create day structs for the days in the month
-    month_days = for day <- 1..days_in_month do
-      date = Date.new!(year, month, day)
-      %{day: day, date: date}
-    end
-
-    # Add padding days at the end (for days from the next month)
-    last_day_weekday = Date.day_of_week(last_day)
-    padding_end = for _ <- 1..(7 - last_day_weekday), do: nil
-
-    # Combine all days
-    padding_start ++ month_days ++ padding_end
-  end
-
-  # Helper function to fetch events for a user and date
-  defp fetch_events(user, date) do
-    # Get the first and last day of the month
+  # Helper function to fetch events for a month
+  defp fetch_events(band, date) do
+    # Get the first and last days of the month
     first_day = Date.beginning_of_month(date)
     last_day = Date.end_of_month(date)
-
-    # Fetch events for the month
-    google_auth = Calendar.get_google_auth(user)
-    if google_auth && google_auth.calendar_id do
-      calendar_id = google_auth.calendar_id
-      case Calendar.get_access_token(user) do
-        {:ok, access_token} ->
-          Calendar.list_events(access_token, calendar_id, first_day, last_day)
-        {:error, _reason} ->
-          {:ok, []} # Return empty list on error
-      end
-    else
-      {:ok, []} # Return empty list if no calendar
+    
+    # Fetch events using service account
+    case Calendar.list_band_events(band, first_day, last_day) do
+      {:ok, events} -> events
+      {:error, _reason} -> []
     end
   end
 
-  # Helper function to group events by date
+  # Group events by date for easy lookup
   defp group_events_by_date(events) do
     Enum.group_by(events, & &1.date)
   end
 
-  # Helper function to check if a user has valid Google Auth
-  defp has_valid_google_auth?(user) do
-    google_auth = Calendar.get_google_auth(user)
-    google_auth != nil && !Calendar.is_expired?(google_auth)
+  # Get the month name
+  defp month_name(month) do
+    Enum.at(
+      ["January", "February", "March", "April", "May", "June", 
+       "July", "August", "September", "October", "November", "December"],
+      month - 1
+    )
   end
 
-  # Helper function to check if a user has a band calendar
-  defp has_band_calendar?(user) do
-    google_auth = Calendar.get_google_auth(user)
-    google_auth != nil && google_auth.calendar_id != nil
-  end
-
-  # Get the list of calendars for the user
-  defp get_calendars(user) do
-    case Calendar.list_calendars(user) do
-      {:ok, calendars} -> calendars
-      {:error, _} -> []
-    end
-  end
-
-  # Helper function to ensure time strings are properly formatted with seconds
-  defp ensure_time_has_seconds(time_str) when is_binary(time_str) do
-    if Regex.match?(~r/^\d{1,2}:\d{2}$/, time_str) do
-      # Format is HH:MM, add seconds
-      time_str <> ":00"
+  # Generate calendar days for the month view
+  defp calendar_days(year, month) do
+    # Get the first day of the month
+    {:ok, first_day} = Date.new(year, month, 1)
+    
+    # Get the last day of the month
+    last_day = Date.end_of_month(first_day)
+    
+    # Get the day of the week for the first day (0 = Sunday, 6 = Saturday)
+    first_day_of_week = Date.day_of_week(first_day, :sunday)
+    
+    # Calculate padding days from previous month
+    padding_start = first_day_of_week - 1
+    
+    # Get days from previous month
+    prev_month_days = if padding_start > 0 do
+      prev_month_last_day = Date.add(first_day, -1)
+      prev_month_first_padding_day = Date.add(prev_month_last_day, -(padding_start - 1))
+      
+      Enum.map(0..(padding_start - 1), fn offset ->
+        date = Date.add(prev_month_first_padding_day, offset)
+        %{date: date, current_month: false}
+      end)
     else
-      # Either already has seconds or is in an unexpected format
-      time_str
+      []
+    end
+    
+    # Get days from current month
+    current_month_days = Enum.map(1..last_day.day, fn day ->
+      {:ok, date} = Date.new(year, month, day)
+      %{date: date, current_month: true}
+    end)
+    
+    # Calculate padding days from next month to complete the grid
+    total_days = length(prev_month_days) + length(current_month_days)
+    remaining_days = 42 - total_days  # 6 weeks * 7 days = 42
+    
+    next_month_days = if remaining_days > 0 do
+      next_month_first_day = Date.add(last_day, 1)
+      
+      Enum.map(0..(remaining_days - 1), fn offset ->
+        date = Date.add(next_month_first_day, offset)
+        %{date: date, current_month: false}
+      end)
+    else
+      []
+    end
+    
+    # Combine all days
+    prev_month_days ++ current_month_days ++ next_month_days
+  end
+
+  # Helper to parse time string
+  defp parse_time(time_string) when is_binary(time_string) do
+    case String.split(time_string, ":") do
+      [hour_str, minute_str] ->
+        with {hour, ""} <- Integer.parse(hour_str),
+             {minute, ""} <- Integer.parse(minute_str) do
+          Time.new(hour, minute, 0)
+          |> case do
+            {:ok, time} -> time
+            _ -> nil
+          end
+        else
+          _ -> nil
+        end
+      _ -> nil
     end
   end
-  defp ensure_time_has_seconds(nil), do: nil
+  defp parse_time(_), do: nil
 
-  # Helper function to format time in 12-hour format
+  # Helper functions for the template
   defp format_time_12h(nil), do: ""
-  defp format_time_12h(%DateTime{} = datetime) do
-    # When dealing with DateTimes, respect the timezone info
-    hour = datetime.hour
-    minute = datetime.minute
-
-    period = if hour >= 12, do: "PM", else: "AM"
-
-    # Convert 24-hour format to 12-hour format
-    display_hour = cond do
-      hour == 0 -> 12  # Midnight (0:00) should display as 12 AM
-      hour > 12 -> hour - 12
-      true -> hour
-    end
-
-    # Format the time with leading zeros for minutes
-    "#{display_hour}:#{:io_lib.format("~2..0B", [minute])} #{period}"
-  end
-  defp format_time_12h(%Time{} = time) do
+  defp format_time_12h(time) do
     hour = time.hour
-    minute = time.minute
-
-    period = if hour >= 12, do: "PM", else: "AM"
-
-    # Convert 24-hour format to 12-hour format
-    display_hour = cond do
-      hour == 0 -> 12  # Midnight (0:00) should display as 12 AM
-      hour > 12 -> hour - 12
-      true -> hour
+    minute = time.minute |> Integer.to_string() |> String.pad_leading(2, "0")
+    
+    {display_hour, period} = cond do
+      hour == 0 -> {12, "AM"}
+      hour < 12 -> {hour, "AM"}
+      hour == 12 -> {12, "PM"}
+      true -> {hour - 12, "PM"}
     end
+    
+    "#{display_hour}:#{minute} #{period}"
+  end
 
-    # Format the time with leading zeros for minutes
-    "#{display_hour}:#{:io_lib.format("~2..0B", [minute])} #{period}"
+  defp events_for_date(date, events_by_date) do
+    Map.get(events_by_date, date, [])
+  end
+
+  defp in_current_month?(date, current_date) do
+    date.year == current_date.year && date.month == current_date.month
+  end
+
+  defp is_today?(date) do
+    Date.compare(date, Date.utc_today()) == :eq
   end
 end

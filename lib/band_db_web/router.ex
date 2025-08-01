@@ -69,15 +69,6 @@ defmodule BandDbWeb.Router do
     post "/users/log_in", UserSessionController, :create
   end
 
-  # Google OAuth routes
-  scope "/auth", BandDbWeb do
-    pipe_through [:browser, :require_authenticated_user]
-
-    get "/google", GoogleAuthController, :authenticate
-    get "/google/callback", GoogleAuthController, :callback
-    get "/google/disconnect", GoogleAuthController, :disconnect
-  end
-
   scope "/", BandDbWeb do
     pipe_through [:browser]
 
