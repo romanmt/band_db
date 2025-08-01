@@ -30,16 +30,22 @@ defmodule BandDb.Calendar.ServiceAccountManager do
   def start_link(_opts \\ []) do
     case get_active_service_account() do
       {:ok, service_account} ->
-        # The credentials are already decrypted when loaded from the database
-        # through the Cloak.Ecto.Binary type, so they come as a JSON string
-        credentials = Jason.decode!(service_account.credentials)
-        
-        config = [
-          name: @goth_name,
-          source: {:service_account, credentials, scopes: [@token_scope]}
-        ]
-        
-        Goth.start_link(config)
+        # Check if credentials are nil before trying to decode
+        if service_account.credentials do
+          # The credentials are already decrypted when loaded from the database
+          # through the Cloak.Ecto.Binary type, so they come as a JSON string
+          credentials = Jason.decode!(service_account.credentials)
+          
+          config = [
+            name: @goth_name,
+            source: {:service_account, credentials, scopes: [@token_scope]}
+          ]
+          
+          Goth.start_link(config)
+        else
+          # Start a dummy GenServer if credentials are nil
+          Agent.start_link(fn -> nil end, name: __MODULE__)
+        end
         
       {:error, :no_active_service_account} ->
         # Start a dummy GenServer that does nothing
