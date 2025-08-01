@@ -53,20 +53,23 @@ defmodule BandDb.Rehearsals.RehearsalServer do
 
   @impl true
   def init(band_id) do
+    # Normalize band_id - only accept integers, otherwise nil
+    normalized_band_id = if is_integer(band_id), do: band_id, else: nil
+    
     # Load initial state from persistence
     case persistence_module().load_plans() do
       {:ok, plans} ->
         # Filter plans for this band if band_id is provided
-        filtered_plans = if band_id do
-          Enum.filter(plans, &(&1.band_id == band_id))
+        filtered_plans = if normalized_band_id do
+          Enum.filter(plans, &(&1.band_id == normalized_band_id))
         else
           plans
         end
         schedule_backup()
-        {:ok, %{plans: filtered_plans, band_id: band_id}}
+        {:ok, %{plans: filtered_plans, band_id: normalized_band_id}}
       _ ->
         schedule_backup()
-        {:ok, %{plans: [], band_id: band_id}}
+        {:ok, %{plans: [], band_id: normalized_band_id}}
     end
   end
 
@@ -110,7 +113,7 @@ defmodule BandDb.Rehearsals.RehearsalServer do
             # Convert UUIDs to full song objects
             song_uuids = MapSet.new(rehearsal_songs ++ set_songs)
             # Get the correct song server for this band
-            song_server = if state.band_id do
+            song_server = if is_integer(state.band_id) do
               BandDb.ServerLookup.get_song_server(state.band_id)
             else
               # Fallback for backwards compatibility
