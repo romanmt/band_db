@@ -338,19 +338,15 @@ defmodule BandDb.Calendar.GoogleAPI do
       # Safely parse the ISO 8601 datetime strings
       start_dt = case DateTime.from_iso8601(start_datetime) do
         {:ok, dt, _} ->
-          # Fix for Google Calendar UTC times
-          # We need to manually convert from UTC to local time
-          if String.ends_with?(start_datetime, "Z") && (start_timezone == "America/New_York") do
-            # For EDT (UTC-4), subtract 4 hours from the UTC time
-            local_hour = dt.hour - 4
-
-            # Handle day changes if needed
-            if local_hour < 0 do
-              # If hour becomes negative, adjust to previous day
-              prev_day = Date.add(dt, -1)
-              %DateTime{dt | year: prev_day.year, month: prev_day.month, day: prev_day.day, hour: local_hour + 24}
-            else
-              %DateTime{dt | hour: local_hour}
+          # Convert UTC times to the specified timezone properly
+          if String.ends_with?(start_datetime, "Z") && start_timezone do
+            case DateTime.shift_zone(dt, start_timezone) do
+              {:ok, shifted_dt} ->
+                shifted_dt
+              {:error, _reason} ->
+                # Fallback: try manual conversion if timezone database is not available
+                Logger.warning("Timezone conversion failed for #{start_timezone}, using UTC time")
+                dt
             end
           else
             dt
@@ -362,18 +358,15 @@ defmodule BandDb.Calendar.GoogleAPI do
 
       end_dt = case DateTime.from_iso8601(end_datetime) do
         {:ok, dt, _} ->
-          # Same conversion for end time
-          if String.ends_with?(end_datetime, "Z") && (end_timezone == "America/New_York") do
-            # For EDT (UTC-4), subtract 4 hours from the UTC time
-            local_hour = dt.hour - 4
-
-            # Handle day changes if needed
-            if local_hour < 0 do
-              # If hour becomes negative, adjust to previous day
-              prev_day = Date.add(dt, -1)
-              %DateTime{dt | year: prev_day.year, month: prev_day.month, day: prev_day.day, hour: local_hour + 24}
-            else
-              %DateTime{dt | hour: local_hour}
+          # Convert UTC times to the specified timezone properly
+          if String.ends_with?(end_datetime, "Z") && end_timezone do
+            case DateTime.shift_zone(dt, end_timezone) do
+              {:ok, shifted_dt} ->
+                shifted_dt
+              {:error, _reason} ->
+                # Fallback: try manual conversion if timezone database is not available
+                Logger.warning("Timezone conversion failed for #{end_timezone}, using UTC time")
+                dt
             end
           else
             dt
