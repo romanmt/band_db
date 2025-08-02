@@ -3,16 +3,16 @@ defmodule BandDb.Songs.SongPersistenceMock do
   Mock implementation of SongPersistence for unit testing.
   This module mimics the behavior of the real persistence layer without touching the database.
   """
-  require Logger
+  # Mock implementation without logging
 
   # Mock implementations of SongPersistence functions
   def load_songs do
     # Check if we're in a test that expects empty data
     if System.get_env("EMPTY_MOCK_DATA") == "true" do
-      Logger.debug("Using SongPersistenceMock.load_songs (empty data)")
+      # Empty data for tests
       {:ok, []}
     else
-      Logger.debug("Using SongPersistenceMock.load_songs (mock data)")
+      # Mock data for tests
       # Return mock data for testing
       {:ok, [
         %BandDb.Songs.Song{
@@ -41,13 +41,13 @@ defmodule BandDb.Songs.SongPersistenceMock do
     end
   end
 
-  def persist_songs(songs) do
-    Logger.debug("SongPersistenceMock.persist_songs called with #{length(songs)} songs")
+  def persist_songs(_songs) do
+    # Persist songs mock
     :ok
   end
 
   def load_songs_by_band_id(band_id) do
-    Logger.debug("SongPersistenceMock.load_songs_by_band_id called with band_id=#{band_id}")
+    # Load songs by band_id mock
 
     # Get all songs, then filter by band_id
     {:ok, songs} = load_songs()
@@ -57,12 +57,12 @@ defmodule BandDb.Songs.SongPersistenceMock do
   end
 
   def load_column_preferences do
-    Logger.debug("SongPersistenceMock.load_column_preferences called")
+    # Load column preferences mock
     {:ok, %{}}
   end
 
-  def persist_column_preferences(preferences) do
-    Logger.debug("SongPersistenceMock.persist_column_preferences called with #{map_size(preferences)} preferences")
+  def persist_column_preferences(_preferences) do
+    # Persist column preferences mock
     :ok
   end
 end

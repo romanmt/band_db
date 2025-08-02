@@ -20,7 +20,7 @@ defmodule Mix.Tasks.Test.Unit do
 
   @shortdoc "Run unit tests with mock database"
   def run(args) do
-    # Run the tests with the exclude db tag
-    Mix.Task.run("test", ["--exclude", "db"] ++ args)
+    # Run the tests excluding both db and e2e tags
+    Mix.Task.run("test", ["--exclude", "db", "--exclude", "e2e"] ++ args)
   end
 end

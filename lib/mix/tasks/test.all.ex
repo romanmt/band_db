@@ -1,6 +1,6 @@
 defmodule Mix.Tasks.Test.All do
   @moduledoc """
-  A Mix task to run all tests including database tests.
+  A Mix task to run all tests including unit, integration, and E2E tests.
 
   ## Examples
 
@@ -18,9 +18,9 @@ defmodule Mix.Tasks.Test.All do
 
   @preferred_cli_env :test
 
-  @shortdoc "Run all tests including database tests"
+  @shortdoc "Run all tests including unit, integration, and E2E tests"
   def run(args) do
-    # Run the tests with the include db tag
-    Mix.Task.run("test", ["--include", "db"] ++ args)
+    # Use Mix.shell to run the command with the env var set
+    Mix.shell().cmd("WALLABY_SERVER=true mix test --include db --include e2e #{Enum.join(args, " ")}")
   end
 end

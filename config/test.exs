@@ -31,12 +31,18 @@ config :swoosh, :api_client, false
 # Print only warnings and errors during test
 config :logger, level: :warning
 
+# Configure console backend for minimal output
+config :logger, :console,
+  format: "[$level] $message\n",
+  metadata: []
+
 # Initialize plugs at runtime for faster test compilation
 config :phoenix, :plug_init_mode, :runtime
 
-# Enable helpful, but potentially expensive runtime checks
+# Disable debug mode in tests for cleaner output
 config :phoenix_live_view,
-  enable_expensive_runtime_checks: true
+  enable_expensive_runtime_checks: true,
+  debug_heex_annotations: false
 
 # Configure your database - only used for DB tests
 if System.get_env("SKIP_DB") == "true" do
@@ -50,7 +56,8 @@ if System.get_env("SKIP_DB") == "true" do
     hostname: "localhost",
     username: "postgres",
     password: "postgres",
-    connect_timeout: 1  # Very short timeout to fail quickly
+    connect_timeout: 1,  # Very short timeout to fail quickly
+    log: false  # Disable query logging in tests
 else
   config :band_db, BandDb.Repo,
     username: "postgres",
@@ -58,7 +65,8 @@ else
     hostname: "localhost",
     database: "band_db_test#{System.get_env("MIX_TEST_PARTITION")}",
     pool: Ecto.Adapters.SQL.Sandbox,
-    pool_size: 10
+    pool_size: 10,
+    log: false  # Disable query logging in tests
 end
 
 # Configure the encryption vault for tests

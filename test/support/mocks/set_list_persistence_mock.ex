@@ -3,7 +3,7 @@ defmodule BandDb.SetLists.SetListPersistenceMock do
   Mock implementation of SetListPersistence for unit testing.
   This module mimics the behavior of the real persistence layer without touching the database.
   """
-  require Logger
+  # Mock implementation without logging
 
   @doc """
   Mock implementation of SetListPersistence.load_set_lists/0 for testing.
@@ -11,10 +11,10 @@ defmodule BandDb.SetLists.SetListPersistenceMock do
   """
   def load_set_lists do
     if System.get_env("EMPTY_MOCK_DATA") == "true" do
-      Logger.debug("Using SetListPersistenceMock.load_set_lists (empty data)")
+      # Empty data for tests
       {:ok, %{}}
     else
-      Logger.debug("Using SetListPersistenceMock.load_set_lists (mock data)")
+      # Mock data for tests
       test_set_list_id = "11111111-1111-1111-1111-111111111111"
 
       {:ok, %{
@@ -50,8 +50,8 @@ defmodule BandDb.SetLists.SetListPersistenceMock do
   Mock implementation of SetListPersistence.persist_set_lists/2 for testing.
   Logs the action and returns :ok without actually persisting anything.
   """
-  def persist_set_lists(set_lists, _mode \\ :update) do
-    Logger.debug("SetListPersistenceMock.persist_set_lists called with #{map_size(set_lists)} set lists")
+  def persist_set_lists(_set_lists, _mode \\ :update) do
+    # Persist set lists mock
     :ok
   end
 end

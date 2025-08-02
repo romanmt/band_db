@@ -157,3 +157,32 @@ This document outlines the phased approach for integrating Google Calendar with 
 - [ ] Integration with other calendar providers
 - [ ] Advanced availability preferences (preferred days/times)
 - [ ] Multi-calendar support for different band activities 
+
+* Feedback and Iteration
+** round 1
+- [ ] Move play button to left side
+- [ ] Band boss/ band member roles (future feature)
+- [ ] double click notes field to edit (spreadsheet style)
+- [ ] Create set list directly from song list, click multiple songs
+- [x] Look into a public shared google calendar instead of sharing your calendar
+- [x] Delete from song list
+- [x] Example YouTube link is confusing
+- [x] Turn notes into a field
+- [x] Fix set list page, its broken
+- [x] Grid the suggested songs page
+- [x] Change table to grid
+- [x] Make tables sortable
+- [x] Add band to header make more obvious
+
+** Round 2
+- [ ] Look at bulk import 1
+- [ ] Can I remove the scrollable window on the song library 1
+- [ ] Add Statuses in the future
+- [ ] Probably a better name than suggested songs
+- [ ] There might be multiple categroies in the library
+- [ ] Active list, Wish list, Back Catalog 1
+- [ ] Add song bug (title is the 501) 1
+- [ ] Persist column order
+- [ ] Add Singer Field 1
+- [ ] Inline add song 1
+- [ ] Time is 24 hour rehearsal

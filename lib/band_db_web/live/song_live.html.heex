@@ -180,10 +180,10 @@
             <div class="w-full">
               <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Bulk Import Songs</h3>
               <p class="text-sm text-gray-500 mb-4">
-                Paste your songs below. Each song should be on a new line with the following format (tab-separated):<br>
-                <code class="bg-gray-100 px-2 py-1 rounded">Band Name    Title    Duration    Status    Tuning    Notes</code><br>
+                Paste your songs below. Each song should be on a new line with the following format (comma-separated):<br>
+                <code class="bg-gray-100 px-2 py-1 rounded">Band Name,Title,Duration,Status,Tuning,Notes</code><br>
                 Example:<br>
-                <code class="bg-gray-100 px-2 py-1 rounded">Jimmy Eat World    The Middle    2:45    ready    drop_d    Try this song again</code>
+                <code class="bg-gray-100 px-2 py-1 rounded">Jimmy Eat World,The Middle,2:45,ready,drop_d,Try this song again</code>
               </p>
               <.form for={%{}} phx-submit="bulk_import_songs" phx-change="update_bulk_import_text">
                 <div class="mt-4">
