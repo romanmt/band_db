@@ -16,20 +16,78 @@ BandDb is a Phoenix LiveView application for managing band operations including 
 - `mix phx.server` - Start Phoenix server (http://localhost:4000)
 - `iex -S mix phx.server` - Start server in interactive mode
 
-### Testing
-- `mix test` - Run all tests (with database setup)
-- `mix test.unit` - Run unit tests only (no database)
-- `mix test.all` - Run all tests including database tests
-- `WALLABY_SERVER=true mix test.e2e` - Run end-to-end tests with Wallaby
-- `./scripts/ci_unit_tests.sh` - Run unit tests in CI mode
-- `./scripts/ci_all_tests.sh` - Run all tests in CI mode
-- `WALLABY_SERVER=true mix test.all --trace` - Run all tests with Wallaby server and detailed trace output
 
-### CI/CD Testing
-GitHub Actions automatically runs:
+### Test Execution Commands
+
+#### Local Development
+```bash
+# Run only unit tests (fastest, no database required)
+mix test.unit
+
+# Run unit + integration tests (no E2E)
+mix test.integration
+
+# Run only E2E tests (automatically sets WALLABY_SERVER)
+mix test.e2e
+
+# Run ALL tests including E2E (automatically sets WALLABY_SERVER)
+mix test.all
+
+# Run specific test file
+mix test test/band_db/song_server_test.exs
+
+# Run tests matching a pattern
+mix test --only business_logic
+```
+
+#### CI/CD Pipeline
+GitHub Actions automatically runs tests in stages:
 1. Unit tests (`mix test --only unit --exclude e2e`)
 2. Integration tests (`mix test --include db --exclude e2e`)
-3. E2E tests (`WALLABY_SERVER=true mix test.e2e`) - requires Chrome installation in CI
+3. E2E tests (`mix test.e2e`) - requires Chrome installation
+
+```bash
+# CI scripts
+./scripts/ci_unit_tests.sh    # No database required
+./scripts/ci_all_tests.sh      # Requires PostgreSQL service
+```
+
+### Test Organization
+
+```
+test/
+├── band_db/              # Unit tests for business logic
+│   ├── song_server_test.exs
+│   ├── set_list_server_test.exs
+│   └── rehearsal_server_test.exs
+├── band_db_web/          # Integration tests for web layer
+│   ├── controllers/
+│   └── live/
+├── e2e/                  # End-to-end browser tests
+│   ├── song_management_test.exs
+│   └── set_list_management_test.exs
+└── support/              # Test helpers and utilities
+    ├── conn_case.ex      # Web integration test helpers
+    ├── data_case.ex      # Database test helpers
+    ├── unit_case.ex      # Unit test helpers
+    ├── e2e_case.ex       # E2E test helpers
+    └── mocks/            # Mock implementations
+```
+
+### Performance Optimization
+
+1. **Parallel Execution**: Unit tests run with `async: true`
+2. **Database Sandboxing**: Each test gets isolated transaction
+3. **Shared Setup**: Use `setup_all` for expensive operations
+4. **Lazy Loading**: Only start services needed for specific tests
+5. **CI Caching**: Cache dependencies and build artifacts
+
+### Debugging Failed Tests
+
+1. **Unit Test Failures**: Check mock configurations and function signatures
+2. **Integration Test Failures**: Verify database migrations and constraints
+3. **E2E Test Failures**: Check for timing issues and JavaScript errors
+4. **Flaky Tests**: Add explicit waits or use more specific selectors
 
 ### Assets
 - `mix assets.setup` - Install Tailwind, esbuild, and npm dependencies
@@ -40,8 +98,10 @@ GitHub Actions automatically runs:
 
 ### Custom Mix Tasks
 - `mix generate_reset_link` - Generate password reset links for users
-- `mix test.all` - Run all tests including database-dependent tests
 - `mix test.unit` - Run only unit tests without database
+- `mix test.integration` - Run unit and integration tests (no E2E)
+- `mix test.e2e` - Run E2E tests with Wallaby (automatically sets WALLABY_SERVER)
+- `mix test.all` - Run ALL tests including unit, integration, and E2E
 
 ## Architecture Overview
 
@@ -97,13 +157,122 @@ The application follows strict separation of concerns:
 - **Communication Flow**: LiveViews → GenServers → Business Logic → Persistence
 
 ### Testing Strategy
-- Unit tests: Fast, isolated tests without database (tag: `:unit`)
-- Integration tests: Full stack tests with database (tag: `:db`)
-- Use `test/support/unit_case.ex` for unit tests
-- Use `test/support/data_case.ex` for database tests
-- Follow TDD approach with Arrange-Act-Assert pattern
-- Test public interfaces, not implementation details
-- Keep tests independent and idempotent
+
+BandDb follows a comprehensive testing pyramid approach with three distinct test levels:
+
+#### Test Categories
+
+##### 1. Unit Tests (Base of Pyramid - Most Tests)
+- **Purpose**: Test business logic in isolation without external dependencies
+- **Location**: Tests using `BandDb.UnitCase`
+- **Characteristics**:
+  - No database connections
+  - Use mocked persistence layers
+  - Fast execution (< 0.1s per test)
+  - Can run asynchronously
+  - Tagged with `:unit`
+- **Example**: Testing GenServer business logic, pure functions, data transformations
+
+##### 2. Integration Tests (Middle Layer)
+- **Purpose**: Test component interactions with real database
+- **Location**: Tests using `BandDb.DataCase` or `BandDbWeb.ConnCase`
+- **Characteristics**:
+  - Real PostgreSQL database with sandboxed transactions
+  - Test Ecto queries, changesets, and data persistence
+  - Moderate execution time
+  - Tagged with `:db`
+- **Example**: Testing Accounts context, database queries, API endpoints
+
+##### 3. E2E Tests (Top of Pyramid - Fewest Tests)
+- **Purpose**: Test complete user workflows through the browser
+- **Location**: Tests in `test/e2e/` using `BandDbWeb.E2ECase`
+- **Characteristics**:
+  - Full browser automation with Wallaby/ChromeDriver
+  - Test JavaScript interactions and LiveView updates
+  - Slowest execution (several seconds per test)
+  - Must run synchronously (async: false)
+  - Tagged with `:e2e`
+- **Example**: User registration flow, song management, set list creation
+
+#### Mocking and Stubbing Guidelines
+
+##### When to Mock
+1. **External Services**: Always mock external APIs (Google Calendar, OAuth)
+2. **Persistence Layer**: Mock for unit tests to avoid database dependencies
+3. **Time-based Operations**: Mock time functions for deterministic tests
+4. **Network Calls**: Mock HTTP clients for reliability
+
+##### When NOT to Mock
+1. **Pure Functions**: Test directly without mocks
+2. **GenServer State**: Test actual state management behavior
+3. **Business Logic**: Test real implementations
+4. **Data Transformations**: Test with real data structures
+
+##### Mock Configuration
+The application uses configuration-based dependency injection:
+
+```elixir
+# In unit tests (test_helper.exs)
+Application.put_env(:band_db, :song_persistence, BandDb.Songs.SongPersistenceMock)
+
+# In production code
+defp persistence_module do
+  Application.get_env(:band_db, :song_persistence, BandDb.Songs.SongPersistence)
+end
+```
+
+#### Testing Pyramid Best Practices
+
+##### Unit Test Guidelines (70% of tests)
+- Test one thing per test
+- Use descriptive test names: `test "add_song/4 returns error when song already exists"`
+- Isolate GenServer instances with unique names
+- Mock all external dependencies
+- Aim for < 100ms execution time
+- Group related tests with `describe` blocks
+
+##### Integration Test Guidelines (20% of tests)
+- Test database constraints and validations
+- Verify data persistence and retrieval
+- Test transaction boundaries
+- Use database sandbox for isolation
+- Clean up test data in `setup` callbacks
+
+##### E2E Test Guidelines (10% of tests)
+- Focus on critical user paths only
+- Test happy paths and key error scenarios
+- Wait for asynchronous operations explicitly
+- Use page object pattern for maintainability
+- Run synchronously to avoid flaky tests
+
+#### Common Testing Patterns
+
+##### Testing GenServers
+```elixir
+setup do
+  # Use unique server names to avoid conflicts
+  server_name = :"test_server_#{System.unique_integer([:positive])}"
+  start_supervised!({ServerModule, server_name})
+  {:ok, server: server_name}
+end
+```
+
+##### Testing with Time
+```elixir
+# Use explicit time values instead of current time
+test_time = ~U[2024-01-01 12:00:00Z]
+# Pass time as parameter rather than calling DateTime.utc_now()
+```
+
+##### Testing Async Operations
+```elixir
+# For E2E tests, wait explicitly
+|> wait_for_page_load()
+|> assert_has(css(".element"))
+
+# For unit tests, use message assertions
+assert_receive {:some_message, _}, 1000
+```
 
 ### Environment Configuration
 - Development: Uses `.env.exs` for Google OAuth credentials

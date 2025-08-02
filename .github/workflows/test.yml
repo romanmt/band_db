@@ -131,7 +131,7 @@ jobs:
         run: |
           # Run E2E tests with Chrome in headless mode
           echo "Running E2E tests..."
-          WALLABY_SERVER=true mix test.e2e
+          mix test.e2e
         env:
           MIX_ENV: test
           DATABASE_URL: "ecto://postgres:postgres@localhost/band_db_test" 

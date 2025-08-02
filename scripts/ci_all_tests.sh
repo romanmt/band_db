@@ -1,5 +1,8 @@
 #!/bin/bash
-# This script runs all tests, including those that interact with the database
+# This script runs all tests including unit, integration, and E2E tests
 
-# Run all tests by including the db-tagged tests
-mix test --include db $@ 
+# Set WALLABY_SERVER for E2E tests
+export WALLABY_SERVER=true
+
+# Run all tests using the test.all task
+mix test.all $@ 

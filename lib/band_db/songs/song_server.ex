@@ -176,12 +176,12 @@ defmodule BandDb.Songs.SongServer do
     |> String.split("\n")
     |> Enum.reject(&(String.trim(&1) == ""))
     |> Enum.map(fn line ->
-      [band_name, title, duration, status, tuning, notes] = String.split(line, "\t")
+      [band_name, title, duration, status, tuning, notes] = String.split(line, ",") |> Enum.map(&String.trim/1)
       [minutes, seconds] = String.split(duration, ":")
       duration_seconds = String.to_integer(minutes) * 60 + String.to_integer(seconds)
 
       # Convert tuning to atom and handle invalid values
-      tuning_atom = case String.trim(tuning) do
+      tuning_atom = case tuning do
         "standard" -> :standard
         "drop_d" -> :drop_d
         "e_flat" -> :e_flat
@@ -193,12 +193,12 @@ defmodule BandDb.Songs.SongServer do
         {:error, msg} -> {:error, msg}
         tuning_atom ->
           %Song{
-            title: String.trim(title),
-            band_name: String.trim(band_name),
+            title: title,
+            band_name: band_name,
             duration: duration_seconds,
-            status: String.to_existing_atom(String.trim(status)),
+            status: String.to_existing_atom(status),
             tuning: tuning_atom,
-            notes: String.trim(notes),
+            notes: notes,
             uuid: Ecto.UUID.generate(),
             band_id: band_id
           }

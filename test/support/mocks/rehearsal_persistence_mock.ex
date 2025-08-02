@@ -4,7 +4,7 @@ defmodule BandDb.Rehearsals.RehearsalPersistenceMock do
   This module mimics the behavior of the real persistence layer without touching the database.
   Maintains state between function calls using Agent for testing purposes.
   """
-  require Logger
+  # Mock implementation without logging
   use Agent
 
   # Start the agent when the module is loaded
@@ -38,13 +38,13 @@ defmodule BandDb.Rehearsals.RehearsalPersistenceMock do
 
     # Check if we're in a test that expects empty data
     if System.get_env("EMPTY_MOCK_DATA") == "true" do
-      Logger.debug("Using RehearsalPersistenceMock.load_plans (empty data)")
+      # Empty data for tests
 
       # Get current data from the agent
       plans = Agent.get(__MODULE__, fn state -> state.plans end)
       {:ok, plans}
     else
-      Logger.debug("Using RehearsalPersistenceMock.load_plans (mock data)")
+      # Mock data for tests
 
       # Create a test date in the future for rehearsal plans
       today = Date.utc_today()
@@ -75,7 +75,7 @@ defmodule BandDb.Rehearsals.RehearsalPersistenceMock do
   """
   def persist_plans(plans) do
     ensure_started()
-    Logger.debug("RehearsalPersistenceMock.persist_plans called with #{length(plans)} plans")
+    # Persist plans mock
     Agent.update(__MODULE__, fn _ -> %{plans: plans} end)
     :ok
   end
